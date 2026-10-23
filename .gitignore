@@ -1,0 +1,38 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Compiled outputs
+build/
+dist/
+out/
+*.o
+*.a
+*.so
+*.dll
+*.exe
+
+# Python tooling
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Node/UI tooling if adopted
+node_modules/
+coverage/
+
+# Local data and experiment outputs
+data/
+results/
+outputs/
+*.log
+
+# Editor & system
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
