@@ -4,7 +4,7 @@ Simulador acadêmico de Sistemas Operacionais aplicado a requisições de LLM. R
 
 ## Estado atual
 
-**Protótipo funcional (C11, provisório):** PCB e estados, gateway de admissão, FCFS, SJF estimado/oráculo, RR, prioridade com aging, workers virtuais, relógio de 1 tick/token, métricas, observação de eventos, paginação FIFO/LRU online integrada e replay offline FIFO/LRU/Ótimo. A CLI aceita cenários CSV e saída de eventos. Há testes automatizados com CTest.
+**Protótipo funcional (C11, provisório):** PCB e estados, gateway de admissão, FCFS, SJF estimado/oráculo, RR, prioridade com aging, workers virtuais, relógio de 1 tick/token, métricas, observação de eventos, paginação FIFO/LRU online integrada e replay offline FIFO/LRU/Ótimo. A CLI aceita cenários CSV, eventos, execução limitada por passos e snapshots intermediários. Há testes automatizados com CTest.
 
 **Ainda não implementado:** threads POSIX reais, mutex e semáforos, IPC, sinais, deadlocks, bloqueio e penalidade temporal por falta de memória, SJF com média exponencial ou preditor treinado, p50/p95, experimentos completos e interface gráfica. A CLI é apenas uma ferramenta técnica para testar o núcleo; não substitui a GUI planejada.
 
@@ -39,12 +39,25 @@ Os eventos incluem chegadas, despachos, preempções, conclusões, hits, faults 
 
 `--scenario` recebe linhas `id,arrival_tick,total_tokens,predicted_tokens,priority`, com no máximo 256 requisições; linhas iniciadas com `#` são comentários. Tempos são **virtuais**, não latências reais de inferência de LLM.
 
+
+## Inspecionar a execução passo a passo
+
+```bash
+./build/os_llm_cli --steps 0 --snapshots
+./build/os_llm_cli --policy rr --quantum 1 --steps 2 --snapshots
+./build/os_llm_cli --workers 2 --frames 2 --page-policy lru --snapshots
+```
+
+`--steps N` limita a **N avanços da sessão**; `--steps 0` mostra o estado inicial sem executar tokens. `--snapshots` imprime o estado inicial e o estado após cada passo realizado. Um passo ocioso pode saltar o relógio até a próxima chegada. O relatório final indica `paused` ou `completed`, com `-` para ticks ainda não registrados. Sem limite, a sessão executa até terminar.
+
+Os snapshots exibem contagens por estado, workers, progresso de cada PCB e estatísticas de páginas. A CLI **não persiste sessões**: não é possível retomar uma execução em outra invocação. `--trace` pode ser combinado com as opções de inspeção.
+
 ## Módulos existentes
 
 - `src/core/`: estrutura PCB e validação de estados;
 - `src/gateway/`: validação e admissão de requisições;
 - `src/scheduling/`: seleção de requisição para políticas de CPU;
-- `src/runtime/`: execução virtual, com múltiplos workers lógicos;
+- `src/runtime/`: sessão virtual incremental, snapshots e execução completa com múltiplos workers lógicos;
 - `src/metrics/`: médias e eventos de execução/paginação;
 - `src/memory/`: replay offline e cache online de frames FIFO/LRU integrado;
 - `apps/cli/`: adaptador local de execução;

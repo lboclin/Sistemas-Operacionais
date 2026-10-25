@@ -48,6 +48,7 @@ As definições acima são contratos de **planejamento** para futuras interfaces
 - `os_gateway_next_arrival(requests, count)`: informa a próxima chegada pendente.
 - `os_virtual_run(...)`: executa o cenário virtual até concluir.
 - `os_virtual_run_observed(..., callback, context)`: executa o mesmo cenário e entrega eventos síncronos para observação.
+- `os_session_create/step/snapshot/run/destroy`: sessão incremental opaca, com cópia dos PCBs, snapshots de workers/estados/métricas e execução completa pelo mesmo motor.
 - `os_frames_init/access/release/destroy`: gerencia frames online FIFO/LRU; `os_pager_replay` aceita FIFO/LRU/OPT com trace offline completo.
 
 ### Semântica dos eventos e frames
@@ -56,4 +57,4 @@ Cada `OsEvent` contém tipo, tick **virtual**, request ID, worker e página quan
 
 A paginação online é **opcional**: `memory_enabled=false` mantém a execução CPU-only. Quando ativada, `frame_capacity>0` e `tokens_per_page>0`; cada token acessa a página `generated_tokens/tokens_per_page`. A capacidade é compartilhada pelos workers e páginas residentes são liberadas na conclusão do PCB.
 
-**Ainda não suportado:** espera/bloqueio e custo adicional em faltas de página, execução POSIX real, API `step`, snapshots interativos, streaming de rede e política OPT online. O modelo de KV cache é didático e não representa blocos KV reais de um modelo.
+**Ainda não suportado:** espera/bloqueio e custo adicional em faltas de página, execução POSIX real, persistência/reinício de sessão, streaming de rede e política OPT online. O `step` avança até um token por worker e pode saltar ticks ociosos; o snapshot exige buffers suficientes e só é consistente entre passos. O modelo de KV cache é didático e não representa blocos KV reais de um modelo.
