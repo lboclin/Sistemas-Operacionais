@@ -1,53 +1,56 @@
-# OS-llm-project · LLM OS Lab
+# OS-llm-project
 
-**Laboratório interativo de Sistemas Operacionais aplicado ao atendimento de requisições de modelos de linguagem (LLMs).**
+Simulador acadêmico de Sistemas Operacionais aplicado a requisições de LLM. Repositório privado, em desenvolvimento incremental.
 
-> **Estado:** organização inicial do repositório e planejamento. Nenhum simulador, interface gráfica, preditor ou experimento foi implementado ainda.
+## Estado atual
 
-O objetivo acadêmico é modelar requisições de LLM como processos lógicos e estudar como decisões de escalonamento, memória, concorrência e comunicação afetam seu processamento.
+**Primeira implementação funcional (C11, provisório):** PCB e transições de estado, FCFS, SJF por estimativa, SJF oráculo, Round Robin, prioridade com aging, workers **virtuais**, um relógio virtual de um tick por token, métricas médias e replay isolado de paginação FIFO/LRU/Ótimo. Uma CLI executa cenários de demonstração ou CSV. Há testes automatizados com CTest.
 
-## Escopo planejado
+**Ainda não implementado:** threads POSIX reais, mutex e semáforos, IPC, sinais, deadlocks, integração da memória com o runtime, SJF com média exponencial ou preditor treinado, p50/p95, experimentos completos e interface gráfica. A CLI é apenas uma ferramenta técnica para testar o núcleo; não substitui a GUI planejada.
 
-- Processos/PCB e estados: novo, pronto, executando, bloqueado e terminado.
-- Políticas FCFS, SJF (estimadores e oráculo), Round Robin e prioridade com aging.
-- Pool de workers, sincronização, race conditions, deadlocks, IPC POSIX e `SIGUSR1`.
-- Memória de KV cache **simulada**, paginação e substituição FIFO/LRU/Ótimo.
-- Geração de cargas, predição de tamanho de resposta, métricas e experimentos reproduzíveis.
-- Interface **gráfica** para criar requisições, executar cenários e observar resultados.
+## Compilação e testes
 
-## Documentação
+Requer um compilador C11 e CMake >= 3.16. Em Linux:
 
-- [Arquitetura e organização do repositório](docs/ARCHITECTURE.md) — fronteiras, módulos, colaboração e estrutura.
-- [Especificação funcional](docs/FUNCTIONAL_SPEC.md) — funcionalidades e critérios de aceite, incluindo as duas opções de execução.
-- [Contratos (rascunho)](docs/CONTRACTS.md) — vocabulário, comandos, eventos e observação.
-- [Planejamento da interface gráfica](docs/UI_SPEC.md) — telas, interações e MVP visual.
-- [Plano de testes](docs/TEST_PLAN.md) e [experimentos](docs/EXPERIMENTS.md).
-- [Decisões técnicas pendentes](docs/DECISIONS.md) e [glossário](docs/GLOSSARY.md).
-- [Como contribuir](CONTRIBUTING.md).
-
-## Organização
-
-```text
-src/          Regras do simulador, escalonamento, memória, execução e métricas
-apps/         Interface gráfica futura e ferramenta de automação por comandos
-contracts/    Formatos de troca entre aplicações e motor
-scenarios/    Pequenos cenários versionados de referência
-tests/        Testes automatizados por nível
-tools/        IA, coleta e análises auxiliares
-configs/      Configurações de exemplo
-docs/         Especificações e decisões
-.github/      Templates de colaboração no GitHub
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
 ```
 
-Cada módulo tem um `README.md` de responsabilidade. As pastas não contêm código-fonte fictício.
+Para reproduzir a demonstração:
 
-## Início de implementação
+```bash
+./build/os_llm_cli
+./build/os_llm_cli --policy sjf --workers 2
+./build/os_llm_cli --policy oracle
+./build/os_llm_cli --policy rr --quantum 2
+./build/os_llm_cli --policy priority
+./build/os_llm_cli --scenario scenarios/sample.csv
+```
 
-1. Alinhar com o professor se a linguagem precisa ser C ou se C++ é permitido.
-2. Definir os contratos comuns de requisição, cenário, evento e resultado.
-3. Aprovar os critérios de aceite do primeiro fluxo; só então configurar compilação e testes da stack escolhida.
-4. Desenvolver módulos em branches pequenas e integrar continuamente.
+`--scenario` recebe linhas `id,arrival_tick,total_tokens,predicted_tokens,priority`, com no máximo 256 requisições; linhas iniciadas com `#` são comentários. Tempos são **virtuais**, não latências reais de inferência de LLM.
 
-**Não há comando de execução por enquanto**, porque a linguagem, o runtime principal e a tecnologia da interface ainda não foram escolhidos. Não há banco SQL nem requisito de banco de dados definido.
+## Módulos existentes
 
-Projeto acadêmico em equipe. Repositório privado em fase de planejamento. [Proposta original e relação com a disciplina](docs/FUNCTIONAL_SPEC.md).
+- `src/core/`: estrutura PCB e validação de estados;
+- `src/scheduling/`: seleção de requisição para políticas de CPU;
+- `src/runtime/`: execução virtual, com múltiplos workers lógicos;
+- `src/metrics/`: espera, resposta, retorno e throughput médios;
+- `src/memory/`: algoritmo independente de replay de referências de páginas;
+- `apps/cli/`: adaptador local de execução;
+- `tests/`: testes unitários e de integração.
+
+A estrutura de repositório prevê também os módulos futuros em `apps/visual/`, `src/concurrency/`, `src/ipc/`, `src/prediction/`, `src/experiments/` e `tools/`.
+
+## Documentação e colaboração
+
+- [Arquitetura](docs/ARCHITECTURE.md)
+- [Especificação funcional completa](docs/FUNCTIONAL_SPEC.md)
+- [Contratos planejados](docs/CONTRACTS.md)
+- [Estado da implementação](docs/IMPLEMENTATION_STATUS.md)
+- [Interface gráfica planejada](docs/UI_SPEC.md)
+- [Decisões pendentes](docs/DECISIONS.md)
+- [Contribuição](CONTRIBUTING.md)
+
+O projeto segue a proposta acadêmica original, mas a linguagem principal, modo de execução final e stack gráfica continuam sujeitos a decisão do grupo. Não existe banco SQL no escopo aprovado.

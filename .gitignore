@@ -36,3 +36,6 @@ outputs/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Alternative CMake build directories
+build-*/

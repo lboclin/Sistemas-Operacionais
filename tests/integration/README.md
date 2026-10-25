@@ -1,5 +1,3 @@
-# Testes: integration
+# Testes de integração
 
-Fluxos do motor, integração entre gateway, scheduling, runtime, memory e métricas.
-
-**Estado:** estrutura reservada; testes reais e framework serão adicionados com a implementação. Não alegar validação antes de executar. Ver [plano de testes](../../docs/TEST_PLAN.md).
+Implementado: `test_virtual.c`, cobrindo políticas, workers virtuais, métricas e validações. Ver [TEST_PLAN](../../docs/TEST_PLAN.md).

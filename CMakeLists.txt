@@ -43,6 +43,13 @@ if(BUILD_TESTING)
     target_link_libraries(test_virtual PRIVATE os_core)
     add_test(NAME virtual COMMAND test_virtual)
 
+    # Keep assertion-based tests active even when the library is optimized.
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        foreach(test_target IN ITEMS test_core test_pager test_virtual)
+            target_compile_options(${test_target} PRIVATE -UNDEBUG)
+        endforeach()
+    endif()
+
     add_test(NAME cli_help COMMAND os_llm_cli --help)
     add_test(NAME cli_round_robin COMMAND os_llm_cli --policy rr --quantum 2)
     add_test(NAME cli_scenario COMMAND os_llm_cli --scenario ${CMAKE_CURRENT_SOURCE_DIR}/scenarios/sample.csv)

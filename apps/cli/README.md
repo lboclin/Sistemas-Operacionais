@@ -1,5 +1,3 @@
-# cli
+# CLI técnica
 
-Adaptador opcional de linha de comando para automatização de cenários e testes; não é a interface principal nem define a arquitetura.
-
-**Estado:** somente planejamento.
+Implementado: `main.c` aceita política, número de workers virtuais, quantum e cenário CSV. Não é a interface gráfica principal. Ver [README](../../README.md) para comandos.

@@ -19,7 +19,7 @@ Leia [arquitetura](docs/ARCHITECTURE.md), [especificação](docs/FUNCTIONAL_SPEC
 - Não criar classes, abstrações, serviços, bancos ou diretórios sem uma responsabilidade real.
 - Não adicionar segredos, modelos grandes ou datasets brutos ao Git.
 - Não declarar testes executados se ainda não foram executados.
-- O conteúdo do projeto é escrito preferencialmente em português; identificadores técnicos seguem a convenção acordada quando a linguagem for escolhida.
+- A documentação é escrita preferencialmente em português; o núcleo provisório usa C11, identificadores `os_*` e headers próprios por módulo.\n- Antes de abrir PR, rode `cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build --parallel && ctest --test-dir build --output-on-failure`.
 
 ## GitHub
 
@@ -27,4 +27,4 @@ Proposta de labels: `area:core`, `area:scheduling`, `area:memory`, `area:runtime
 
 Milestones sugeridos: M0 (contratos), M1 (núcleo), M2 (escalonamento/memória), M3 (concorrência), M4 (GUI), M5 (IA/experimentos), M6 (consolidação).
 
-**CI, licença, CODEOWNERS e proteção de branch**: configurar quando houver stack definida, consentimento do grupo e contas dos colaboradores. Nenhum workflow foi ativado no scaffold para evitar testes fictícios e notificações desnecessárias.
+**CI:** workflow somente em pull requests e execução manual (sem gatilho em todo push), compilando e testando o núcleo. **Licença, CODEOWNERS e proteção de branch** permanecem pendentes de decisão do grupo.
