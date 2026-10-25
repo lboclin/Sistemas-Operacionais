@@ -13,6 +13,7 @@ add_library(os_core STATIC
     src/runtime/virtual.c
     src/metrics/summary.c
     src/memory/pager.c
+    src/memory/frames.c
 )
 target_include_directories(os_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/gateway
@@ -38,6 +39,14 @@ if(BUILD_TESTING)
     target_link_libraries(test_core PRIVATE os_core)
     add_test(NAME core COMMAND test_core)
 
+    add_executable(test_frames tests/unit/test_frames.c)
+    target_link_libraries(test_frames PRIVATE os_core)
+    add_test(NAME frames COMMAND test_frames)
+
+    add_executable(test_memory_runtime tests/integration/test_memory_runtime.c)
+    target_link_libraries(test_memory_runtime PRIVATE os_core)
+    add_test(NAME memory_runtime COMMAND test_memory_runtime)
+
     add_executable(test_pager tests/unit/test_pager.c)
     target_link_libraries(test_pager PRIVATE os_core)
     add_test(NAME pager COMMAND test_pager)
@@ -52,7 +61,7 @@ if(BUILD_TESTING)
 
     # Keep assertion-based tests active even when the library is optimized.
     if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-        foreach(test_target IN ITEMS test_core test_pager test_virtual test_gateway_events)
+        foreach(test_target IN ITEMS test_core test_pager test_virtual test_gateway_events test_frames test_memory_runtime)
             target_compile_options(${test_target} PRIVATE -UNDEBUG)
         endforeach()
     endif()
@@ -60,4 +69,7 @@ if(BUILD_TESTING)
     add_test(NAME cli_help COMMAND os_llm_cli --help)
     add_test(NAME cli_round_robin COMMAND os_llm_cli --policy rr --quantum 2)
     add_test(NAME cli_scenario COMMAND os_llm_cli --scenario ${CMAKE_CURRENT_SOURCE_DIR}/scenarios/sample.csv)
+    add_test(NAME cli_memory_trace COMMAND os_llm_cli --frames 2 --page-tokens 2 --page-policy lru --trace)
+    add_test(NAME cli_invalid_online_opt COMMAND os_llm_cli --frames 2 --page-policy opt)
+    set_tests_properties(cli_invalid_online_opt PROPERTIES WILL_FAIL TRUE)
 endif()

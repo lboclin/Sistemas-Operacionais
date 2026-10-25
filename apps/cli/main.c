@@ -14,9 +14,12 @@
 #define MAX_REQUESTS 256
 
 static void usage(const char *app) {
-    printf("Usage: %s [--policy fcfs|sjf|oracle|rr|priority] [--workers N] [--quantum N] [--scenario FILE]\n", app);
+    printf("Usage: %s [--policy fcfs|sjf|oracle|rr|priority] [--workers N] [--quantum N]\n"
+           "       [--scenario FILE] [--frames N --page-tokens N --page-policy fifo|lru] [--trace]\n", app);
     puts("Input CSV (without header): id,arrival_tick,total_tokens,predicted_tokens,priority");
     puts("Virtual simulator only. Each token costs one virtual tick.");
+    puts("Online paging is optional; page faults have no additional time cost.");
+    puts("OPT page replacement is available only in offline trace replay.");
 }
 
 static bool parse_uint(const char *s, uint32_t *out) {
@@ -57,10 +60,25 @@ static bool load_csv(const char *path, OsRequest *requests, size_t *count) {
     return valid;
 }
 
+static void print_event(const OsEvent *event, void *context) {
+    (void)context;
+    printf("event tick=%" PRIu64 " type=%s request=%" PRIu32,
+           event->tick, os_event_type_name(event->type), event->request_id);
+    if (event->worker_index != SIZE_MAX) printf(" worker=%zu", event->worker_index);
+    if (event->type == OS_EVENT_PAGE_HIT || event->type == OS_EVENT_PAGE_FAULT ||
+        event->type == OS_EVENT_PAGE_EVICTED)
+        printf(" page=%" PRIu32, event->page_id);
+    putchar('\n');
+}
+
 int main(int argc, char **argv) {
     OsVirtualConfig cfg = {.policy = OS_FCFS, .worker_count = 1,
                            .quantum_tokens = 2, .aging_interval = 2};
     const char *scenario = NULL;
+    bool trace = false;
+    bool page_option = false;
+    cfg.tokens_per_page = 2;
+    cfg.page_policy = OS_PAGE_FIFO;
     for (int i = 1; i < argc; ++i) {
         if (!strcmp(argv[i], "--help")) { usage(argv[0]); return 0; }
         if (!strcmp(argv[i], "--policy") && i + 1 < argc) {
@@ -79,7 +97,27 @@ int main(int argc, char **argv) {
             if (!parse_uint(argv[++i], &cfg.quantum_tokens) || cfg.quantum_tokens == 0) return 2;
         } else if (!strcmp(argv[i], "--scenario") && i + 1 < argc) {
             scenario = argv[++i];
+        } else if (!strcmp(argv[i], "--frames") && i + 1 < argc) {
+            uint32_t frames;
+            if (!parse_uint(argv[++i], &frames) || frames == 0 || frames > 4096) return 2;
+            cfg.memory_enabled = true;
+            cfg.frame_capacity = frames;
+        } else if (!strcmp(argv[i], "--page-tokens") && i + 1 < argc) {
+            if (!parse_uint(argv[++i], &cfg.tokens_per_page) || cfg.tokens_per_page == 0) return 2;
+            page_option = true;
+        } else if (!strcmp(argv[i], "--page-policy") && i + 1 < argc) {
+            const char *value = argv[++i];
+            if (!strcmp(value, "fifo")) cfg.page_policy = OS_PAGE_FIFO;
+            else if (!strcmp(value, "lru")) cfg.page_policy = OS_PAGE_LRU;
+            else { fprintf(stderr, "Unknown online page policy: %s\n", value); return 2; }
+            page_option = true;
+        } else if (!strcmp(argv[i], "--trace")) {
+            trace = true;
         } else { fprintf(stderr, "Invalid argument: %s\n", argv[i]); usage(argv[0]); return 2; }
+    }
+    if (page_option && !cfg.memory_enabled) {
+        fputs("--page-tokens and --page-policy require --frames\n", stderr);
+        return 2;
     }
     OsRequest requests[MAX_REQUESTS];
     size_t count = 3;
@@ -91,7 +129,8 @@ int main(int argc, char **argv) {
         os_request_init(&requests[2], 3, 2, 3, 4, 2);
     }
     OsRunSummary summary;
-    const OsRunStatus status = os_virtual_run(requests, count, &cfg, &summary);
+    const OsRunStatus status = os_virtual_run_observed(requests, count, &cfg, &summary,
+                                                        trace ? print_event : NULL, NULL);
     if (status != OS_RUN_OK) { fprintf(stderr, "Simulation failed (status=%d)\n", status); return 1; }
     printf("Policy: %s | Workers: %zu | Virtual makespan: %" PRIu64 " ticks\n",
            os_policy_name(cfg.policy), cfg.worker_count, summary.makespan_ticks);
@@ -105,5 +144,11 @@ int main(int argc, char **argv) {
     printf("Average wait=%.2f, response=%.2f, turnaround=%.2f, throughput=%.4f requests/tick\n",
            summary.average_wait_ticks, summary.average_response_ticks,
            summary.average_turnaround_ticks, summary.throughput_per_tick);
+    if (cfg.memory_enabled)
+        printf("Memory: frames=%zu, tokens/page=%" PRIu32 ", accesses=%" PRIu64
+               ", hits=%" PRIu64 ", faults=%" PRIu64 ", evictions=%" PRIu64
+               ", peak-resident=%zu\n", cfg.frame_capacity, cfg.tokens_per_page,
+               summary.page_hits + summary.page_faults, summary.page_hits,
+               summary.page_faults, summary.page_evictions, summary.peak_resident_frames);
     return 0;
 }

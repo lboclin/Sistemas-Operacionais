@@ -5,6 +5,8 @@
 #include "scheduler.h"
 #include "summary.h"
 #include "events.h"
+#include "pager.h"
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -13,6 +15,12 @@ typedef struct {
     size_t worker_count;
     uint32_t quantum_tokens;
     uint64_t aging_interval;
+    /* Optional online KV-page model. Zero-initialized memory_enabled=false
+     * preserves the existing CPU-only model. */
+    bool memory_enabled;
+    size_t frame_capacity;
+    uint32_t tokens_per_page;
+    OsPagePolicy page_policy; /* FIFO/LRU only for online execution */
 } OsVirtualConfig;
 
 typedef enum {
