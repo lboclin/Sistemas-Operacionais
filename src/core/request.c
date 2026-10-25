@@ -17,6 +17,16 @@ bool os_request_init(OsRequest *request, uint32_t id, uint64_t arrival_tick,
     return true;
 }
 
+bool os_request_is_fresh(const OsRequest *request) {
+    return request != NULL && request->state == OS_NEW &&
+           request->total_tokens != 0 && request->predicted_tokens != 0 &&
+           request->arrival_tick != OS_REQUEST_NEVER &&
+           request->generated_tokens == 0 && request->waiting_ticks == 0 &&
+           request->ready_tick == 0 && request->ready_order == 0 &&
+           request->first_run_tick == OS_REQUEST_NEVER &&
+           request->finished_tick == OS_REQUEST_NEVER;
+}
+
 bool os_request_transition(OsRequest *request, OsRequestState next) {
     if (request == NULL) return false;
     const OsRequestState previous = request->state;
