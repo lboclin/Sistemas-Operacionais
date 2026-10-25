@@ -5,7 +5,7 @@ bool os_gateway_validate(const OsRequest *requests, size_t count) {
     for (size_t i = 0; i < count; ++i) {
         if (!os_request_is_fresh(&requests[i])) return false;
         for (size_t j = 0; j < i; ++j)
-            if (r->id == requests[j].id) return false;
+            if (requests[i].id == requests[j].id) return false;
     }
     return true;
 }
