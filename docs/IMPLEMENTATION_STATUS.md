@@ -1,49 +1,64 @@
 # Estado da implementação
 
-> Atualizado em 25/10/2026. Este documento descreve o código presente na branch `main`; não representa a conclusão da proposta acadêmica.
+> Atualizado em 25/10/2026. Descreve o código da branch `main`. O projeto acadêmico ainda não está completo.
 
-## Entregue nesta etapa
-| Funcionalidade | Estado | Limites atuais |
+## Entregue e limitações
+
+| Requisito | Situação | Detalhe |
 |---|---|---|
-| F01 PCB e estados | Parcial | Estruturas e transições; não existe gerenciador completo de filas |
-| F03 FCFS | Parcial | Seleção não preemptiva no runtime virtual |
-| F04 SJF | Parcial | estimativa fornecida e oráculo; média exponencial e IA pendentes |
-| F05 Round Robin | Parcial | quantum em tokens, worker virtual |
-| F06 Prioridade com aging | Parcial | aging por intervalo, decisão em dispatch |
-| F07 Workers | Parcial | múltiplos workers virtuais; pthreads pendentes |
-| F10/F11 KV/paginação | Parcial | replay independente FIFO/LRU/OPT; não integrado ao runtime |
-| F16 Métricas | Parcial | médias de espera, resposta, retorno, throughput e makespan |
-| F20 Testes | Parcial | seis casos CTest, ainda sem cobertura dos módulos POSIX |
+| F01 PCB e estados | Parcial | estruturas e transições verificadas |
+| F02 Gateway | Parcial | validação, duplicidade e admissão por tick |
+| F03 FCFS | Parcial | escalonador virtual |
+| F04 SJF | Parcial | estimativa fixa e oráculo; preditor/média exponencial pendentes |
+| F05 Round Robin | Parcial | quantum em tokens com preempção |
+| F06 Prioridade com aging | Parcial | envelhecimento em dispatch |
+| F07 Pool de workers | Parcial | workers virtuais; pthreads pendentes |
+| F10 Memória KV simulada | Parcial | frames online por página, sem custo ou bloqueio por fault |
+| F11 Substituição | Parcial | FIFO/LRU online e FIFO/LRU/OPT offline |
+| F16 Métricas/eventos | Parcial | médias, throughput, faults/hits/evictions e callbacks síncronos |
+| F20 Testes | Parcial | onze testes CTest; sem laboratório POSIX |
 
-## Contratos reais de código
+## Funcionalidades verificáveis agora
 
-- `os_request_init`: cria PCB lógico não iniciado, valida tokens positivos.
-- `os_request_transition`: aceita apenas transições válidas; proíbe reativar terminado.
-- `os_scheduler_select`: escolhe entre PCBs READY; desempate determinístico.
-- `os_virtual_run`: executa tokens de requisições com chegada lógica, workers e política; altera a coleção fornecida pelo chamador.
-- `os_metrics_summarize`: resume requisições terminadas.
-- `os_pager_replay`: repete referências a páginas para FIFO, LRU e OPT em memória simulada (sem acoplamento com `os_virtual_run`).
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+./build/os_llm_cli --frames 2 --page-tokens 2 --page-policy lru --trace
+```
 
-## Hipóteses explícitas
+- `src/gateway/`: validação e admissão.
+- `src/scheduling/`: políticas já disponíveis.
+- `src/runtime/`: simulação virtual, workers lógicos e eventos.
+- `src/memory/`: replay offline e frames FIFO/LRU integrados, com liberação de páginas por requisição.
+- `src/metrics/`: métricas e nomes/contratos de eventos.
+- `apps/cli/`: configuração da carga, política, quantum, frames e trace.
 
-- Cada token custa um tick virtual; os algoritmos SJF são não preemptivos, e RR é preemptivo por quantum.
-- Prioridade numérica maior é mais importante; o aging aumenta a prioridade efetiva do PCB que aguarda.
-- As requisições são processos **lógicos**, não processos Linux reais.
-- A página é identificada pelo par (`request_id`, `page_id`). O OPT conhece o futuro do trace e não é uma política online.
-- A CLI CSV tem limites fixos e não é API pública. A interface gráfica e protocolo ainda não foram escolhidos.
-- `os_virtual_run` não permite retomada/stepping/snapshot; a implementação atual roda até terminar.
-- Cenários muito grandes são caros no runtime token a token. Não comparar ticks virtuais com medições de desempenho reais.
+## Testes
 
-## Validação nesta sessão
+Verificação **local**, não uma execução confirmada no servidor GitHub:
 
-Local: GCC 14.2, CMake + CTest, Debug e Release, 6/6 testes. Uma execução com sanitizers ASan/UBSan também passou os 6 testes. Isso **não** comprova ausência de erros nem substitui CI em outros ambientes. O workflow GitHub, quando acionado, verificará compilação e testes de PRs.
+- GCC (Debug): 11/11.
+- Clang (Debug): 11/11.
+- GCC com AddressSanitizer + UndefinedBehaviorSanitizer: 11/11.
+
+A comparação dos SHAs de código-fonte publicado mostrou equivalência aos arquivos locais testados. O `CMakeLists.txt` publicado tem conteúdo semanticamente equivalente ao arquivo testado, embora a formatação não seja byte a byte idêntica. Não afirmar CI remoto verde sem verificar o workflow.
+
+## Restrições explícitas
+
+- PCB e workers são **lógicos**, não threads/processos Linux reais.
+- Um token custa um tick virtual; faltas e substituições de páginas não adicionam ticks.
+- Memória cheia implica evicção, não estado BLOCKED; o modelo não implementa custo de IO.
+- `page_id` é derivado de `generated_tokens/tokens_per_page`; isso é um modelo de ensino, não um KV cache de inferência real.
+- OPT possui conhecimento futuro e não pode ser selecionado no gerenciador online.
+- O observer recebe eventos síncronos, não snapshots interativos.
+- A linguagem C11 é **provisória**, sujeita à decisão do grupo.
 
 ## Próximas frentes
 
-1. Eventos e snapshots do motor para suporte a interface gráfica.
-2. Gateway formal, cargas versionadas e validação robusta dos cenários.
-3. Modelo de frames KV integrado ao runtime e page faults.
-4. Pool real pthreads + mutex/semafóros; laboratório isolado de corrida e deadlock.
-5. IPC POSIX e `SIGUSR1` em handler seguro.
-6. Predição offline e comparação dos quatro SJF da proposta, experimentos e métricas p50/p95.
-7. Interface gráfica web ou desktop após escolha do grupo.
+1. API de estados/snapshots para interface gráfica, passo a passo e replay.
+2. Política didática de bloqueios, page faults com custo e recuperação.
+3. Threads pthread + mutexes/semafóros com verificação de invariantes.
+4. Deadlock, IPC POSIX e SIGUSR1 com tratamento seguro.
+5. SJF adaptativo/IA, métricas percentis e experimentos completos.
+6. GUI web/desktop após escolha de stack.
