@@ -1,5 +1,12 @@
-# Gateway
+# entrada de requisições
 
-Valida cargas NEW com IDs únicos e admite pedidos na ordem de chegada. Não escolhe a política de escalonamento.
+**Estado:** módulo planejado, ainda sem implementação.
 
-Contrato: `gateway.h` (`os_gateway_validate`, `os_gateway_admit`, `os_gateway_next_arrival`). Teste: `gateway_events`. Um gateway HTTP/IPC ainda não existe.
+## Responsabilidade
+Validar e admitir requisições no momento apropriado, emitindo eventos ao motor.
+
+## Integração
+Interfaces apenas pelos contratos públicos com os módulos relacionados: core, workload, app. Não acessar estado interno de outro módulo.
+
+## Antes de codificar
+Aprovar contratos em [CONTRACTS.md](../../docs/CONTRACTS.md), especificar testes observáveis e registrar escolhas técnicas com ADR quando necessário.

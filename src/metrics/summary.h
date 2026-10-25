@@ -12,11 +12,6 @@ typedef struct {
     double average_response_ticks;
     double average_turnaround_ticks;
     double throughput_per_tick;
-    /* Zero when memory simulation is disabled. */
-    uint64_t page_hits;
-    uint64_t page_faults;
-    uint64_t page_evictions;
-    size_t peak_resident_frames;
 } OsRunSummary;
 
 OsRunSummary os_metrics_summarize(const OsRequest *requests, size_t count,

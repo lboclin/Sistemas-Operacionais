@@ -11,6 +11,7 @@ add_library(os_core STATIC
     src/metrics/events.c
     src/scheduling/scheduler.c
     src/runtime/virtual.c
+    src/runtime/session.c
     src/metrics/summary.c
     src/memory/pager.c
     src/memory/frames.c
@@ -55,13 +56,17 @@ if(BUILD_TESTING)
     target_link_libraries(test_gateway_events PRIVATE os_core)
     add_test(NAME gateway_events COMMAND test_gateway_events)
 
+    add_executable(test_session tests/integration/test_session.c)
+    target_link_libraries(test_session PRIVATE os_core)
+    add_test(NAME session COMMAND test_session)
+
     add_executable(test_virtual tests/integration/test_virtual.c)
     target_link_libraries(test_virtual PRIVATE os_core)
     add_test(NAME virtual COMMAND test_virtual)
 
     # Keep assertion-based tests active even when the library is optimized.
     if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-        foreach(test_target IN ITEMS test_core test_pager test_virtual test_gateway_events test_frames test_memory_runtime)
+        foreach(test_target IN ITEMS test_core test_pager test_virtual test_gateway_events test_frames test_memory_runtime test_session)
             target_compile_options(${test_target} PRIVATE -UNDEBUG)
         endforeach()
     endif()

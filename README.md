@@ -4,9 +4,9 @@ Simulador acadêmico de Sistemas Operacionais aplicado a requisições de LLM. R
 
 ## Estado atual
 
-**Protótipo funcional (C11, provisório):** PCB e estados, gateway de admissão, FCFS, SJF estimado/oráculo, RR, prioridade com aging, workers virtuais, relógio de 1 tick/token, métricas, observação de eventos, paginação FIFO/LRU online integrada e replay offline FIFO/LRU/Ótimo. A CLI aceita cenários CSV e saída de eventos. Há testes automatizados com CTest.
+**Primeira implementação funcional (C11, provisório):** PCB e transições de estado, FCFS, SJF por estimativa, SJF oráculo, Round Robin, prioridade com aging, workers **virtuais**, um relógio virtual de um tick por token, métricas médias e replay isolado de paginação FIFO/LRU/Ótimo. Uma CLI executa cenários de demonstração ou CSV. Há testes automatizados com CTest.
 
-**Ainda não implementado:** threads POSIX reais, mutex e semáforos, IPC, sinais, deadlocks, bloqueio e penalidade temporal por falta de memória, SJF com média exponencial ou preditor treinado, p50/p95, experimentos completos e interface gráfica. A CLI é apenas uma ferramenta técnica para testar o núcleo; não substitui a GUI planejada.
+**Ainda não implementado:** threads POSIX reais, mutex e semáforos, IPC, sinais, deadlocks, integração da memória com o runtime, SJF com média exponencial ou preditor treinado, p50/p95, experimentos completos e interface gráfica. A CLI é apenas uma ferramenta técnica para testar o núcleo; não substitui a GUI planejada.
 
 ## Compilação e testes
 
@@ -29,24 +29,15 @@ Para reproduzir a demonstração:
 ./build/os_llm_cli --scenario scenarios/sample.csv
 ```
 
-A memória simulada é opcional. Por exemplo:
-
-```bash
-./build/os_llm_cli --frames 2 --page-tokens 2 --page-policy lru --trace
-```
-
-Os eventos incluem chegadas, despachos, preempções, conclusões, hits, faults e evicções. O programa não aplica custo extra por page fault nem bloqueia workers; OPT só funciona em replay offline.
-
 `--scenario` recebe linhas `id,arrival_tick,total_tokens,predicted_tokens,priority`, com no máximo 256 requisições; linhas iniciadas com `#` são comentários. Tempos são **virtuais**, não latências reais de inferência de LLM.
 
 ## Módulos existentes
 
 - `src/core/`: estrutura PCB e validação de estados;
-- `src/gateway/`: validação e admissão de requisições;
 - `src/scheduling/`: seleção de requisição para políticas de CPU;
 - `src/runtime/`: execução virtual, com múltiplos workers lógicos;
-- `src/metrics/`: médias e eventos de execução/paginação;
-- `src/memory/`: replay offline e cache online de frames FIFO/LRU integrado;
+- `src/metrics/`: espera, resposta, retorno e throughput médios;
+- `src/memory/`: algoritmo independente de replay de referências de páginas;
 - `apps/cli/`: adaptador local de execução;
 - `tests/`: testes unitários e de integração.
 
