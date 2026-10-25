@@ -44,6 +44,13 @@ if(BUILD_TESTING)
     target_link_libraries(test_frames PRIVATE os_core)
     add_test(NAME frames COMMAND test_frames)
 
+    add_executable(test_page_tables tests/unit/test_page_tables.c)
+    target_link_libraries(test_page_tables PRIVATE os_core)
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(test_page_tables PRIVATE -UNDEBUG -Wall -Wextra -Wpedantic -Wconversion -Werror)
+    endif()
+    add_test(NAME page_tables COMMAND test_page_tables)
+
     add_executable(test_memory_runtime tests/integration/test_memory_runtime.c)
     target_link_libraries(test_memory_runtime PRIVATE os_core)
     add_test(NAME memory_runtime COMMAND test_memory_runtime)

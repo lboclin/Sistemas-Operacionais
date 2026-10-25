@@ -13,11 +13,11 @@
 | F05 Round Robin | Parcial | quantum em tokens com preempção |
 | F06 Prioridade com aging | Parcial | envelhecimento em dispatch |
 | F07 Pool de workers | Parcial | workers virtuais; pthreads pendentes |
-| F10 Memória KV simulada | Parcial | frames online por página, sem custo ou bloqueio por fault |
+| F10 Memória KV simulada | Parcial | frames online por página e visão de mapeamentos por requisição, sem custo ou bloqueio por fault |
 | F11 Substituição | Parcial | FIFO/LRU online e FIFO/LRU/OPT offline |
 | F16 Métricas/eventos | Parcial | médias, throughput, faults/hits/evictions e callbacks síncronos |
 | Snapshots/stepping | Implementado no motor virtual | sessão opaca, snapshots entre passos; sem persistência nem GUI |
-| F20 Testes | Parcial | vinte testes CTest; sem laboratório POSIX |
+| F20 Testes | Parcial | 22 testes CTest configurados; sem laboratório POSIX |
 
 ## Funcionalidades verificáveis agora
 
@@ -72,8 +72,15 @@ A validação foi local, com reconstrução das fontes equivalentes ao núcleo p
 
 - A validação de um PCB ainda não admitido agora é centralizada em `os_request_is_fresh` (`src/core/`), aplicada tanto em `os_gateway_validate` quanto em `os_gateway_admit`.
 - Campos indevidamente preenchidos antes da admissão (`ready_tick`, `ready_order`, marcas de execução, contadores) passam a ser rejeitados sem modificar a estrutura.
-- Novo teste `fresh_pcb` registrado em CTest: **21 testes configurados** no projeto. O novo teste foi executado isoladamente com GCC, Clang e ASan/UBSan (aprovado); a suíte integral não foi reexecutada nesta alteração.
+- Novo teste `fresh_pcb` registrado em CTest: **22 testes configurados** no projeto. O novo teste foi executado isoladamente com GCC, Clang e ASan/UBSan (aprovado); a suíte integral não foi reexecutada nesta alteração.
 - Planejamento dos próximos commits: [COMMIT_ROADMAP.md](COMMIT_ROADMAP.md). Tempos são estimativas de trabalho, não datas de commit fabricadas.
+
+## Mapeamento de páginas residentes por requisição (25/10/2026)
+
+- `os_frames_lookup` consulta o índice físico da página lógica (`request_id`, `page_id`) sem alterar métricas nem política de substituição.
+- `os_frames_snapshot_request` oferece uma visão da tabela residente de um pedido, com verificação de capacidade e falha sem escrita parcial. O índice do frame não é estável após mutações; não há tabela redundante para sincronizar.
+- Novo teste `page_tables` em CTest: **22 testes configurados**. O teste novo e o teste `frames` foram compilados e executados isoladamente com GCC e Clang (`-Wall -Wextra -Wpedantic -Wconversion -Werror`) e GCC com ASan/UBSan: 2/2 aprovados em cada configuração. A suíte completa não foi executada nesta alteração.
+- **Ainda pendentes:** custo de page fault, transições BLOCKED/READY, política de pressão de memória/fragmentação e exposição da tabela na API de sessão.
 
 ## Próximas frentes
 

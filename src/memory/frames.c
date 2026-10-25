@@ -12,6 +12,47 @@ static bool same_page(OsPageReference a, OsPageReference b) {
     return a.request_id == b.request_id && a.page_id == b.page_id;
 }
 
+static bool cache_valid(const OsFrameCache *cache) {
+    return cache != NULL && cache->entries != NULL &&
+           cache->capacity != 0 && cache->used <= cache->capacity;
+}
+
+bool os_frames_lookup(const OsFrameCache *cache, OsPageReference page,
+                      size_t *frame_index) {
+    if (!cache_valid(cache) || frame_index == NULL) return false;
+    for (size_t i = 0; i < cache->used; ++i) {
+        if (same_page(cache->entries[i].page, page)) {
+            *frame_index = i;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool os_frames_snapshot_request(const OsFrameCache *cache, uint32_t request_id,
+                                OsFrameMapping *mappings, size_t capacity,
+                                size_t *count) {
+    if (!cache_valid(cache) || count == NULL ||
+        (mappings == NULL && capacity != 0)) return false;
+    size_t needed = 0;
+    for (size_t i = 0; i < cache->used; ++i)
+        if (cache->entries[i].page.request_id == request_id) ++needed;
+    if (mappings != NULL && capacity < needed) return false;
+    if (mappings != NULL) {
+        size_t out = 0;
+        for (size_t i = 0; i < cache->used; ++i) {
+            if (cache->entries[i].page.request_id == request_id) {
+                mappings[out++] = (OsFrameMapping){
+                    .page_id = cache->entries[i].page.page_id,
+                    .frame_index = i
+                };
+            }
+        }
+    }
+    *count = needed;
+    return true;
+}
+
 bool os_frames_init(OsFrameCache *cache, size_t capacity, OsPagePolicy policy) {
     if (cache == NULL || capacity == 0 || capacity > SIZE_MAX / sizeof(OsFrameEntry) ||
         (policy != OS_PAGE_FIFO && policy != OS_PAGE_LRU)) return false;
