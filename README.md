@@ -71,6 +71,7 @@ A estrutura de repositório prevê também os módulos futuros em `apps/visual/`
 - [Especificação funcional completa](docs/FUNCTIONAL_SPEC.md)
 - [Contratos planejados](docs/CONTRACTS.md)
 - [Estado da implementação](docs/IMPLEMENTATION_STATUS.md)
+- [Roadmap por commits (próximos 14)](docs/COMMIT_ROADMAP.md)
 - [Interface gráfica planejada](docs/UI_SPEC.md)
 - [Decisões pendentes](docs/DECISIONS.md)
 - [Contribuição](CONTRIBUTING.md)

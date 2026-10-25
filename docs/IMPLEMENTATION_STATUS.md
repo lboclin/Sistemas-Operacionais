@@ -68,6 +68,13 @@ A validação foi local, com reconstrução das fontes equivalentes ao núcleo p
 - O observer recebe eventos síncronos; snapshots consistentes são consultados entre passos pela API da sessão, não durante callbacks.
 - A linguagem C11 é **provisória**, sujeita à decisão do grupo.
 
+## Validação de PCBs e plano de commits (25/10/2026)
+
+- A validação de um PCB ainda não admitido agora é centralizada em `os_request_is_fresh` (`src/core/`), aplicada tanto em `os_gateway_validate` quanto em `os_gateway_admit`.
+- Campos indevidamente preenchidos antes da admissão (`ready_tick`, `ready_order`, marcas de execução, contadores) passam a ser rejeitados sem modificar a estrutura.
+- Novo teste `fresh_pcb` registrado em CTest: **21 testes configurados** no projeto. O novo teste foi executado isoladamente com GCC, Clang e ASan/UBSan (aprovado); a suíte integral não foi reexecutada nesta alteração.
+- Planejamento dos próximos commits: [COMMIT_ROADMAP.md](COMMIT_ROADMAP.md). Tempos são estimativas de trabalho, não datas de commit fabricadas.
+
 ## Próximas frentes
 
 1. Política didática de bloqueios, page faults com custo e recuperação.
