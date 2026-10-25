@@ -4,6 +4,7 @@
 #include "request.h"
 #include "scheduler.h"
 #include "summary.h"
+#include "events.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -25,5 +26,10 @@ typedef enum {
  * One virtual tick produces one token per occupied worker. */
 OsRunStatus os_virtual_run(OsRequest *requests, size_t count,
                            const OsVirtualConfig *config, OsRunSummary *summary);
+
+/* Same execution with a synchronous, read-only event observer. No snapshot/step yet. */
+OsRunStatus os_virtual_run_observed(OsRequest *requests, size_t count,
+                                    const OsVirtualConfig *config, OsRunSummary *summary,
+                                    OsEventCallback observer, void *observer_context);
 
 #endif

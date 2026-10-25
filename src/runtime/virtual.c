@@ -1,4 +1,5 @@
 #include "virtual.h"
+#include "gateway.h"
 
 #include <limits.h>
 #include <stdbool.h>
@@ -9,30 +10,38 @@ typedef struct {
     uint32_t quantum_used;
 } OsVirtualWorker;
 
-static bool admit_arrivals(OsRequest *requests, size_t count,
-                           uint64_t now, uint64_t *order) {
+static void emit(OsEventCallback callback, void *context, OsEventType type,
+                 uint64_t tick, uint32_t request_id, size_t worker, uint32_t page) {
+    if (callback != NULL) {
+        const OsEvent event = {.type = type, .tick = tick, .request_id = request_id,
+                               .worker_index = worker, .page_id = page};
+        callback(&event, context);
+    }
+}
+
+static bool admit_arrivals(OsRequest *requests, size_t count, uint64_t now,
+                           uint64_t *order, OsEventCallback callback, void *context) {
     for (size_t i = 0; i < count; ++i) {
         if (requests[i].state != OS_NEW || requests[i].arrival_tick > now) continue;
-        if (*order == UINT64_MAX || !os_request_transition(&requests[i], OS_READY)) return false;
-        requests[i].ready_tick = requests[i].arrival_tick;
-        requests[i].ready_order = (*order)++;
+        if (*order == UINT64_MAX || !os_gateway_admit(&requests[i], now, *order)) return false;
+        ++(*order);
+        emit(callback, context, OS_EVENT_ARRIVED, requests[i].arrival_tick,
+             requests[i].id, SIZE_MAX, 0);
     }
     return true;
 }
 
-OsRunStatus os_virtual_run(OsRequest *requests, size_t count,
-                           const OsVirtualConfig *config, OsRunSummary *summary) {
+OsRunStatus os_virtual_run_observed(OsRequest *requests, size_t count,
+                                    const OsVirtualConfig *config, OsRunSummary *summary,
+                                    OsEventCallback observer, void *observer_context) {
     if (requests == NULL || config == NULL || summary == NULL || count == 0 ||
         config->worker_count == 0 || config->worker_count > 4096 ||
         config->policy < OS_FCFS || config->policy > OS_PRIORITY_AGING ||
         (config->policy == OS_ROUND_ROBIN && config->quantum_tokens == 0)) return OS_RUN_INVALID;
     uint64_t total_tokens = 0;
     uint64_t max_arrival = 0;
+    if (!os_gateway_validate(requests, count)) return OS_RUN_INVALID;
     for (size_t i = 0; i < count; ++i) {
-        if (requests[i].state != OS_NEW || requests[i].total_tokens == 0 ||
-            requests[i].predicted_tokens == 0 || requests[i].arrival_tick == UINT64_MAX ||
-            requests[i].generated_tokens != 0) return OS_RUN_INVALID;
-        for (size_t j = 0; j < i; ++j) if (requests[i].id == requests[j].id) return OS_RUN_INVALID;
         if (UINT64_MAX - total_tokens < requests[i].total_tokens) return OS_RUN_OVERFLOW;
         total_tokens += requests[i].total_tokens;
         if (requests[i].arrival_tick > max_arrival) max_arrival = requests[i].arrival_tick;
@@ -44,7 +53,7 @@ OsRunStatus os_virtual_run(OsRequest *requests, size_t count,
     uint64_t now = 0, order = 0;
     size_t finished = 0;
     while (finished != count) {
-        if (!admit_arrivals(requests, count, now, &order)) { free(workers); return OS_RUN_OVERFLOW; }
+        if (!admit_arrivals(requests, count, now, &order, observer, observer_context)) { free(workers); return OS_RUN_OVERFLOW; }
         for (size_t w = 0; w < config->worker_count; ++w) {
             if (workers[w].request_index != SIZE_MAX) continue;
             const size_t chosen = os_scheduler_select(requests, count, config->policy, now, config->aging_interval);
@@ -55,15 +64,13 @@ OsRunStatus os_virtual_run(OsRequest *requests, size_t count,
             if (r->first_run_tick == OS_REQUEST_NEVER) r->first_run_tick = now;
             workers[w].request_index = chosen;
             workers[w].quantum_used = 0;
+            emit(observer, observer_context, OS_EVENT_DISPATCHED, now, r->id, w, 0);
         }
         bool busy = false;
         for (size_t w = 0; w < config->worker_count; ++w)
             if (workers[w].request_index != SIZE_MAX) busy = true;
         if (!busy) {
-            uint64_t next_arrival = UINT64_MAX;
-            for (size_t i = 0; i < count; ++i)
-                if (requests[i].state == OS_NEW && requests[i].arrival_tick < next_arrival)
-                    next_arrival = requests[i].arrival_tick;
+            const uint64_t next_arrival = os_gateway_next_arrival(requests, count);
             if (next_arrival == UINT64_MAX) { free(workers); return OS_RUN_INVALID; }
             now = next_arrival;
             continue;
@@ -71,7 +78,7 @@ OsRunStatus os_virtual_run(OsRequest *requests, size_t count,
         if (now == UINT64_MAX) { free(workers); return OS_RUN_OVERFLOW; }
         ++now;
         /* Admit arrivals before requeuing expiring RR quanta at this tick. */
-        if (!admit_arrivals(requests, count, now, &order)) { free(workers); return OS_RUN_OVERFLOW; }
+        if (!admit_arrivals(requests, count, now, &order, observer, observer_context)) { free(workers); return OS_RUN_OVERFLOW; }
         for (size_t w = 0; w < config->worker_count; ++w) {
             if (workers[w].request_index == SIZE_MAX) continue;
             OsVirtualWorker *worker = &workers[w];
@@ -83,6 +90,7 @@ OsRunStatus os_virtual_run(OsRequest *requests, size_t count,
                 r->finished_tick = now;
                 worker->request_index = SIZE_MAX;
                 ++finished;
+                emit(observer, observer_context, OS_EVENT_COMPLETED, now, r->id, w, 0);
             } else if (config->policy == OS_ROUND_ROBIN &&
                        worker->quantum_used == config->quantum_tokens) {
                 if (order == UINT64_MAX || !os_request_transition(r, OS_READY)) {
@@ -91,10 +99,16 @@ OsRunStatus os_virtual_run(OsRequest *requests, size_t count,
                 r->ready_tick = now;
                 r->ready_order = order++;
                 worker->request_index = SIZE_MAX;
+                emit(observer, observer_context, OS_EVENT_PREEMPTED, now, r->id, w, 0);
             }
         }
     }
     *summary = os_metrics_summarize(requests, count, now);
     free(workers);
     return OS_RUN_OK;
+}
+
+OsRunStatus os_virtual_run(OsRequest *requests, size_t count,
+                           const OsVirtualConfig *config, OsRunSummary *summary) {
+    return os_virtual_run_observed(requests, count, config, summary, NULL, NULL);
 }
