@@ -13,8 +13,19 @@ O alvo separado `os_posix` introduz o ciclo de vida de workers pthread:
 - `os_pool_stop_requested` permite polling cooperativo quando o callback
   executa trabalho entre checkpoints.
 
-Este primeiro contrato **não** implementa fila de tarefas, semáforos, mutex
-de recursos compartilhados, escalonamento ou KV cache entre threads. A fila
-e a sincronização são o próximo commit; integração com o simulador vem depois.
+O módulo `work_queue.{h,c}` implementa agora uma **fila FIFO limitada**
+protegida por mutex e semáforos POSIX para vagas/itens. `os_queue_push` e
+`os_queue_pop` bloqueiam sem busy-wait; `os_queue_close` interrompe
+produtores, acorda bloqueados e permite drenar os itens existentes. A fila
+transporta apenas valores `request_id/token_budget`, sem possuir PCBs.
+`os_queue_destroy` exige que todos os produtores e consumidores já tenham
+terminado. Fechamento é cancelamento **cooperativo**, sem `pthread_cancel`.
 
-Teste: `ctest --test-dir build -R '^thread_pool$' --output-on-failure`.
+Ainda **não** há integração do pool com a fila ou com o escalonador, nem
+proteção do KV cache entre threads; isso pertence ao commit 11.
+
+Testes: `ctest --test-dir build -R '^(thread_pool|work_queue)
+ --output-on-failure`.
+O teste de fila inclui 4 produtores, 4 consumidores e 4000 itens, verificando
+que cada ID é consumido exatamente uma vez, além de fechamento durante
+espera em fila vazia/cheia.
