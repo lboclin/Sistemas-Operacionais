@@ -29,6 +29,8 @@ typedef struct {
     uint64_t next_wakeup_tick; /* OS_REQUEST_NEVER if none blocked */
     size_t free_frames; /* 0 when paging is disabled */
     uint64_t internal_fragmentation_tokens; /* unused slots in resident fixed pages */
+    size_t starving_ready; /* READY requests aged >= configured threshold */
+    uint64_t max_ready_age_ticks;
 } OsSessionSnapshot;
 
 /* Observer is called synchronously from step; it must not call step/destroy.

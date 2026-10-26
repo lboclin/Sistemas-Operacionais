@@ -16,7 +16,7 @@
 
 static void usage(const char *app) {
     printf("Usage: %s [--policy fcfs|sjf|oracle|rr|priority] [--workers N] [--quantum N]\n"
-           "       [--scenario FILE] [--frames N --page-tokens N --page-policy fifo|lru] [--page-fault-latency N] [--trace]\n", app);
+           "       [--scenario FILE] [--frames N --page-tokens N --page-policy fifo|lru] [--page-fault-latency N] [--starvation-threshold N] [--trace]\n", app);
     puts("Input CSV (without header): id,arrival_tick,total_tokens,predicted_tokens,priority");
     puts("Virtual simulator only. Each token costs one virtual tick.");
     puts("       [--steps N] [--snapshots]");
@@ -115,13 +115,14 @@ static void print_snapshot(uint64_t step, const OsSessionSnapshot *snap,
                            const OsRequest *requests, const OsWorkerSnapshot *workers) {
     printf("snapshot step=%" PRIu64 " tick=%" PRIu64
            " pending=%zu ready=%zu running=%zu blocked=%zu completed=%zu"
-           " resident=%zu finished=%s faults=%" PRIu64 " hits=%" PRIu64 " evictions=%" PRIu64 " wake=%" PRIu64 " free=%zu fragment=%" PRIu64 "\n",
+           " resident=%zu finished=%s faults=%" PRIu64 " hits=%" PRIu64 " evictions=%" PRIu64 " wake=%" PRIu64 " free=%zu fragment=%" PRIu64 " starving=%zu max-ready-age=%" PRIu64 "\n",
            step, snap->tick, snap->pending, snap->ready, snap->running,
            snap->blocked, snap->completed, snap->resident_frames,
            snap->finished ? "yes" : "no", snap->metrics.page_faults,
            snap->metrics.page_hits, snap->metrics.page_evictions,
            snap->next_wakeup_tick, snap->free_frames,
-           snap->internal_fragmentation_tokens);
+           snap->internal_fragmentation_tokens, snap->starving_ready,
+           snap->max_ready_age_ticks);
     for (size_t i = 0; i < snap->worker_count; ++i) {
         if (workers[i].occupied)
             printf("  worker=%zu request=%" PRIu32 " quantum=%" PRIu32 "\n",
@@ -190,6 +191,8 @@ int main(int argc, char **argv) {
         } else if (!strcmp(argv[i], "--page-fault-latency") && i + 1 < argc) {
             if (!parse_u64(argv[++i], &cfg.page_fault_latency_ticks)) return 2;
             page_option = true;
+        } else if (!strcmp(argv[i], "--starvation-threshold") && i + 1 < argc) {
+            if (!parse_u64(argv[++i], &cfg.starvation_threshold_ticks)) return 2;
         } else if (!strcmp(argv[i], "--trace")) {
             trace = true;
         } else if (!strcmp(argv[i], "--snapshots")) {
@@ -273,6 +276,15 @@ int main(int argc, char **argv) {
     printf("Completed=%zu/%zu, average wait=%.2f, response=%.2f, turnaround=%.2f, throughput=%.4f requests/tick\n",
            summary.completed, count, summary.average_wait_ticks, summary.average_response_ticks,
            summary.average_turnaround_ticks, summary.throughput_per_tick);
+    printf("Metrics: wait p50=%.2f p95=%.2f max=%" PRIu64
+           ", response p50=%.2f p95=%.2f, turnaround p50=%.2f p95=%.2f\n",
+           summary.p50_wait_ticks, summary.p95_wait_ticks, summary.max_wait_ticks,
+           summary.p50_response_ticks, summary.p95_response_ticks,
+           summary.p50_turnaround_ticks, summary.p95_turnaround_ticks);
+    printf("Workers: utilization=%.4f, blocked-worker-independent-ticks=%" PRIu64
+           ", preemptions=%" PRIu64 ", starved-completed=%zu\n",
+           summary.worker_utilization, summary.total_blocked_ticks,
+           summary.preemptions, summary.starvation_count);
     if (cfg.memory_enabled)
         printf("Memory: frames=%zu, tokens/page=%" PRIu32 ", accesses=%" PRIu64
                ", hits=%" PRIu64 ", faults=%" PRIu64 ", evictions=%" PRIu64
