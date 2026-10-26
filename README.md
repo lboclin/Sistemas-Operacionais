@@ -104,11 +104,7 @@ O resumo da CLI inclui p50/p95 (espera, resposta e turnaround), espera máxima, 
 ```bash
 ./build/os_llm_cli --scenario scenarios/seed42-v1.csv --policy rr --quantum 2 \
   --export-json run.json --export-csv run.csv
-ctest --test-dir build -R '^(export|thread_pool|work_queue|parallel_runtime|race_safe|race_unsafe|deadlock_graph|deadlock_liveness)
+ctest --test-dir build -R '^(export|thread_pool|work_queue|parallel_runtime|race_safe|race_unsafe|deadlock_graph|deadlock_liveness)$' --output-on-failure
 ```
 
 Os artefatos contêm a entrada, configuração, seed quando disponível, PCBs finais, eventos e métricas; tempos são ticks virtuais. O CSV usa colunas `section,index,field,value`. Detalhes em [src/results/README.md](src/results/README.md). Os testes POSIX exercitam inicialização/parada/join, fila limitada com 4000 itens, execução do adaptador com invariantes de exclusividade, race lab isolado e detecção/recuperação em grafo. O pool confirma tarefas simuladas de token, mas não faz inferência real. O deadlock modelado não bloqueia mutexes reais. [CI verificado (43/43 × 3)](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40387581428).
- --output-on-failure
-```
-
-Os artefatos contêm a entrada, configuração, seed quando disponível, PCBs finais, eventos e métricas; tempos são ticks virtuais. O CSV usa colunas `section,index,field,value`. Detalhes em [src/results/README.md](src/results/README.md). Os testes POSIX exercitam inicialização/parada/join e fila limitada com mutex, semáforos e 4000 itens sob concorrência. O pool **ainda não executa requisições do simulador**. [CI verificado (38/38 × 3)](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40307544164).
