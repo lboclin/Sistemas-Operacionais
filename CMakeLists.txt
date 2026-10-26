@@ -36,7 +36,7 @@ endif()
 
 find_package(Threads REQUIRED)
 add_library(os_posix STATIC src/concurrency/thread_pool.c src/concurrency/work_queue.c
-    src/concurrency/parallel_runtime.c)
+    src/concurrency/parallel_runtime.c src/concurrency/deadlock.c)
 target_include_directories(os_posix PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/concurrency)
 target_link_libraries(os_posix PUBLIC Threads::Threads os_core)
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
@@ -221,6 +221,14 @@ if(BUILD_TESTING)
         "-DSCENARIO=${CMAKE_CURRENT_SOURCE_DIR}/scenarios/seed42-v1.csv"
         "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}"
         -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/system/verify_export.cmake)
+
+    add_executable(test_deadlock tests/concurrency/test_deadlock.c)
+    target_link_libraries(test_deadlock PRIVATE os_posix)
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(test_deadlock PRIVATE -UNDEBUG -Wall -Wextra -Wpedantic -Wconversion -Werror)
+    endif()
+    add_test(NAME deadlock_graph COMMAND test_deadlock)
+    set_tests_properties(deadlock_graph PROPERTIES TIMEOUT 5)
 
     add_test(NAME race_safe COMMAND os_llm_race_lab safe)
     set_tests_properties(race_safe PROPERTIES TIMEOUT 6
