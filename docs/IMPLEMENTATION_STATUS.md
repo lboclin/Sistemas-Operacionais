@@ -143,7 +143,7 @@ O workflow `.github/workflows/ci.yml` executa a mesma suíte CTest em GCC Debug,
 - [1523d7f](https://github.com/fragaeduardo/OS-llm-project/commit/1523d7f19934ba33ef4d1b9a1813a6df15c653f8): biblioteca `os_posix` com pool pthread real, índices de workers, solicitação de parada, espera por condição, join e limpeza após falha parcial de inicialização. Callbacks devem respeitar parada cooperativa; ainda não há submissão de jobs ao pool.
 - [a390a53](https://github.com/fragaeduardo/OS-llm-project/commit/a390a53a97a21eda465b2fb4855eb655a4c906ae): fila limitada de valores com mutex e semáforos POSIX, bloqueio de produtores/consumidores, `close` que acorda bloqueados e drena itens, stress 4 produtores × 4 consumidores × 1000 itens. `destroy` requer que as threads tenham terminado. A fila ainda não está acoplada ao pool.
 
-Os três commits foram publicados após aprovação de CI em PRs separados. **Não existe runtime POSIX integrado nem interface gráfica nesta etapa.**
+Os três commits foram publicados após aprovação de CI em PRs separados. **Na etapa 08–10** ainda não existia runtime POSIX integrado; a integração posterior está descrita no bloco E. A interface gráfica segue pendente.
 
 ## Bloco E — integração e laboratórios (26/10/2026)
 
