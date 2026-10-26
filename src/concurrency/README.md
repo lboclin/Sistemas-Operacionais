@@ -62,3 +62,18 @@ threads nem tenta adquirir recursos reais; todas as mutações são chamadas por
 um único coordenador. Limite didático: 128 processos e 128 recursos. Testes
 cobrem ciclos de três, autoespera, remoção de proprietário, cadeias sem ciclo,
 entradas inválidas e consulta de capacidade sem escrita parcial.
+
+## Prevenção e recuperação controlada (commit 14)
+
+`os_deadlock_acquire_ordered` só concede recurso livre com índice crescente
+em relação aos já possuídos pelo processo. Não bloqueia nem cria aresta de
+espera: em conflito, o chamador deve tentar novamente após liberação.
+`os_deadlock_recover_one` detecta um ciclo existente, escolhe como vítima o
+processo de maior índice no ciclo, limpa sua espera e libera seus recursos.
+Não usa `pthread_cancel` nem tenta desbloquear mutexes reais de terceiros.
+
+O teste `deadlock_liveness` cobre prevenção, rejeição por ordem/conflito e
+1000 ciclos de deadlock sintético com recuperação e progresso posterior. O
+CTest impõe watchdog de 5 segundos. É um modelo didático de grafo de recursos,
+não um gerenciador de locks do SO, nem prova ausência de deadlock em sistemas
+arbitrários com múltiplas esperas simultâneas.

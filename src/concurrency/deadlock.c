@@ -77,6 +77,52 @@ bool os_deadlock_find_cycle(const OsWaitGraph *graph, size_t *cycle,
     return true;
 }
 
+bool os_deadlock_acquire_ordered(OsWaitGraph *graph, size_t process, size_t resource) {
+    if (graph == NULL || process >= graph->processes || resource >= graph->resources ||
+        graph->owners[resource] != OS_DEADLOCK_NONE) return false;
+    for (size_t i = resource + 1; i < graph->resources; ++i)
+        if (graph->owners[i] == process) return false;
+    /* Blocking is forbidden: the caller must retry later if unavailable.
+     * An explicit wait edge would defeat this prevention policy. */
+    if (graph->waiting[process] != OS_DEADLOCK_NONE) return false;
+    graph->owners[resource] = process;
+    return true;
+}
+
+bool os_deadlock_release_all(OsWaitGraph *graph, size_t process, size_t *released) {
+    if (graph == NULL || released == NULL || process >= graph->processes) return false;
+    size_t count = 0;
+    for (size_t i = 0; i < graph->resources; ++i) {
+        if (graph->owners[i] == process) {
+            graph->owners[i] = OS_DEADLOCK_NONE;
+            ++count;
+        }
+    }
+    graph->waiting[process] = OS_DEADLOCK_NONE;
+    *released = count;
+    return true;
+}
+
+bool os_deadlock_recover_one(OsWaitGraph *graph, size_t *victim, size_t *released) {
+    if (graph == NULL || victim == NULL || released == NULL) return false;
+    size_t cycle[OS_GRAPH_MAX];
+    size_t length = 0;
+    if (!os_deadlock_find_cycle(graph, cycle, OS_GRAPH_MAX, &length)) return false;
+    if (length == 0) {
+        *victim = OS_DEADLOCK_NONE;
+        *released = 0;
+        return true;
+    }
+    size_t selected = cycle[0];
+    for (size_t i = 1; i < length; ++i)
+        if (cycle[i] > selected) selected = cycle[i];
+    size_t count = 0;
+    if (!os_deadlock_release_all(graph, selected, &count)) return false;
+    *victim = selected;
+    *released = count;
+    return true;
+}
+
 void os_deadlock_destroy(OsWaitGraph *graph) {
     if (graph == NULL) return;
     free(graph->owners);
