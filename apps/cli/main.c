@@ -2,6 +2,8 @@
 #include "scheduler.h"
 #include "session.h"
 #include "virtual.h"
+#include "export.h"
+#include "trace.h"
 
 #include <errno.h>
 #include <inttypes.h>
@@ -16,7 +18,8 @@
 
 static void usage(const char *app) {
     printf("Usage: %s [--policy fcfs|sjf|oracle|rr|priority] [--workers N] [--quantum N]\n"
-           "       [--scenario FILE] [--frames N --page-tokens N --page-policy fifo|lru] [--page-fault-latency N] [--starvation-threshold N] [--trace]\n", app);
+           "       [--scenario FILE] [--frames N --page-tokens N --page-policy fifo|lru] [--page-fault-latency N] [--starvation-threshold N] [--trace]\n"
+           "       [--export-json FILE] [--export-csv FILE]\n", app);
     puts("Input CSV (without header): id,arrival_tick,total_tokens,predicted_tokens,priority");
     puts("Virtual simulator only. Each token costs one virtual tick.");
     puts("       [--steps N] [--snapshots]");
@@ -24,6 +27,7 @@ static void usage(const char *app) {
     puts("An idle step may jump to the next arrival tick.");
     puts("Online paging is optional; --page-fault-latency adds virtual blocking ticks (default 0).");
     puts("OPT page replacement is available only in offline trace replay.");
+    puts("Exports contain input, configuration, optional seed, trace, metrics and results.");
 }
 
 static bool parse_uint(const char *s, uint32_t *out) {
@@ -47,7 +51,8 @@ static bool parse_u64(const char *s, uint64_t *out) {
     return true;
 }
 
-static bool load_csv(const char *path, OsRequest *requests, size_t *count) {
+static bool load_csv(const char *path, OsRequest *requests, size_t *count,
+                     bool *has_seed, uint64_t *seed_out) {
     FILE *fp = fopen(path, "r");
     if (fp == NULL) { perror(path); return false; }
     char line[512];
@@ -55,6 +60,8 @@ static bool load_csv(const char *path, OsRequest *requests, size_t *count) {
     unsigned line_number = 0;
     bool valid = true;
     bool versioned = false;
+    *has_seed = false;
+    *seed_out = 0;
     size_t declared_count = 0;
     while (fgets(line, sizeof line, fp)) {
         ++line_number;
@@ -77,6 +84,8 @@ static bool load_csv(const char *path, OsRequest *requests, size_t *count) {
                 break;
             }
             versioned = true;
+            *has_seed = true;
+            *seed_out = seed;
             declared_count = declared;
             continue;
         }
@@ -110,6 +119,29 @@ static void print_event(const OsEvent *event, void *context) {
     putchar('\n');
 }
 
+
+typedef struct {
+    OsEventTrace *trace;
+    bool print;
+} CliObserver;
+
+static void capture_and_print(const OsEvent *event, void *context) {
+    CliObserver *observer = (CliObserver *)context;
+    if (observer->trace != NULL) os_trace_capture(event, observer->trace);
+    if (observer->print) print_event(event, NULL);
+}
+
+static bool write_export(const char *path, bool json, const OsRunArtifact *artifact) {
+    FILE *out = fopen(path, "wb");
+    if (out == NULL) { perror(path); return false; }
+    bool ok = json ? os_export_json(out, artifact) : os_export_csv(out, artifact);
+    if (fclose(out) != 0) ok = false;
+    if (!ok) {
+        (void)remove(path);
+        fprintf(stderr, "Could not write export: %s\n", path);
+    }
+    return ok;
+}
 
 static void print_snapshot(uint64_t step, const OsSessionSnapshot *snap,
                            const OsRequest *requests, const OsWorkerSnapshot *workers) {
@@ -149,6 +181,8 @@ int main(int argc, char **argv) {
     OsVirtualConfig cfg = {.policy = OS_FCFS, .worker_count = 1,
                            .quantum_tokens = 2, .aging_interval = 2};
     const char *scenario = NULL;
+    const char *export_json = NULL;
+    const char *export_csv = NULL;
     bool trace = false;
     bool page_option = false;
     bool snapshots = false;
@@ -193,6 +227,12 @@ int main(int argc, char **argv) {
             page_option = true;
         } else if (!strcmp(argv[i], "--starvation-threshold") && i + 1 < argc) {
             if (!parse_u64(argv[++i], &cfg.starvation_threshold_ticks)) return 2;
+        } else if (!strcmp(argv[i], "--export-json") && i + 1 < argc) {
+            export_json = argv[++i];
+            if (*export_json == '\0') return 2;
+        } else if (!strcmp(argv[i], "--export-csv") && i + 1 < argc) {
+            export_csv = argv[++i];
+            if (*export_csv == '\0') return 2;
         } else if (!strcmp(argv[i], "--trace")) {
             trace = true;
         } else if (!strcmp(argv[i], "--snapshots")) {
@@ -209,21 +249,36 @@ int main(int argc, char **argv) {
         fputs("--page-tokens, --page-policy and --page-fault-latency require --frames\n", stderr);
         return 2;
     }
+    if (export_json != NULL && export_csv != NULL &&
+        strcmp(export_json, export_csv) == 0) {
+        fputs("JSON and CSV output paths must differ\n", stderr);
+        return 2;
+    }
     OsRequest requests[MAX_REQUESTS];
     size_t count = 3;
+    bool has_seed = false;
+    uint64_t seed = 0;
     if (scenario != NULL) {
-        if (!load_csv(scenario, requests, &count)) return 2;
+        if (!load_csv(scenario, requests, &count, &has_seed, &seed)) return 2;
     } else {
         os_request_init(&requests[0], 1, 0, 6, 5, 1);
         os_request_init(&requests[1], 2, 0, 2, 2, 3);
         os_request_init(&requests[2], 3, 2, 3, 4, 2);
     }
+    OsRequest input_requests[MAX_REQUESTS];
+    memcpy(input_requests, requests, count * sizeof(*requests));
+    OsEventTrace captured;
+    os_trace_init(&captured);
+    CliObserver observer = {.trace = (export_json != NULL || export_csv != NULL) ?
+                            &captured : NULL, .print = trace};
+    OsEventCallback callback = (observer.trace != NULL || trace) ?
+                               capture_and_print : NULL;
     OsRunSummary summary;
     bool finished = true;
     if (has_step_limit || snapshots) {
         OsVirtualSession *session = NULL;
         OsRunStatus status = os_session_create(requests, count, &cfg,
-                                               trace ? print_event : NULL, NULL, &session);
+                                               callback, &observer, &session);
         if (status != OS_RUN_OK) {
             fprintf(stderr, "Session creation failed (status=%d)\n", status);
             return 1;
@@ -254,11 +309,16 @@ int main(int argc, char **argv) {
         os_session_destroy(session);
     } else {
         const OsRunStatus status = os_virtual_run_observed(requests, count, &cfg, &summary,
-                                                            trace ? print_event : NULL, NULL);
+                                                            callback, &observer);
         if (status != OS_RUN_OK) {
             fprintf(stderr, "Simulation failed (status=%d)\n", status);
             return 1;
         }
+    }
+    if (captured.failed) {
+        fputs("Event capture failed (out of memory)\n", stderr);
+        os_trace_destroy(&captured);
+        return 1;
     }
     printf("Policy: %s | Workers: %zu | Virtual tick: %" PRIu64 " | Execution: %s\n",
            os_policy_name(cfg.policy), cfg.worker_count, summary.makespan_ticks,
@@ -291,5 +351,17 @@ int main(int argc, char **argv) {
                ", peak-resident=%zu\n", cfg.frame_capacity, cfg.tokens_per_page,
                summary.page_hits + summary.page_faults, summary.page_hits,
                summary.page_faults, summary.page_evictions, summary.peak_resident_frames);
+    if (export_json != NULL || export_csv != NULL) {
+        const OsRunArtifact artifact = {.input = input_requests, .result = requests,
+            .count = count, .config = &cfg, .metrics = &summary,
+            .trace = &captured, .finished = finished,
+            .scenario_source = scenario != NULL, .has_seed = has_seed, .seed = seed};
+        if ((export_json != NULL && !write_export(export_json, true, &artifact)) ||
+            (export_csv != NULL && !write_export(export_csv, false, &artifact))) {
+            os_trace_destroy(&captured);
+            return 1;
+        }
+    }
+    os_trace_destroy(&captured);
     return 0;
 }

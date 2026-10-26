@@ -18,6 +18,7 @@ add_library(os_core STATIC
     src/memory/pager.c
     src/memory/frames.c
     src/workload/workload.c
+    src/results/export.c
 )
 target_include_directories(os_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/gateway
@@ -27,6 +28,7 @@ target_include_directories(os_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/metrics
     ${CMAKE_CURRENT_SOURCE_DIR}/src/memory
     ${CMAKE_CURRENT_SOURCE_DIR}/src/workload
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/results
 )
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(os_core PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Werror)
@@ -168,6 +170,13 @@ if(BUILD_TESTING)
         target_compile_options(test_metrics_golden PRIVATE -UNDEBUG -Wall -Wextra -Wpedantic -Wconversion -Werror)
     endif()
     add_test(NAME metrics_golden COMMAND test_metrics_golden)
+    add_executable(test_export tests/integration/test_export.c)
+    target_link_libraries(test_export PRIVATE os_core)
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(test_export PRIVATE -UNDEBUG -Wall -Wextra -Wpedantic -Wconversion -Werror)
+    endif()
+    add_test(NAME export COMMAND test_export)
+
     add_test(NAME cli_starvation COMMAND os_llm_cli --policy rr --quantum 1 --starvation-threshold 1 --steps 1 --snapshots)
     set_tests_properties(cli_starvation PROPERTIES PASS_REGULAR_EXPRESSION "snapshot step=1 tick=1.*starving=1")
 endif()
