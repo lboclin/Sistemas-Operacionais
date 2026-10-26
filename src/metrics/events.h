@@ -11,7 +11,9 @@ typedef enum {
     OS_EVENT_COMPLETED,
     OS_EVENT_PAGE_HIT,
     OS_EVENT_PAGE_FAULT,
-    OS_EVENT_PAGE_EVICTED
+    OS_EVENT_PAGE_EVICTED,
+    OS_EVENT_BLOCKED,
+    OS_EVENT_WOKEN
 } OsEventType;
 
 typedef struct {

@@ -21,6 +21,7 @@ typedef struct {
     size_t frame_capacity;
     uint32_t tokens_per_page;
     OsPagePolicy page_policy; /* FIFO/LRU only for online execution */
+    uint64_t page_fault_latency_ticks; /* 0 preserves legacy zero-cost faults */
 } OsVirtualConfig;
 
 typedef enum {

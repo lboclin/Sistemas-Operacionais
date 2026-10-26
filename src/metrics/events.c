@@ -9,6 +9,8 @@ const char *os_event_type_name(OsEventType type) {
         case OS_EVENT_PAGE_HIT: return "page_hit";
         case OS_EVENT_PAGE_FAULT: return "page_fault";
         case OS_EVENT_PAGE_EVICTED: return "page_evicted";
+        case OS_EVENT_BLOCKED: return "blocked";
+        case OS_EVENT_WOKEN: return "woken";
         default: return "unknown";
     }
 }
