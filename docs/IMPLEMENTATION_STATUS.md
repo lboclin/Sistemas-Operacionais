@@ -121,3 +121,11 @@ Teste `trace_replay`: golden de sequência e fingerprint, repetição determiní
 `os_llm_workload` escreve CSV v1 com cabeçalho `# os-llm-scenario v1 seed=... distribution=... count=...`, consumível por `os_llm_cli --scenario`. A CLI aceita CSV legado sem cabeçalho, mas rejeita cabeçalho versionado desconhecido, duplicado ou com quantidade divergente. Fixtures `scenarios/seed42-v1.csv` e `tests/fixtures/scenario-v2.csv` verificam compatibilidade/validação.
 
 Teste `workload`: golden de seed 42, determinismo, mudança de seed, distribuições e entradas inválidas.
+
+## Métricas de desempenho e starvation (commit 07)
+
+`OsRunSummary` inclui p50/p95 de espera, resposta e turnaround (nearest-rank, apenas PCBs concluídos), espera máxima, utilização de workers (tokens gerados / [ticks decorridos × workers]), soma de ticks bloqueados por requisição, preempções e contagem de concluídos cuja espera acumulada atingiu o limiar configurado. O limiar `OsVirtualConfig.starvation_threshold_ticks=0` desabilita a detecção; `--starvation-threshold N` o expõe na CLI.
+
+`OsSessionSnapshot.starving_ready` e `max_ready_age_ticks` mostram risco de starvation **em requisições atualmente READY**; esta métrica é instantânea e separada da espera acumulada de concluídos. Ticks bloqueados são somados entre requisições, podendo exceder o makespan em execução paralela. O log de dispatch/preempt/blocked/completed já contém fronteiras temporais úteis para construir um Gantt; a visualização não está implementada.
+
+Teste `metrics_golden`: distribuição de espera `[0,1,3]`, p50/p95 nearest-rank, utilização, preempções, starvation e I/O bloqueado.

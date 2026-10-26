@@ -22,6 +22,7 @@ typedef struct {
     uint32_t tokens_per_page;
     OsPagePolicy page_policy; /* FIFO/LRU only for online execution */
     uint64_t page_fault_latency_ticks; /* 0 preserves legacy zero-cost faults */
+    uint64_t starvation_threshold_ticks; /* 0 disables threshold detection */
 } OsVirtualConfig;
 
 typedef enum {

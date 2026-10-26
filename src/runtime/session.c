@@ -16,12 +16,15 @@ struct OsVirtualSession {
     OsWorker *workers;
     uint64_t *wake_ticks; /* NEVER outside OS_BLOCKED */
     bool *fault_serviced; /* one completed I/O permits one token retry */
+    uint64_t *blocked_since;
+    uint64_t *blocked_total;
     size_t count;
     OsVirtualConfig config;
     OsFrameCache cache;
     uint64_t tick;
     uint64_t ready_order;
     uint64_t event_sequence;
+    uint64_t preemptions;
     size_t completed;
     OsEventCallback observer;
     void *context;
@@ -61,8 +64,11 @@ static bool wake_blocked(OsVirtualSession *s) {
     for (size_t i = 0; i < s->count; ++i) {
         OsRequest *r = &s->requests[i];
         if (r->state != OS_BLOCKED || s->wake_ticks[i] > s->tick) continue;
-        if (s->ready_order == UINT64_MAX || !os_request_transition(r, OS_READY))
-            return false;
+        const uint64_t elapsed = s->tick - s->blocked_since[i];
+        if (s->ready_order == UINT64_MAX ||
+            UINT64_MAX - s->blocked_total[i] < elapsed ||
+            !os_request_transition(r, OS_READY)) return false;
+        s->blocked_total[i] += elapsed;
         r->ready_tick = s->tick;
         r->ready_order = s->ready_order++;
         s->wake_ticks[i] = OS_REQUEST_NEVER;
@@ -117,6 +123,7 @@ static bool access_pages(OsVirtualSession *s) {
             if (s->tick >= UINT64_MAX - s->config.page_fault_latency_ticks ||
                 !os_request_transition(r, OS_BLOCKED)) return false;
             s->wake_ticks[index] = s->tick + s->config.page_fault_latency_ticks;
+            s->blocked_since[index] = s->tick;
             w->request_index = SIZE_MAX; /* release the worker during I/O */
             w->quantum_used = 0;
             emit(s, OS_EVENT_BLOCKED, s->tick, r->id, i, page.page_id);
@@ -163,8 +170,11 @@ OsRunStatus os_session_create(const OsRequest *requests, size_t count,
     s->workers = malloc(config->worker_count * sizeof(*s->workers));
     s->wake_ticks = malloc(count * sizeof(*s->wake_ticks));
     s->fault_serviced = calloc(count, sizeof(*s->fault_serviced));
+    s->blocked_since = calloc(count, sizeof(*s->blocked_since));
+    s->blocked_total = calloc(count, sizeof(*s->blocked_total));
     if (s->requests == NULL || s->workers == NULL ||
-        s->wake_ticks == NULL || s->fault_serviced == NULL) {
+        s->wake_ticks == NULL || s->fault_serviced == NULL ||
+        s->blocked_since == NULL || s->blocked_total == NULL) {
         os_session_destroy(s);
         return OS_RUN_ALLOC_FAILURE;
     }
@@ -227,6 +237,7 @@ OsRunStatus os_session_step(OsVirtualSession *s) {
             r->ready_tick = s->tick;
             r->ready_order = s->ready_order++;
             w->request_index = SIZE_MAX;
+            ++s->preemptions;
             emit(s, OS_EVENT_PREEMPTED, s->tick, r->id, i, 0);
         }
     }
@@ -270,6 +281,40 @@ bool os_session_snapshot(const OsVirtualSession *s,
         }
     }
     result.metrics = os_metrics_summarize(s->requests, s->count, s->tick);
+    result.metrics.preemptions = s->preemptions;
+    double generated = 0.0;
+    for (size_t i = 0; i < s->count; ++i) {
+        const OsRequest *r = &s->requests[i];
+        generated += (double)r->generated_tokens;
+        uint64_t blocked = s->blocked_total[i];
+        if (r->state == OS_BLOCKED) {
+            const uint64_t elapsed = s->tick - s->blocked_since[i];
+            if (UINT64_MAX - blocked < elapsed) return false;
+            blocked += elapsed;
+        }
+        if (UINT64_MAX - result.metrics.total_blocked_ticks < blocked)
+            return false;
+        result.metrics.total_blocked_ticks += blocked;
+        if (s->config.starvation_threshold_ticks != 0) {
+            if (r->state == OS_TERMINATED &&
+                r->waiting_ticks >= s->config.starvation_threshold_ticks)
+                ++result.metrics.starvation_count;
+            if (r->state == OS_READY) {
+                if (s->tick < r->ready_tick) return false;
+                const uint64_t age = s->tick - r->ready_tick;
+                if (age > result.max_ready_age_ticks) result.max_ready_age_ticks = age;
+                if (age >= s->config.starvation_threshold_ticks)
+                    ++result.starving_ready;
+            }
+        } else if (r->state == OS_READY) {
+            if (s->tick < r->ready_tick) return false;
+            const uint64_t age = s->tick - r->ready_tick;
+            if (age > result.max_ready_age_ticks) result.max_ready_age_ticks = age;
+        }
+    }
+    if (s->tick != 0)
+        result.metrics.worker_utilization =
+            generated / ((double)s->tick * (double)s->config.worker_count);
     result.metrics.page_hits = s->cache.stats.hits;
     result.metrics.page_faults = s->cache.stats.faults;
     result.metrics.page_evictions = s->cache.stats.evictions;
@@ -335,6 +380,8 @@ void os_session_destroy(OsVirtualSession *s) {
     free(s->workers);
     free(s->wake_ticks);
     free(s->fault_serviced);
+    free(s->blocked_since);
+    free(s->blocked_total);
     free(s->requests);
     free(s);
 }

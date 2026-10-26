@@ -88,3 +88,8 @@ O projeto segue a proposta acadêmica original, mas a linguagem principal, modo 
 ```
 
 O gerador usa SplitMix64 determinístico, com distribuições `uniform`, `burst` e `staggered`. O CSV v1 inclui seed, distribuição e quantidade no cabeçalho. Cenários legados sem cabeçalho continuam válidos; versões desconhecidas são rejeitadas. Há limite de 256 requisições.
+
+
+## Métricas de desempenho
+
+O resumo da CLI inclui p50/p95 (espera, resposta e turnaround), espera máxima, utilização dos workers, ticks bloqueados e preempções. O limiar opcional `--starvation-threshold N` marca pedidos concluídos com espera acumulada >= N e pedidos atualmente READY com idade >= N. Os percentis usam nearest-rank e consideram apenas pedidos concluídos. Eventos de despacho/preempção/bloqueio/conclusão permitem gerar intervalos de Gantt, ainda sem interface gráfica.
