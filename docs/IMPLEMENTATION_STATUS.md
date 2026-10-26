@@ -113,3 +113,11 @@ Cada `OsEvent` observado recebe `sequence` monotônico. O módulo `src/metrics/t
 `os_trace_verify_replay` reexecuta o mesmo cenário fresco e a mesma configuração em uma sessão independente, comparando eventos por índice; não reconstrói estados de PCB a partir do log. Retorna `OS_RUN_OK` para replay executado mesmo se `matched=false`, e informa o primeiro evento divergente. Ordenação atual: chegada por ordem de entrada, despacho por índice do worker, acessos por índice do worker, conclusão/preempção por worker; callbacks síncronos. Eventos de chegada ao fim de um tick podem preceder wakeups processados no início do próximo passo no mesmo tick virtual.
 
 Teste `trace_replay`: golden de sequência e fingerprint, repetição determinística com faults/RR, alteração de evento e configuração divergente. A CLI `--trace` exibe `seq`.
+
+## Workloads reproduzíveis (commit 06)
+
+`src/workload/workload.h` define `OsWorkloadConfig` e `os_workload_generate`: PRNG SplitMix64 com seed de 64 bits, IDs sequenciais, chegadas `uniform`, `burst` (dois agrupamentos) ou `staggered` (espaçadas), tokens, estimativas e prioridades. Limite de 256 requisições compatível com a CLI. A distribuição uniforme usa módulo inteiro e pode ter viés residual em intervalos arbitrários.
+
+`os_llm_workload` escreve CSV v1 com cabeçalho `# os-llm-scenario v1 seed=... distribution=... count=...`, consumível por `os_llm_cli --scenario`. A CLI aceita CSV legado sem cabeçalho, mas rejeita cabeçalho versionado desconhecido, duplicado ou com quantidade divergente. Fixtures `scenarios/seed42-v1.csv` e `tests/fixtures/scenario-v2.csv` verificam compatibilidade/validação.
+
+Teste `workload`: golden de seed 42, determinismo, mudança de seed, distribuições e entradas inválidas.

@@ -78,3 +78,13 @@ A estrutura de repositório prevê também os módulos futuros em `apps/visual/`
 - [Contribuição](CONTRIBUTING.md)
 
 O projeto segue a proposta acadêmica original, mas a linguagem principal, modo de execução final e stack gráfica continuam sujeitos a decisão do grupo. Não existe banco SQL no escopo aprovado.
+
+
+## Gerar cargas reproduzíveis
+
+```bash
+./build/os_llm_workload --seed 42 --count 4 --distribution uniform --arrival-span 10 --min-tokens 2 --max-tokens 8 --output scenario.csv
+./build/os_llm_cli --scenario scenario.csv
+```
+
+O gerador usa SplitMix64 determinístico, com distribuições `uniform`, `burst` e `staggered`. O CSV v1 inclui seed, distribuição e quantidade no cabeçalho. Cenários legados sem cabeçalho continuam válidos; versões desconhecidas são rejeitadas. Há limite de 256 requisições.
