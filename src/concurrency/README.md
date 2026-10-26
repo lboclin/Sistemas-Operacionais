@@ -1,12 +1,20 @@
-# laboratório de sincronização
+# Laboratório de concorrência POSIX
 
-**Estado:** módulo planejado, ainda sem implementação.
+O núcleo virtual (`os_core`) continua determinístico e **não cria threads**.
+O alvo separado `os_posix` introduz o ciclo de vida de workers pthread:
 
-## Responsabilidade
-Encapsular mutexes, semáforos, demonstrações de corrida, deadlock e watchdog de segurança.
+- `os_pool_start` inicia 1–4096 threads reais, com índice estável e callback
+  por worker; se uma criação falhar, pede parada e faz join das anteriores.
+- `os_pool_request_stop` solicita parada cooperativa e acorda os callbacks
+  bloqueados em `os_pool_wait_stop`. É idempotente.
+- `os_pool_shutdown` solicita parada, faz join e libera os recursos. Só pode
+  ser chamado por um controlador **fora** do pool; callbacks que ignoram a
+  parada podem impedir o join. Não usa `pthread_cancel`.
+- `os_pool_stop_requested` permite polling cooperativo quando o callback
+  executa trabalho entre checkpoints.
 
-## Integração
-Interfaces apenas pelos contratos públicos com os módulos relacionados: runtime, app. Não acessar estado interno de outro módulo.
+Este primeiro contrato **não** implementa fila de tarefas, semáforos, mutex
+de recursos compartilhados, escalonamento ou KV cache entre threads. A fila
+e a sincronização são o próximo commit; integração com o simulador vem depois.
 
-## Antes de codificar
-Aprovar contratos em [CONTRACTS.md](../../docs/CONTRACTS.md), especificar testes observáveis e registrar escolhas técnicas com ADR quando necessário.
+Teste: `ctest --test-dir build -R '^thread_pool$' --output-on-failure`.
