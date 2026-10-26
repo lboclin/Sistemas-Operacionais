@@ -21,11 +21,20 @@ transporta apenas valores `request_id/token_budget`, sem possuir PCBs.
 `os_queue_destroy` exige que todos os produtores e consumidores já tenham
 terminado. Fechamento é cancelamento **cooperativo**, sem `pthread_cancel`.
 
-Ainda **não** há integração do pool com a fila ou com o escalonador, nem
-proteção do KV cache entre threads; isso pertence ao commit 11.
+O adaptador `parallel_runtime.{h,c}` conecta o motor de sessões ao
+pool e à fila: o coordenador executa admissão, escalonamento, acesso ao cache
+KV, eventos e métricas; cada tarefa de token é entregue a uma pthread, e o
+coordenador só confirma o avanço após receber exatamente um ACK por pedido.
+Um mutex e uma condição protegem os ACKs, e há timeout de 15 segundos por
+lote. Não há acesso concorrente a PCBs, frames ou contadores, nem inferência
+LLM real; a execução POSIX é um **laboratório de concorrência**, não um
+acelerador de inferência. O caminho virtual padrão permanece inalterado.
+Uma falha de executor invalida a sessão e não admite retry na mesma sessão.
 
-Testes: `ctest --test-dir build -R '^(thread_pool|work_queue)
+Teste: `ctest --test-dir build -R '^(thread_pool|work_queue|parallel_runtime)
  --output-on-failure`.
 O teste de fila inclui 4 produtores, 4 consumidores e 4000 itens, verificando
 que cada ID é consumido exatamente uma vez, além de fechamento durante
-espera em fila vazia/cheia.
+espera em fila vazia/cheia. O teste de integração compara PCBs, métricas e
+traces do adaptador com o motor virtual para FCFS, RR, prioridade, paging e
+page-fault latency. Os laboratórios de race e deadlock seguem pendentes.

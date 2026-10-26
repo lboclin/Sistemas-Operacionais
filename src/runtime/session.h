@@ -8,6 +8,15 @@
  * requests. Neither a callback nor an interface may mutate its state directly. */
 typedef struct OsVirtualSession OsVirtualSession;
 
+/* The coordinator schedules and accesses pages; a batch executor performs
+ * one simulated token task per runnable worker before any PCB token commit.
+ * Called synchronously; it must not access the session or retain jobs. */
+typedef struct {
+    uint32_t request_id;
+    size_t worker_index;
+} OsTokenJob;
+typedef bool (*OsTokenExecutor)(const OsTokenJob *jobs, size_t count, void *context);
+
 typedef struct {
     bool occupied;
     uint32_t request_id;     /* meaningful only when occupied */
@@ -44,6 +53,11 @@ OsRunStatus os_session_create(const OsRequest *requests, size_t count,
  * An idle session jumps to its next arrival before dispatch. Completion is
  * idempotent; further steps return OS_RUN_OK without changing state. */
 OsRunStatus os_session_step(OsVirtualSession *session);
+/* Same step with an optional synchronous token-work barrier. The callback
+ * runs after page access and before tick/token advancement. If it fails,
+ * returns OS_RUN_EXEC_FAILURE; discard that session (no rollback). */
+OsRunStatus os_session_step_with_executor(OsVirtualSession *session,
+                                           OsTokenExecutor executor, void *context);
 OsRunStatus os_session_run(OsVirtualSession *session);
 
 /* Read-only snapshot. Buffers may be NULL only when their capacities are zero;

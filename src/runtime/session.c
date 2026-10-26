@@ -14,6 +14,7 @@ typedef struct {
 struct OsVirtualSession {
     OsRequest *requests;
     OsWorker *workers;
+    OsTokenJob *jobs; /* reusable coordinator-owned token batch */
     uint64_t *wake_ticks; /* NEVER outside OS_BLOCKED */
     bool *fault_serviced; /* one completed I/O permits one token retry */
     uint64_t *blocked_since;
@@ -168,11 +169,12 @@ OsRunStatus os_session_create(const OsRequest *requests, size_t count,
     if (s == NULL) return OS_RUN_ALLOC_FAILURE;
     s->requests = malloc(count * sizeof(*s->requests));
     s->workers = malloc(config->worker_count * sizeof(*s->workers));
+    s->jobs = malloc(config->worker_count * sizeof(*s->jobs));
     s->wake_ticks = malloc(count * sizeof(*s->wake_ticks));
     s->fault_serviced = calloc(count, sizeof(*s->fault_serviced));
     s->blocked_since = calloc(count, sizeof(*s->blocked_since));
     s->blocked_total = calloc(count, sizeof(*s->blocked_total));
-    if (s->requests == NULL || s->workers == NULL ||
+    if (s->requests == NULL || s->workers == NULL || s->jobs == NULL ||
         s->wake_ticks == NULL || s->fault_serviced == NULL ||
         s->blocked_since == NULL || s->blocked_total == NULL) {
         os_session_destroy(s);
@@ -195,7 +197,8 @@ OsRunStatus os_session_create(const OsRequest *requests, size_t count,
     return OS_RUN_OK;
 }
 
-OsRunStatus os_session_step(OsVirtualSession *s) {
+OsRunStatus os_session_step_with_executor(OsVirtualSession *s,
+                                           OsTokenExecutor executor, void *context) {
     if (s == NULL) return OS_RUN_INVALID;
     if (s->completed == s->count) return OS_RUN_OK;
     if (!wake_blocked(s) || !admit(s)) return OS_RUN_OVERFLOW;
@@ -212,6 +215,19 @@ OsRunStatus os_session_step(OsVirtualSession *s) {
     }
     if (s->tick == UINT64_MAX) return OS_RUN_OVERFLOW;
     if (!access_pages(s)) return OS_RUN_OVERFLOW;
+    if (executor != NULL) {
+        size_t count = 0;
+        for (size_t i = 0; i < s->config.worker_count; ++i) {
+            const OsWorker *w = &s->workers[i];
+            if (w->request_index == SIZE_MAX || !w->can_generate) continue;
+            s->jobs[count++] = (OsTokenJob){
+                .request_id = s->requests[w->request_index].id,
+                .worker_index = i
+            };
+        }
+        if (count != 0 && !executor(s->jobs, count, context))
+            return OS_RUN_EXEC_FAILURE;
+    }
     const uint64_t token_start = s->tick;
     ++s->tick;
     /* Preserve legacy ordering: arrivals at tick T precede expiring quanta at T. */
@@ -242,6 +258,10 @@ OsRunStatus os_session_step(OsVirtualSession *s) {
         }
     }
     return OS_RUN_OK;
+}
+
+OsRunStatus os_session_step(OsVirtualSession *s) {
+    return os_session_step_with_executor(s, NULL, NULL);
 }
 
 OsRunStatus os_session_run(OsVirtualSession *s) {
@@ -378,6 +398,7 @@ void os_session_destroy(OsVirtualSession *s) {
     if (s == NULL) return;
     os_frames_destroy(&s->cache);
     free(s->workers);
+    free(s->jobs);
     free(s->wake_ticks);
     free(s->fault_serviced);
     free(s->blocked_since);

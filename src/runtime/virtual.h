@@ -29,7 +29,8 @@ typedef enum {
     OS_RUN_OK,
     OS_RUN_INVALID,
     OS_RUN_OVERFLOW,
-    OS_RUN_ALLOC_FAILURE
+    OS_RUN_ALLOC_FAILURE,
+    OS_RUN_EXEC_FAILURE
 } OsRunStatus;
 
 /* Requests are mutated in place; every valid request must start in OS_NEW.
