@@ -12,12 +12,13 @@
 | F04 SJF | Parcial | estimativa fixa e oráculo; preditor/média exponencial pendentes |
 | F05 Round Robin | Parcial | quantum em tokens com preempção |
 | F06 Prioridade com aging | Parcial | envelhecimento em dispatch |
-| F07 Pool de workers | Parcial | workers virtuais; pthreads pendentes |
+| F07 Pool de workers | Parcial | workers virtuais e ciclo de vida pthread real isolado; ligação com escalonador pendente |
+| F08 Sincronização | Parcial | fila FIFO limitada com mutex, semáforos e fechamento cooperativo; ainda não ligada ao runtime; race demo pendente |
 | F10 Memória KV simulada | Parcial | frames online por página, evicção FIFO/LRU, fragmentação interna e bloqueio opcional por fault; sem pinning |
 | F11 Substituição | Parcial | FIFO/LRU online e FIFO/LRU/OPT offline |
 | F16 Métricas/eventos | Parcial | médias, p50/p95, utilização, espera máxima, starvation por limiar, traces e replay por reexecução |
 | Snapshots/stepping | Implementado no motor virtual | sessão opaca, snapshots entre passos; sem persistência nem GUI |
-| F20 Testes | Parcial | 34 testes CTest aprovados no CI (GCC, Clang, ASan/UBSan); laboratório POSIX pendente |
+| F20 Testes | Parcial | 37 testes CTest aprovados no CI (GCC, Clang, ASan/UBSan); integração POSIX e experimentos pendentes |
 
 ## Funcionalidades verificáveis agora
 
@@ -34,7 +35,9 @@ ctest --test-dir build --output-on-failure
 - `src/memory/`: replay offline e frames FIFO/LRU integrados, com liberação de páginas por requisição.
 - `src/metrics/`: métricas, traces e nomes/contratos de eventos.
 - `src/workload/` e `apps/workload/`: cenários determinísticos com seed e CSV v1.
-- `apps/cli/`: configuração da carga, política, quantum, frames, trace, limite de passos e snapshots.
+- `apps/cli/`: configuração da carga, política, quantum, frames, trace, limite de passos, snapshots e exportação JSON/CSV.
+- `src/results/`: exportação determinística versionada de entrada, configuração, seed opcional, eventos, resultados e métricas.
+- `src/concurrency/`: pool de pthreads com parada cooperativa e fila POSIX limitada com mutex e semáforos; componentes independentes, ainda não conectados ao escalonador.
 
 
 ## Inspeção incremental
@@ -51,17 +54,17 @@ ctest --test-dir build --output-on-failure
 
 ## Testes
 
-Validação **remota confirmada** no [GitHub Actions, run 40255073092](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40255073092), em PR de CI aplicado após os commits 03–07:
+Validação **remota confirmada** no [GitHub Actions, run 40307085061](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40307085061), após os commits 08–10:
 
-- GCC Debug: **34/34**.
-- Clang Debug: **34/34**.
-- GCC com AddressSanitizer + UndefinedBehaviorSanitizer: **34/34**.
+- GCC Debug: **37/37**.
+- Clang Debug: **37/37**.
+- GCC com AddressSanitizer + UndefinedBehaviorSanitizer: **37/37**.
 
-A matriz cobre o núcleo virtual e as CLIs. Não cobre concorrência POSIX, exportação final ou GUI, ainda não implementados. As validações locais históricas de 20/20 são anteriores a esta execução remota.
+A matriz cobre núcleo virtual, CLIs, exportação e testes isolados de pthreads/fila POSIX, inclusive stress de 4000 itens. **Não** cobre ainda integração do pool com o escalonador, corrida controlada, deadlock, IPC ou GUI.
 
 ## Restrições explícitas
 
-- PCB e workers são **lógicos**, não threads/processos Linux reais.
+- PCBs e workers do **motor virtual** são lógicos; existe também um pool pthread real isolado, ainda sem integração com o motor.
 - Um token custa um tick virtual; faltas adicionam bloqueio configurável com `page_fault_latency_ticks` (padrão 0).
 - Memória cheia implica evicção; `OS_BLOCKED` modela espera por I/O quando a latência é positiva. Não há reserva/pinning de frames.
 - `page_id` é derivado de `generated_tokens/tokens_per_page`; isso é um modelo de ensino, não um KV cache de inferência real.
@@ -85,9 +88,8 @@ A matriz cobre o núcleo virtual e as CLIs. Não cobre concorrência POSIX, expo
 
 ## Próximas frentes
 
-1. Exportação JSON/CSV de resultados reproduzíveis (commit 08).
-2. Threads pthread, sincronização e integração com escalonamento (09–11).
-3. Demonstração isolada de corrida e laboratório de deadlock (12–14).
+1. Integrar pool pthread e fila POSIX ao escalonamento e contadores (commit 11).
+2. Demonstração isolada de corrida e laboratório de deadlock (12–14).
 4. IPC POSIX, SIGUSR1, SJF adaptativo/IA e experimentos completos.
 5. GUI web/desktop após escolha de stack.
 
@@ -134,3 +136,11 @@ Teste `metrics_golden`: distribuição de espera `[0,1,3]`, p50/p95 nearest-rank
 ## CI de compiladores e sanitizers
 
 O workflow `.github/workflows/ci.yml` executa a mesma suíte CTest em GCC Debug, Clang Debug e GCC com AddressSanitizer/UndefinedBehaviorSanitizer em PRs. A primeira execução da matriz foi aprovada em [40255073092](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40255073092): 34/34 em cada configuração.
+
+## Exportação e base POSIX (commits 08–10, 26/10)
+
+- [0a7a210](https://github.com/fragaeduardo/OS-llm-project/commit/0a7a210269a4fe9e058c6dfd468c6e711a9f34fe): `--export-json FILE` e `--export-csv FILE` na CLI. Esquema `os-llm-run` v1 com PCBs de entrada/saída, configuração, seed do cabeçalho CSV v1 (ou ausente), eventos em ordem, métricas e fingerprint. O CSV usa formato longo `section,index,field,value`. Funciona também em sessões pausadas. Sem timestamps de parede nem caminho absoluto no artefato. Contrato em [src/results/README.md](../src/results/README.md).
+- [1523d7f](https://github.com/fragaeduardo/OS-llm-project/commit/1523d7f19934ba33ef4d1b9a1813a6df15c653f8): biblioteca `os_posix` com pool pthread real, índices de workers, solicitação de parada, espera por condição, join e limpeza após falha parcial de inicialização. Callbacks devem respeitar parada cooperativa; ainda não há submissão de jobs ao pool.
+- [a390a53](https://github.com/fragaeduardo/OS-llm-project/commit/a390a53a97a21eda465b2fb4855eb655a4c906ae): fila limitada de valores com mutex e semáforos POSIX, bloqueio de produtores/consumidores, `close` que acorda bloqueados e drena itens, stress 4 produtores × 4 consumidores × 1000 itens. `destroy` requer que as threads tenham terminado. A fila ainda não está acoplada ao pool.
+
+Os três commits foram publicados após aprovação de CI em PRs separados. **Não existe runtime POSIX integrado nem interface gráfica nesta etapa.**

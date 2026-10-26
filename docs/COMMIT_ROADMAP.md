@@ -16,13 +16,15 @@ A estimativa abaixo é **tempo de desenvolvimento + revisão + testes por entreg
 | 05 | **Feito**: `f9747ae` (trace e replay) | `feat(events): provide deterministic traces` | Ordem estável de eventos, rastreabilidade e replay verificável sem reconstrução falsa de estados | 25–45 min |
 | 06 | **Feito**: `cc60a67` (workload v1) | `feat(workload): generate seeded scenarios` | Gerador com seed, múltiplas distribuições, formato versionado, validação e fixtures | 30–60 min |
 | 07 | **Feito**: `c628607` (métricas) | `feat(metrics): add percentiles and utilization` | p50/p95, utilização, espera máxima, tempo bloqueado, preempções e dados para Gantt | 30–60 min |
-| 08 | Pendente | `feat(results): export reproducible runs` | JSON/CSV com versão, entrada, configuração, seed, eventos e medidas | 25–50 min |
-| 09 | Pendente | `feat(runtime): introduce pthread worker pool` | Threads reais, ciclo de vida, shutdown cooperativo, joins e testes independentes | 90–150 min |
-| 10 | Pendente | `feat(sync): protect worker queues and resources` | Fila compartilhada, mutex, semáforos, cancelamento/cleanup e stress | 45–80 min |
+| 08 | **Feito**: `0a7a210` (exportação virtual) | `feat(results): export reproducible runs` | JSON/CSV com versão, entrada, configuração, seed, eventos e medidas | 25–50 min |
+| 09 | **Feito**: `1523d7f` (ciclo de vida pthread isolado) | `feat(runtime): introduce pthread worker pool` | Threads reais, ciclo de vida, shutdown cooperativo, joins e testes independentes | 90–150 min |
+| 10 | **Feito**: `a390a53` (fila POSIX independente) | `feat(sync): protect worker queues and resources` | Fila compartilhada, mutex, semáforos, cancelamento/cleanup e stress | 45–80 min |
 | 11 | Pendente | `feat(runtime): connect pthreads to scheduling` | Integração de fila, política, workers, memória e contadores; invariantes sob carga | 90–150 min |
 | 12 | Pendente | `feat(concurrency): isolate race demonstration` | Laboratório de corrida protegido/inseguro em processo isolado, timeout e evidência medida | 45–75 min |
 | 13 | Pendente | `feat(deadlock): detect resource wait cycles` | Grafo de alocação/espera, detecção de ciclo, cenários controlados | 60–100 min |
 | 14 | Pendente | `feat(deadlock): prevent and recover safely` | Ordem de aquisição, recuperação em laboratório, watchdog e testes de liveness | 60–100 min |
+
+Os commits 08–10 foram validados na matriz GCC Debug, Clang Debug e GCC ASan/UBSan; execução [40307085061](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40307085061): **37/37** em cada configuração. O commit 09 inicia threads reais e as encerra cooperativamente; o commit 10 cria fila protegida por mutex e semáforos. **Eles ainda não estão conectados ao escalonador nem ao KV cache**: essa integração é o commit 11.
 
 ## Sessões de trabalho planejadas
 
