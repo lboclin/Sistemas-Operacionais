@@ -4,9 +4,9 @@ Simulador acadêmico de Sistemas Operacionais aplicado a requisições de LLM. R
 
 ## Estado atual
 
-**Protótipo funcional (C11, provisório):** PCB e estados, gateway de admissão, FCFS, SJF estimado/oráculo, RR, prioridade com aging, workers virtuais, relógio de 1 tick/token, p50/p95 e métricas de utilização, traces determinísticos com replay verificável, gerador de cargas com seed, paginação FIFO/LRU online integrada e replay offline FIFO/LRU/Ótimo. A CLI aceita cenários CSV, eventos, execução limitada por passos e snapshots intermediários. Há 38 testes automatizados no CTest, aprovados no CI com GCC, Clang e GCC ASan/UBSan. Exportação JSON/CSV versionada e componentes POSIX isolados (pool pthread e fila protegida) estão disponíveis.
+**Protótipo funcional (C11, provisório):** PCB e estados, gateway de admissão, FCFS, SJF estimado/oráculo, RR, prioridade com aging, workers virtuais, relógio de 1 tick/token, p50/p95 e métricas de utilização, traces determinísticos com replay verificável, gerador de cargas com seed, paginação FIFO/LRU online integrada e replay offline FIFO/LRU/Ótimo. A CLI aceita cenários CSV, eventos, execução limitada por passos e snapshots intermediários. Há 43 testes automatizados no CTest, aprovados no CI com GCC, Clang e GCC ASan/UBSan. Exportação JSON/CSV versionada, adaptador POSIX com pthreads/fila, race lab isolado e grafo didático de deadlock estão disponíveis.
 
-**Ainda não implementado:** integração entre threads POSIX, fila, escalonamento e KV cache; IPC, sinais, laboratório de corrida, deadlocks, SJF com média exponencial ou preditor treinado, experimentos completos e interface gráfica. A CLI é apenas uma ferramenta técnica para testar o núcleo; não substitui a GUI planejada.
+**Ainda não implementado:** inferência real nos workers, deadlock real entre mutexes do runtime e memória, IPC, sinais, SJF com média exponencial ou preditor treinado, experimentos completos e interface gráfica. A CLI é apenas uma ferramenta técnica para testar o núcleo; não substitui a GUI planejada.
 
 ## Compilação e testes
 
@@ -63,12 +63,13 @@ Os snapshots exibem contagens por estado, workers, progresso de cada PCB, estat�
 - `src/memory/`: replay offline e cache online de frames FIFO/LRU integrado;
 - `src/workload/`: geração determinística de cenários versionados;
 - `src/results/`: exportação de resultados virtuais como JSON v1 e CSV longo;
-- `src/concurrency/`: pool pthread e fila POSIX independentes;
+- `src/concurrency/`: pool pthread, fila POSIX, adaptador de execução com ACK por token e grafo de deadlock;
 - `apps/cli/`: adaptador local de execução;
 - `apps/workload/`: gerador de CSV v1;
+- `apps/race_lab/`: laboratório safe/unsafe isolado por subprocesso;
 - `tests/`: testes unitários e de integração.
 
-A estrutura prevê também os módulos futuros em `apps/visual/`, `src/ipc/`, `src/prediction/`, `src/experiments/` e `tools/`. A biblioteca separada `os_posix` contém o ciclo de vida pthread e a fila POSIX, ainda não conectados ao motor virtual.
+A estrutura prevê também os módulos futuros em `apps/visual/`, `src/ipc/`, `src/prediction/`, `src/experiments/` e `tools/`. A biblioteca separada `os_posix` conecta pool pthread e fila ao motor de sessões por barreira de ACKs; apenas o coordenador modifica scheduler, cache e PCBs. Não é um motor de inferência LLM.
 
 ## Documentação e colaboração
 
@@ -76,7 +77,7 @@ A estrutura prevê também os módulos futuros em `apps/visual/`, `src/ipc/`, `s
 - [Especificação funcional completa](docs/FUNCTIONAL_SPEC.md)
 - [Contratos planejados](docs/CONTRACTS.md)
 - [Estado da implementação](docs/IMPLEMENTATION_STATUS.md)
-- [Roadmap por commits (próximos 14)](docs/COMMIT_ROADMAP.md)
+- [Roadmap por commits (14 concluídos, etapas futuras pendentes)](docs/COMMIT_ROADMAP.md)
 - [Interface gráfica planejada](docs/UI_SPEC.md)
 - [Decisões pendentes](docs/DECISIONS.md)
 - [Contribuição](CONTRIBUTING.md)
@@ -103,7 +104,11 @@ O resumo da CLI inclui p50/p95 (espera, resposta e turnaround), espera máxima, 
 ```bash
 ./build/os_llm_cli --scenario scenarios/seed42-v1.csv --policy rr --quantum 2 \
   --export-json run.json --export-csv run.csv
-ctest --test-dir build -R '^(export|thread_pool|work_queue)$' --output-on-failure
+ctest --test-dir build -R '^(export|thread_pool|work_queue|parallel_runtime|race_safe|race_unsafe|deadlock_graph|deadlock_liveness)
+```
+
+Os artefatos contêm a entrada, configuração, seed quando disponível, PCBs finais, eventos e métricas; tempos são ticks virtuais. O CSV usa colunas `section,index,field,value`. Detalhes em [src/results/README.md](src/results/README.md). Os testes POSIX exercitam inicialização/parada/join, fila limitada com 4000 itens, execução do adaptador com invariantes de exclusividade, race lab isolado e detecção/recuperação em grafo. O pool confirma tarefas simuladas de token, mas não faz inferência real. O deadlock modelado não bloqueia mutexes reais. [CI verificado (43/43 × 3)](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40387581428).
+ --output-on-failure
 ```
 
 Os artefatos contêm a entrada, configuração, seed quando disponível, PCBs finais, eventos e métricas; tempos são ticks virtuais. O CSV usa colunas `section,index,field,value`. Detalhes em [src/results/README.md](src/results/README.md). Os testes POSIX exercitam inicialização/parada/join e fila limitada com mutex, semáforos e 4000 itens sob concorrência. O pool **ainda não executa requisições do simulador**. [CI verificado (38/38 × 3)](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40307544164).
