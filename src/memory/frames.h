@@ -36,6 +36,9 @@ typedef struct {
  * On a miss or invalid input, frame_index is left unchanged. */
 bool os_frames_lookup(const OsFrameCache *cache, OsPageReference page,
                       size_t *frame_index);
+/* Read-only lookup of a physical slot. Invalid indices leave page unchanged. */
+bool os_frames_page_at(const OsFrameCache *cache, size_t frame_index,
+                       OsPageReference *page);
 
 /* List resident pages for one request in ascending physical frame order.
  * count is required. Passing mappings=NULL with capacity=0 queries the count

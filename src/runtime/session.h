@@ -27,6 +27,8 @@ typedef struct {
     OsRunSummary metrics;    /* partial aggregate over completed requests */
     bool finished;
     uint64_t next_wakeup_tick; /* OS_REQUEST_NEVER if none blocked */
+    size_t free_frames; /* 0 when paging is disabled */
+    uint64_t internal_fragmentation_tokens; /* unused slots in resident fixed pages */
 } OsSessionSnapshot;
 
 /* Observer is called synchronously from step; it must not call step/destroy.

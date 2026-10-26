@@ -29,6 +29,14 @@ bool os_frames_lookup(const OsFrameCache *cache, OsPageReference page,
     return false;
 }
 
+bool os_frames_page_at(const OsFrameCache *cache, size_t frame_index,
+                       OsPageReference *page) {
+    if (!cache_valid(cache) || page == NULL || frame_index >= cache->used)
+        return false;
+    *page = cache->entries[frame_index].page;
+    return true;
+}
+
 bool os_frames_snapshot_request(const OsFrameCache *cache, uint32_t request_id,
                                 OsFrameMapping *mappings, size_t capacity,
                                 size_t *count) {

@@ -91,12 +91,13 @@ static void print_snapshot(uint64_t step, const OsSessionSnapshot *snap,
                            const OsRequest *requests, const OsWorkerSnapshot *workers) {
     printf("snapshot step=%" PRIu64 " tick=%" PRIu64
            " pending=%zu ready=%zu running=%zu blocked=%zu completed=%zu"
-           " resident=%zu finished=%s faults=%" PRIu64 " hits=%" PRIu64 " evictions=%" PRIu64 " wake=%" PRIu64 "\n",
+           " resident=%zu finished=%s faults=%" PRIu64 " hits=%" PRIu64 " evictions=%" PRIu64 " wake=%" PRIu64 " free=%zu fragment=%" PRIu64 "\n",
            step, snap->tick, snap->pending, snap->ready, snap->running,
            snap->blocked, snap->completed, snap->resident_frames,
            snap->finished ? "yes" : "no", snap->metrics.page_faults,
            snap->metrics.page_hits, snap->metrics.page_evictions,
-           snap->next_wakeup_tick);
+           snap->next_wakeup_tick, snap->free_frames,
+           snap->internal_fragmentation_tokens);
     for (size_t i = 0; i < snap->worker_count; ++i) {
         if (workers[i].occupied)
             printf("  worker=%zu request=%" PRIu32 " quantum=%" PRIu32 "\n",

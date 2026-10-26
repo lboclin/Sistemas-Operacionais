@@ -273,6 +273,33 @@ bool os_session_snapshot(const OsVirtualSession *s,
     result.metrics.page_evictions = s->cache.stats.evictions;
     result.metrics.peak_resident_frames = s->cache.peak_used;
     result.resident_frames = s->cache.used;
+    if (s->config.memory_enabled) {
+        result.free_frames = s->cache.capacity - s->cache.used;
+        /* Fixed-size pages have no external fragmentation. Only resident
+         * page slots not yet filled by generated tokens count as waste. */
+        for (size_t i = 0; i < s->cache.used; ++i) {
+            OsPageReference page;
+            if (!os_frames_page_at(&s->cache, i, &page)) return false;
+            const OsRequest *owner = NULL;
+            for (size_t j = 0; j < s->count; ++j) {
+                if (s->requests[j].id == page.request_id) {
+                    owner = &s->requests[j];
+                    break;
+                }
+            }
+            if (owner == NULL) return false;
+            const uint64_t start = (uint64_t)page.page_id *
+                                   (uint64_t)s->config.tokens_per_page;
+            uint64_t filled = owner->generated_tokens > start ?
+                              (uint64_t)owner->generated_tokens - start : 0;
+            if (filled > s->config.tokens_per_page)
+                filled = s->config.tokens_per_page;
+            const uint64_t unused = (uint64_t)s->config.tokens_per_page - filled;
+            if (UINT64_MAX - result.internal_fragmentation_tokens < unused)
+                return false;
+            result.internal_fragmentation_tokens += unused;
+        }
+    }
     if (requests != NULL) memcpy(requests, s->requests, s->count * sizeof(*requests));
     if (workers != NULL) {
         for (size_t i = 0; i < s->config.worker_count; ++i) {
