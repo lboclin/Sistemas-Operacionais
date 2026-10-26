@@ -4,9 +4,9 @@ Simulador acadêmico de Sistemas Operacionais aplicado a requisições de LLM. R
 
 ## Estado atual
 
-**Protótipo funcional (C11, provisório):** PCB e estados, gateway de admissão, FCFS, SJF estimado/oráculo, RR, prioridade com aging, workers virtuais, relógio de 1 tick/token, métricas, observação de eventos, paginação FIFO/LRU online integrada e replay offline FIFO/LRU/Ótimo. A CLI aceita cenários CSV, eventos, execução limitada por passos e snapshots intermediários. Há testes automatizados com CTest.
+**Protótipo funcional (C11, provisório):** PCB e estados, gateway de admissão, FCFS, SJF estimado/oráculo, RR, prioridade com aging, workers virtuais, relógio de 1 tick/token, p50/p95 e métricas de utilização, traces determinísticos com replay verificável, gerador de cargas com seed, paginação FIFO/LRU online integrada e replay offline FIFO/LRU/Ótimo. A CLI aceita cenários CSV, eventos, execução limitada por passos e snapshots intermediários. Há 34 testes automatizados no CTest, aprovados no CI com GCC, Clang e GCC ASan/UBSan.
 
-**Ainda não implementado:** threads POSIX reais, mutex e semáforos, IPC, sinais, deadlocks, SJF com média exponencial ou preditor treinado, p50/p95, experimentos completos e interface gráfica. A CLI é apenas uma ferramenta técnica para testar o núcleo; não substitui a GUI planejada.
+**Ainda não implementado:** threads POSIX reais, mutex e semáforos, IPC, sinais, deadlocks, SJF com média exponencial ou preditor treinado, exportação JSON/CSV de resultados, experimentos completos e interface gráfica. A CLI é apenas uma ferramenta técnica para testar o núcleo; não substitui a GUI planejada.
 
 ## Compilação e testes
 
@@ -51,7 +51,7 @@ Os eventos incluem chegadas, despachos, preempções, conclusões, hits, faults,
 
 `--steps N` limita a **N avanços da sessão**; `--steps 0` mostra o estado inicial sem executar tokens. `--snapshots` imprime o estado inicial e o estado após cada passo realizado. Um passo ocioso pode saltar o relógio até a próxima chegada. O relatório final indica `paused` ou `completed`, com `-` para ticks ainda não registrados. Sem limite, a sessão executa até terminar.
 
-Os snapshots exibem contagens por estado, workers, progresso de cada PCB, estatísticas de páginas, frames livres, fragmentação interna de páginas residentes e o próximo wakeup virtual. O contrato `os_session_request_wakeup` permite consultar o tick de desbloqueio por ID. Em contenda extrema, uma página evictada durante a espera pode ser recarregada no primeiro retry sem segunda latência; pinning/fragmentação seguem pendentes. A CLI **não persiste sessões**: não é possível retomar uma execução em outra invocação. `--trace` pode ser combinado com as opções de inspeção.
+Os snapshots exibem contagens por estado, workers, progresso de cada PCB, estatísticas de páginas, frames livres, fragmentação interna de páginas residentes e o próximo wakeup virtual. O contrato `os_session_request_wakeup` permite consultar o tick de desbloqueio por ID. Em contenda extrema, uma página evictada durante a espera pode ser recarregada no primeiro retry sem segunda latência; não há pinning nem fragmentação externa por blocos variáveis (a fragmentação interna é medida). A CLI **não persiste sessões**: não é possível retomar uma execução em outra invocação. `--trace` pode ser combinado com as opções de inspeção.
 
 ## Módulos existentes
 
@@ -59,9 +59,11 @@ Os snapshots exibem contagens por estado, workers, progresso de cada PCB, estat�
 - `src/gateway/`: validação e admissão de requisições;
 - `src/scheduling/`: seleção de requisição para políticas de CPU;
 - `src/runtime/`: sessão virtual incremental, snapshots e execução completa com múltiplos workers lógicos;
-- `src/metrics/`: médias e eventos de execução/paginação;
+- `src/metrics/`: médias, percentis, traces e eventos de execução/paginação;
 - `src/memory/`: replay offline e cache online de frames FIFO/LRU integrado;
+- `src/workload/`: geração determinística de cenários versionados;
 - `apps/cli/`: adaptador local de execução;
+- `apps/workload/`: gerador de CSV v1;
 - `tests/`: testes unitários e de integração.
 
 A estrutura de repositório prevê também os módulos futuros em `apps/visual/`, `src/concurrency/`, `src/ipc/`, `src/prediction/`, `src/experiments/` e `tools/`.

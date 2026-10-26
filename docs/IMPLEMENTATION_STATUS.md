@@ -1,6 +1,6 @@
 # Estado da implementação
 
-> Atualizado em 25/10/2026. Descreve o código da branch `main`. O projeto acadêmico ainda não está completo.
+> Atualizado em 26/10/2026. Descreve o código da branch `main`. O projeto acadêmico ainda não está completo.
 
 ## Entregue e limitações
 
@@ -13,11 +13,11 @@
 | F05 Round Robin | Parcial | quantum em tokens com preempção |
 | F06 Prioridade com aging | Parcial | envelhecimento em dispatch |
 | F07 Pool de workers | Parcial | workers virtuais; pthreads pendentes |
-| F10 Memória KV simulada | Parcial | frames online por página e visão de mapeamentos por requisição, com bloqueio opcional por fault e wakeup virtual; pressão de memória pendente |
+| F10 Memória KV simulada | Parcial | frames online por página, evicção FIFO/LRU, fragmentação interna e bloqueio opcional por fault; sem pinning |
 | F11 Substituição | Parcial | FIFO/LRU online e FIFO/LRU/OPT offline |
-| F16 Métricas/eventos | Parcial | médias, throughput, faults/hits/evictions e callbacks síncronos |
+| F16 Métricas/eventos | Parcial | médias, p50/p95, utilização, espera máxima, starvation por limiar, traces e replay por reexecução |
 | Snapshots/stepping | Implementado no motor virtual | sessão opaca, snapshots entre passos; sem persistência nem GUI |
-| F20 Testes | Parcial | 22 testes CTest configurados; sem laboratório POSIX; teste de latência de página adicionado |
+| F20 Testes | Parcial | 34 testes CTest aprovados no CI (GCC, Clang, ASan/UBSan); laboratório POSIX pendente |
 
 ## Funcionalidades verificáveis agora
 
@@ -32,7 +32,8 @@ ctest --test-dir build --output-on-failure
 - `src/scheduling/`: políticas já disponíveis.
 - `src/runtime/`: sessão incremental, snapshots, workers lógicos e eventos; execução completa reutiliza o mesmo motor.
 - `src/memory/`: replay offline e frames FIFO/LRU integrados, com liberação de páginas por requisição.
-- `src/metrics/`: métricas e nomes/contratos de eventos.
+- `src/metrics/`: métricas, traces e nomes/contratos de eventos.
+- `src/workload/` e `apps/workload/`: cenários determinísticos com seed e CSV v1.
 - `apps/cli/`: configuração da carga, política, quantum, frames, trace, limite de passos e snapshots.
 
 
@@ -50,13 +51,13 @@ ctest --test-dir build --output-on-failure
 
 ## Testes
 
-Verificação **local**, não uma execução confirmada no servidor GitHub:
+Validação **remota confirmada** no [GitHub Actions, run 40255073092](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40255073092), em PR de CI aplicado após os commits 03–07:
 
-- GCC 14.2 (Debug e Release): 20/20.
-- Clang 17 (Debug): 20/20.
-- GCC com AddressSanitizer + UndefinedBehaviorSanitizer: 20/20.
+- GCC Debug: **34/34**.
+- Clang Debug: **34/34**.
+- GCC com AddressSanitizer + UndefinedBehaviorSanitizer: **34/34**.
 
-A validação foi local, com reconstrução das fontes equivalentes ao núcleo publicado. Não foi confirmado um workflow remoto para este commit.
+A matriz cobre o núcleo virtual e as CLIs. Não cobre concorrência POSIX, exportação final ou GUI, ainda não implementados. As validações locais históricas de 20/20 são anteriores a esta execução remota.
 
 ## Restrições explícitas
 
@@ -84,19 +85,19 @@ A validação foi local, com reconstrução das fontes equivalentes ao núcleo p
 
 ## Próximas frentes
 
-1. Política didática de bloqueios, page faults com custo e recuperação.
-2. Threads pthread + mutexes/semafóros com verificação de invariantes.
-3. Deadlock, IPC POSIX e SIGUSR1 com tratamento seguro.
-4. SJF adaptativo/IA, métricas percentis e experimentos completos.
+1. Exportação JSON/CSV de resultados reproduzíveis (commit 08).
+2. Threads pthread, sincronização e integração com escalonamento (09–11).
+3. Demonstração isolada de corrida e laboratório de deadlock (12–14).
+4. IPC POSIX, SIGUSR1, SJF adaptativo/IA e experimentos completos.
 5. GUI web/desktop após escolha de stack.
 
 ## Page faults com latência (commit 03)
 
 `OsVirtualConfig.page_fault_latency_ticks` controla espera virtual por falta de página: 0 mantém a execução anterior. Com valor positivo, um miss bloqueia a requisição, libera o worker e agenda wakeup. O próximo passo pode saltar ticks ociosos até uma chegada ou wakeup; o primeiro token é contabilizado somente quando efetivamente gerado. `os_session_request_wakeup` consulta o prazo por ID, e `OsSessionSnapshot.next_wakeup_tick` indica o mais próximo (ou `OS_REQUEST_NEVER`).
 
-A página é inserida no cache ao detectar o fault. Se for evictada durante a espera, o primeiro acesso após o wakeup pode recarregá-la sem segunda espera; o contador registra esse novo miss. Este modelo simplificado evita livelock em pressão extrema, mas **não implementa pinning, fila de I/O, fragmentação nem garantias de residência durante o bloqueio** (commit 04).
+A página é inserida no cache ao detectar o fault. Se for evictada durante a espera, o primeiro acesso após o wakeup pode recarregá-la sem segunda espera; o contador registra esse novo miss. Este modelo simplificado evita livelock em pressão extrema, mas **não implementa pinning, fila de I/O, fragmentação externa por blocos variáveis nem garantias de residência durante o bloqueio** (commit 04).
 
-Teste novo: `page_fault_latency` (bloqueio, wakeup, snapshot, compatibilidade zero, contenda e overflow). A verificação de CI será registrada após execução, sem antecipar resultados.
+Teste `page_fault_latency` (bloqueio, wakeup, snapshot, compatibilidade zero, contenda e overflow), incluído na suíte 34/34 validada no CI.
 
 ## Pressão de frames e fragmentação (commit 04)
 
@@ -104,7 +105,7 @@ Frames são páginas de tamanho fixo. Com capacidade cheia, o cache substitui de
 
 `os_frames_page_at` consulta uma posição física sem alterar relógios ou métricas. `OsSessionSnapshot.free_frames` informa a capacidade livre; `internal_fragmentation_tokens` soma os slots ainda não preenchidos nas páginas **residentes**, incluindo páginas alocadas para I/O pendente. Não há fragmentação externa porque todos os frames têm tamanho fixo. A métrica é instantânea, não pico nem histórico.
 
-Teste novo: `memory_pressure` (golden de fragmentação, pressão FIFO, frame liberado, página durante bloqueio, consulta física). Validação CI registrada na execução correspondente.
+Teste `memory_pressure` (golden de fragmentação, pressão FIFO, frame liberado, página durante bloqueio, consulta física), incluído na suíte 34/34 validada no CI.
 
 ## Traces determinísticos e verificação (commit 05)
 
@@ -132,4 +133,4 @@ Teste `metrics_golden`: distribuição de espera `[0,1,3]`, p50/p95 nearest-rank
 
 ## CI de compiladores e sanitizers
 
-O workflow `.github/workflows/ci.yml` executa a mesma suíte CTest em GCC Debug, Clang Debug e GCC com AddressSanitizer/UndefinedBehaviorSanitizer em PRs. Resultados específicos devem ser conferidos no GitHub Actions; a configuração por si só não prova aprovação.
+O workflow `.github/workflows/ci.yml` executa a mesma suíte CTest em GCC Debug, Clang Debug e GCC com AddressSanitizer/UndefinedBehaviorSanitizer em PRs. A primeira execução da matriz foi aprovada em [40255073092](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40255073092): 34/34 em cada configuração.
