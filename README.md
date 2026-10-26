@@ -36,7 +36,7 @@ A memória simulada é opcional. Por exemplo:
 ./build/os_llm_cli --frames 2 --page-fault-latency 2 --steps 1 --snapshots
 ```
 
-Os eventos incluem chegadas, despachos, preempções, conclusões, hits, faults e evicções. Por padrão, faults não custam ticks extras. Com `--page-fault-latency N` (exige `--frames`), um miss bloqueia a requisição por N ticks virtuais e libera o worker; OPT só funciona em replay offline.
+Os eventos incluem chegadas, despachos, preempções, conclusões, hits, faults, evicções, bloqueios e wakeups. Cada evento observado tem `sequence` monotônico; `src/metrics/trace.h` oferece captura, fingerprint versionado e `src/runtime/replay.h` verifica replay por reexecução, sem inventar estados. Por padrão, faults não custam ticks extras. Com `--page-fault-latency N` (exige `--frames`), um miss bloqueia a requisição por N ticks virtuais e libera o worker; OPT só funciona em replay offline.
 
 `--scenario` recebe linhas `id,arrival_tick,total_tokens,predicted_tokens,priority`, com no máximo 256 requisições; linhas iniciadas com `#` são comentários. Tempos são **virtuais**, não latências reais de inferência de LLM.
 

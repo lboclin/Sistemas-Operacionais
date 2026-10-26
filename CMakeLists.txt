@@ -9,9 +9,11 @@ add_library(os_core STATIC
     src/core/request.c
     src/gateway/gateway.c
     src/metrics/events.c
+    src/metrics/trace.c
     src/scheduling/scheduler.c
     src/runtime/virtual.c
     src/runtime/session.c
+    src/runtime/replay.c
     src/metrics/summary.c
     src/memory/pager.c
     src/memory/frames.c
@@ -131,4 +133,11 @@ if(BUILD_TESTING)
     add_test(NAME memory_pressure COMMAND test_memory_pressure)
     add_test(NAME cli_fragmentation COMMAND os_llm_cli --frames 1 --page-tokens 2 --steps 1 --snapshots)
     set_tests_properties(cli_fragmentation PROPERTIES PASS_REGULAR_EXPRESSION "snapshot step=1 tick=1.*free=0 fragment=1")
+
+    add_executable(test_trace_replay tests/integration/test_trace_replay.c)
+    target_link_libraries(test_trace_replay PRIVATE os_core)
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(test_trace_replay PRIVATE -UNDEBUG -Wall -Wextra -Wpedantic -Wconversion -Werror)
+    endif()
+    add_test(NAME trace_replay COMMAND test_trace_replay)
 endif()

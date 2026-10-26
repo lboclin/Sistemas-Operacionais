@@ -77,7 +77,8 @@ static bool load_csv(const char *path, OsRequest *requests, size_t *count) {
 
 static void print_event(const OsEvent *event, void *context) {
     (void)context;
-    printf("event tick=%" PRIu64 " type=%s request=%" PRIu32,
+    printf("event seq=%" PRIu64 " tick=%" PRIu64 " type=%s request=%" PRIu32,
+           event->sequence,
            event->tick, os_event_type_name(event->type), event->request_id);
     if (event->worker_index != SIZE_MAX) printf(" worker=%zu", event->worker_index);
     if (event->type == OS_EVENT_PAGE_HIT || event->type == OS_EVENT_PAGE_FAULT ||
