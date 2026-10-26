@@ -18,7 +18,7 @@
 | F11 Substituição | Parcial | FIFO/LRU online e FIFO/LRU/OPT offline |
 | F16 Métricas/eventos | Parcial | médias, p50/p95, utilização, espera máxima, starvation por limiar, traces e replay por reexecução |
 | Snapshots/stepping | Implementado no motor virtual | sessão opaca, snapshots entre passos; sem persistência nem GUI |
-| F20 Testes | Parcial | 37 testes CTest aprovados no CI (GCC, Clang, ASan/UBSan); integração POSIX e experimentos pendentes |
+| F20 Testes | Parcial | 38 testes CTest aprovados no CI (GCC, Clang, ASan/UBSan); integração POSIX e experimentos pendentes |
 
 ## Funcionalidades verificáveis agora
 
@@ -54,13 +54,13 @@ ctest --test-dir build --output-on-failure
 
 ## Testes
 
-Validação **remota confirmada** no [GitHub Actions, run 40307085061](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40307085061), após os commits 08–10:
+Validação **remota confirmada** no [GitHub Actions, run 40307544164](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40307544164), após os commits 08–10:
 
-- GCC Debug: **37/37**.
-- Clang Debug: **37/37**.
-- GCC com AddressSanitizer + UndefinedBehaviorSanitizer: **37/37**.
+- GCC Debug: **38/38**.
+- Clang Debug: **38/38**.
+- GCC com AddressSanitizer + UndefinedBehaviorSanitizer: **38/38**.
 
-A matriz cobre núcleo virtual, CLIs, exportação e testes isolados de pthreads/fila POSIX, inclusive stress de 4000 itens. **Não** cobre ainda integração do pool com o escalonador, corrida controlada, deadlock, IPC ou GUI.
+A matriz cobre núcleo virtual, CLIs, exportação e testes isolados de pthreads/fila POSIX, inclusive stress de 4000 itens e smoke E2E da CLI de exportação JSON/CSV (execução completa e pausada). **Não** cobre ainda integração do pool com o escalonador, corrida controlada, deadlock, IPC ou GUI.
 
 ## Restrições explícitas
 

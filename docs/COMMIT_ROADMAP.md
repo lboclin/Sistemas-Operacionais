@@ -24,7 +24,7 @@ A estimativa abaixo é **tempo de desenvolvimento + revisão + testes por entreg
 | 13 | Pendente | `feat(deadlock): detect resource wait cycles` | Grafo de alocação/espera, detecção de ciclo, cenários controlados | 60–100 min |
 | 14 | Pendente | `feat(deadlock): prevent and recover safely` | Ordem de aquisição, recuperação em laboratório, watchdog e testes de liveness | 60–100 min |
 
-Os commits 08–10 foram validados na matriz GCC Debug, Clang Debug e GCC ASan/UBSan; execução [40307085061](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40307085061): **37/37** em cada configuração. O commit 09 inicia threads reais e as encerra cooperativamente; o commit 10 cria fila protegida por mutex e semáforos. **Eles ainda não estão conectados ao escalonador nem ao KV cache**: essa integração é o commit 11.
+Os commits 08–10 foram validados na matriz GCC Debug, Clang Debug e GCC ASan/UBSan; execução [40307544164](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40307544164): **38/38** em cada configuração. O commit 09 inicia threads reais e as encerra cooperativamente; o commit 10 cria fila protegida por mutex e semáforos. **Eles ainda não estão conectados ao escalonador nem ao KV cache**: essa integração é o commit 11.
 
 ## Sessões de trabalho planejadas
 
