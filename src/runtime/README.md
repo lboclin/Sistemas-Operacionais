@@ -6,3 +6,10 @@ A configuração pode habilitar frames online opcionais. Há stepping e snapshot
 
 
 Traces observados possuem `sequence` por sessão. `os_trace_verify_replay` reexecuta a simulação para comparar eventos, retornando o índice da primeira divergência; não infere PCBs a partir do log. A ordem de eventos no mesmo tick segue os pontos de emissão do runtime e a ordem do cenário/workers.
+
+O adaptador POSIX separado `src/concurrency/parallel_runtime.c` usa
+`os_session_step_with_executor` como barreira: o coordenador controla
+exclusivamente PCBs, escalonador, cache KV e relógio; threads reais
+confirmam tarefas de token pela fila. O núcleo virtual permanece
+single-threaded. O adaptador não faz inferência LLM e não oferece
+step/snapshot concorrente exposto à CLI.

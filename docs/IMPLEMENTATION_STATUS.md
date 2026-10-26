@@ -12,13 +12,14 @@
 | F04 SJF | Parcial | estimativa fixa e oráculo; preditor/média exponencial pendentes |
 | F05 Round Robin | Parcial | quantum em tokens com preempção |
 | F06 Prioridade com aging | Parcial | envelhecimento em dispatch |
-| F07 Pool de workers | Parcial | workers virtuais e ciclo de vida pthread real isolado; ligação com escalonador pendente |
-| F08 Sincronização | Parcial | fila FIFO limitada com mutex, semáforos e fechamento cooperativo; ainda não ligada ao runtime; race demo pendente |
+| F07 Pool de workers | Parcial | adaptador POSIX usa pthreads + fila com ACK por token; coordenador serializa scheduler/cache/métricas; não há inferência real |
+| F08 Sincronização | Parcial | fila POSIX e adaptador integrados; race lab safe/unsafe isolado e determinístico; sem teste ThreadSanitizer |
+| F09 Deadlock | Parcial | grafo didático de espera, ciclo, prevenção por ordem global e recuperação controlada; não simula travamento real de mutexes pthread |
 | F10 Memória KV simulada | Parcial | frames online por página, evicção FIFO/LRU, fragmentação interna e bloqueio opcional por fault; sem pinning |
 | F11 Substituição | Parcial | FIFO/LRU online e FIFO/LRU/OPT offline |
 | F16 Métricas/eventos | Parcial | médias, p50/p95, utilização, espera máxima, starvation por limiar, traces e replay por reexecução |
 | Snapshots/stepping | Implementado no motor virtual | sessão opaca, snapshots entre passos; sem persistência nem GUI |
-| F20 Testes | Parcial | 38 testes CTest aprovados no CI (GCC, Clang, ASan/UBSan); integração POSIX e experimentos pendentes |
+| F20 Testes | Parcial | 43 testes CTest aprovados em três configurações no CI; faltam experimentos, IPC, GUI e estresse do sistema completo |
 
 ## Funcionalidades verificáveis agora
 
@@ -37,7 +38,7 @@ ctest --test-dir build --output-on-failure
 - `src/workload/` e `apps/workload/`: cenários determinísticos com seed e CSV v1.
 - `apps/cli/`: configuração da carga, política, quantum, frames, trace, limite de passos, snapshots e exportação JSON/CSV.
 - `src/results/`: exportação determinística versionada de entrada, configuração, seed opcional, eventos, resultados e métricas.
-- `src/concurrency/`: pool de pthreads com parada cooperativa e fila POSIX limitada com mutex e semáforos; componentes independentes, ainda não conectados ao escalonador.
+- `src/concurrency/`: pool de pthreads, fila POSIX limitada, adaptador de sessão com ACK por token, grafo didático de deadlock; laboratório de race em `apps/race_lab/`.
 
 
 ## Inspeção incremental
@@ -54,17 +55,17 @@ ctest --test-dir build --output-on-failure
 
 ## Testes
 
-Validação **remota confirmada** no [GitHub Actions, run 40307544164](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40307544164), após os commits 08–10:
+Validação **remota mais recente** no [GitHub Actions, run 40387581428](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40387581428), após os commits 11–14:
 
-- GCC Debug: **38/38**.
-- Clang Debug: **38/38**.
-- GCC com AddressSanitizer + UndefinedBehaviorSanitizer: **38/38**.
+- GCC Debug: **43/43**.
+- Clang Debug: **43/43**.
+- GCC com AddressSanitizer + UndefinedBehaviorSanitizer: **43/43**.
 
-A matriz cobre núcleo virtual, CLIs, exportação e testes isolados de pthreads/fila POSIX, inclusive stress de 4000 itens e smoke E2E da CLI de exportação JSON/CSV (execução completa e pausada). **Não** cobre ainda integração do pool com o escalonador, corrida controlada, deadlock, IPC ou GUI.
+A matriz cobre núcleo virtual, CLIs, exportação, fila POSIX (4000 itens), integração do adaptador pthread com o escalonador/cache (comparação de traces), race lab em subprocesso e detector/prevenção/recuperação do grafo de deadlock (1000 ciclos). **Não** cobre deadlock real de mutexes pthread, IPC, GUI, experimentos ou ThreadSanitizer.
 
 ## Restrições explícitas
 
-- PCBs e workers do **motor virtual** são lógicos; existe também um pool pthread real isolado, ainda sem integração com o motor.
+- PCBs e workers do **motor virtual** são lógicos; o adaptador POSIX conecta pthreads ao motor por lote de ACKs, mas o coordenador mantém acesso exclusivo ao estado e não executa inferência real.
 - Um token custa um tick virtual; faltas adicionam bloqueio configurável com `page_fault_latency_ticks` (padrão 0).
 - Memória cheia implica evicção; `OS_BLOCKED` modela espera por I/O quando a latência é positiva. Não há reserva/pinning de frames.
 - `page_id` é derivado de `generated_tokens/tokens_per_page`; isso é um modelo de ensino, não um KV cache de inferência real.
@@ -88,10 +89,9 @@ A matriz cobre núcleo virtual, CLIs, exportação e testes isolados de pthreads
 
 ## Próximas frentes
 
-1. Integrar pool pthread e fila POSIX ao escalonamento e contadores (commit 11).
-2. Demonstração isolada de corrida e laboratório de deadlock (12–14).
-4. IPC POSIX, SIGUSR1, SJF adaptativo/IA e experimentos completos.
-5. GUI web/desktop após escolha de stack.
+1. Integrar o grafo de recursos com o runtime real e adicionar cenário controlado de deadlock pthread, sem contaminar o motor virtual.
+2. IPC POSIX, SIGUSR1, SJF adaptativo/IA e experimentos completos (commits 15–28).
+3. GUI web/desktop após escolha de stack; testes E2E e relatório final.
 
 ## Page faults com latência (commit 03)
 
@@ -143,4 +143,13 @@ O workflow `.github/workflows/ci.yml` executa a mesma suíte CTest em GCC Debug,
 - [1523d7f](https://github.com/fragaeduardo/OS-llm-project/commit/1523d7f19934ba33ef4d1b9a1813a6df15c653f8): biblioteca `os_posix` com pool pthread real, índices de workers, solicitação de parada, espera por condição, join e limpeza após falha parcial de inicialização. Callbacks devem respeitar parada cooperativa; ainda não há submissão de jobs ao pool.
 - [a390a53](https://github.com/fragaeduardo/OS-llm-project/commit/a390a53a97a21eda465b2fb4855eb655a4c906ae): fila limitada de valores com mutex e semáforos POSIX, bloqueio de produtores/consumidores, `close` que acorda bloqueados e drena itens, stress 4 produtores × 4 consumidores × 1000 itens. `destroy` requer que as threads tenham terminado. A fila ainda não está acoplada ao pool.
 
-Os três commits foram publicados após aprovação de CI em PRs separados. **Não existe runtime POSIX integrado nem interface gráfica nesta etapa.**
+Os três commits foram publicados após aprovação de CI em PRs separados. **Na etapa 08–10** ainda não existia runtime POSIX integrado; a integração posterior está descrita no bloco E. A interface gráfica segue pendente.
+
+## Bloco E — integração e laboratórios (26/10/2026)
+
+- [1e122d2](https://github.com/fragaeduardo/OS-llm-project/commit/1e122d22e611f7ff7f1e70f2a92509244b2fddff): `os_posix_run` integra fila e pthreads com sessões; o coordenador é o único dono do estado. Os workers confirmam tarefas simuladas de token e não tocam no cache. Testes com 1, 2 e 4 workers, FCFS, RR, prioridade e page-fault latency compararam PCBs, métricas e traces com o motor virtual.
+- [ac6432f](https://github.com/fragaeduardo/OS-llm-project/commit/ac6432f2a908d5c4ba68a78770e6422c0f305b4a): `os_llm_race_lab safe|unsafe` executa em subprocesso com watchdog de 3s. A variante insegura perde uma atualização por `atomic_load` + `atomic_store` separados; não há data race indefinida em C. A segura usa `atomic_fetch_add`.
+- [ba86156](https://github.com/fragaeduardo/OS-llm-project/commit/ba861563e8f245a0d069f98fa0609bddb4d98e14): grafo de espera por recursos exclusivos, detecção de ciclo e testemunha determinística, inclusive autoespera.
+- [021fd78](https://github.com/fragaeduardo/OS-llm-project/commit/021fd78834b70c9470ecd7a28261b13866348285): aquisição não bloqueante por ordem global, liberação controlada da vítima e 1000 ciclos de recuperação/progresso com timeout CTest de 5s.
+
+**Limites:** a execução POSIX confirma tokens simulados, não executa modelo LLM. O detector e a recuperação de deadlock operam sobre um grafo didático, sem bloquear/desbloquear mutexes reais; não substituem laboratório de deadlock pthread ou detecção em runtime integrado. Os 14 commits do primeiro bloco do roadmap estão entregues no escopo acima, mas a aplicação acadêmica completa permanece pendente.
