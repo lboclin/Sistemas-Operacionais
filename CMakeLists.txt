@@ -43,6 +43,13 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(os_posix PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Werror)
 endif()
 
+# Standalone process-isolated race demonstration (never linked into os_core).
+add_executable(os_llm_race_lab apps/race_lab/main.c)
+target_link_libraries(os_llm_race_lab PRIVATE Threads::Threads)
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(os_llm_race_lab PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Werror)
+endif()
+
 add_executable(os_llm_workload apps/workload/main.c)
 target_link_libraries(os_llm_workload PRIVATE os_core)
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
@@ -214,6 +221,13 @@ if(BUILD_TESTING)
         "-DSCENARIO=${CMAKE_CURRENT_SOURCE_DIR}/scenarios/seed42-v1.csv"
         "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}"
         -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/system/verify_export.cmake)
+
+    add_test(NAME race_safe COMMAND os_llm_race_lab safe)
+    set_tests_properties(race_safe PROPERTIES TIMEOUT 6
+        PASS_REGULAR_EXPRESSION "mode=safe expected=2 observed=2 lost=0")
+    add_test(NAME race_unsafe COMMAND os_llm_race_lab unsafe)
+    set_tests_properties(race_unsafe PROPERTIES TIMEOUT 6
+        PASS_REGULAR_EXPRESSION "mode=unsafe expected=2 observed=1 lost=1")
 
     add_test(NAME cli_starvation COMMAND os_llm_cli --policy rr --quantum 1 --starvation-threshold 1 --steps 1 --snapshots)
     set_tests_properties(cli_starvation PROPERTIES PASS_REGULAR_EXPRESSION "snapshot step=1 tick=1.*starving=1")

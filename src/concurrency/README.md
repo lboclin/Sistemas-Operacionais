@@ -38,3 +38,15 @@ que cada ID é consumido exatamente uma vez, além de fechamento durante
 espera em fila vazia/cheia. O teste de integração compara PCBs, métricas e
 traces do adaptador com o motor virtual para FCFS, RR, prioridade, paging e
 page-fault latency. Os laboratórios de race e deadlock seguem pendentes.
+
+## Demonstração de condição de corrida (commit 12)
+
+`os_llm_race_lab safe|unsafe` inicia um processo filho via `fork/exec`,
+executa duas pthreads e impõe timeout de 3 segundos no pai, com `SIGKILL`
+no filho travado. O modo `unsafe` força a perda de uma atualização por
+`atomic_load` + `atomic_store` separados; o modo `safe` usa
+`atomic_fetch_add`. Ambos são livres de **data race indefinida em C**:
+este laboratório demonstra a condição de corrida lógica (lost update), não
+acesso não atômico a memória compartilhada. A barreira torna o resultado
+reproduzível: `unsafe` observa 1 em vez de 2, `safe` observa 2.
+O executável é independente do motor e os dois cenários têm testes CTest.
