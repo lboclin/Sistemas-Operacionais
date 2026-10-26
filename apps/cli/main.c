@@ -16,13 +16,13 @@
 
 static void usage(const char *app) {
     printf("Usage: %s [--policy fcfs|sjf|oracle|rr|priority] [--workers N] [--quantum N]\n"
-           "       [--scenario FILE] [--frames N --page-tokens N --page-policy fifo|lru] [--trace]\n", app);
+           "       [--scenario FILE] [--frames N --page-tokens N --page-policy fifo|lru] [--page-fault-latency N] [--trace]\n", app);
     puts("Input CSV (without header): id,arrival_tick,total_tokens,predicted_tokens,priority");
     puts("Virtual simulator only. Each token costs one virtual tick.");
     puts("       [--steps N] [--snapshots]");
     puts("--steps N limits session advances; --snapshots shows the initial state and each step.");
     puts("An idle step may jump to the next arrival tick.");
-    puts("Online paging is optional; page faults have no additional time cost.");
+    puts("Online paging is optional; --page-fault-latency adds virtual blocking ticks (default 0).");
     puts("OPT page replacement is available only in offline trace replay.");
 }
 
@@ -91,11 +91,12 @@ static void print_snapshot(uint64_t step, const OsSessionSnapshot *snap,
                            const OsRequest *requests, const OsWorkerSnapshot *workers) {
     printf("snapshot step=%" PRIu64 " tick=%" PRIu64
            " pending=%zu ready=%zu running=%zu blocked=%zu completed=%zu"
-           " resident=%zu finished=%s faults=%" PRIu64 " hits=%" PRIu64 " evictions=%" PRIu64 "\n",
+           " resident=%zu finished=%s faults=%" PRIu64 " hits=%" PRIu64 " evictions=%" PRIu64 " wake=%" PRIu64 "\n",
            step, snap->tick, snap->pending, snap->ready, snap->running,
            snap->blocked, snap->completed, snap->resident_frames,
            snap->finished ? "yes" : "no", snap->metrics.page_faults,
-           snap->metrics.page_hits, snap->metrics.page_evictions);
+           snap->metrics.page_hits, snap->metrics.page_evictions,
+           snap->next_wakeup_tick);
     for (size_t i = 0; i < snap->worker_count; ++i) {
         if (workers[i].occupied)
             printf("  worker=%zu request=%" PRIu32 " quantum=%" PRIu32 "\n",
@@ -161,6 +162,9 @@ int main(int argc, char **argv) {
             else if (!strcmp(value, "lru")) cfg.page_policy = OS_PAGE_LRU;
             else { fprintf(stderr, "Unknown online page policy: %s\n", value); return 2; }
             page_option = true;
+        } else if (!strcmp(argv[i], "--page-fault-latency") && i + 1 < argc) {
+            if (!parse_u64(argv[++i], &cfg.page_fault_latency_ticks)) return 2;
+            page_option = true;
         } else if (!strcmp(argv[i], "--trace")) {
             trace = true;
         } else if (!strcmp(argv[i], "--snapshots")) {
@@ -174,7 +178,7 @@ int main(int argc, char **argv) {
         } else { fprintf(stderr, "Invalid argument: %s\n", argv[i]); usage(argv[0]); return 2; }
     }
     if (page_option && !cfg.memory_enabled) {
-        fputs("--page-tokens and --page-policy require --frames\n", stderr);
+        fputs("--page-tokens, --page-policy and --page-fault-latency require --frames\n", stderr);
         return 2;
     }
     OsRequest requests[MAX_REQUESTS];

@@ -26,6 +26,7 @@ typedef struct {
     size_t resident_frames;
     OsRunSummary metrics;    /* partial aggregate over completed requests */
     bool finished;
+    uint64_t next_wakeup_tick; /* OS_REQUEST_NEVER if none blocked */
 } OsSessionSnapshot;
 
 /* Observer is called synchronously from step; it must not call step/destroy.
@@ -48,6 +49,10 @@ bool os_session_snapshot(const OsVirtualSession *session,
                          OsSessionSnapshot *snapshot,
                          OsRequest *requests, size_t request_capacity,
                          OsWorkerSnapshot *workers, size_t worker_capacity);
+/* Request-scoped unblock time; returns NEVER when request exists but is not blocked.
+ * Invalid ID or NULL output returns false without writing. */
+bool os_session_request_wakeup(const OsVirtualSession *session,
+                               uint32_t request_id, uint64_t *wake_tick);
 void os_session_destroy(OsVirtualSession *session);
 
 #endif

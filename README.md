@@ -6,7 +6,7 @@ Simulador acadêmico de Sistemas Operacionais aplicado a requisições de LLM. R
 
 **Protótipo funcional (C11, provisório):** PCB e estados, gateway de admissão, FCFS, SJF estimado/oráculo, RR, prioridade com aging, workers virtuais, relógio de 1 tick/token, métricas, observação de eventos, paginação FIFO/LRU online integrada e replay offline FIFO/LRU/Ótimo. A CLI aceita cenários CSV, eventos, execução limitada por passos e snapshots intermediários. Há testes automatizados com CTest.
 
-**Ainda não implementado:** threads POSIX reais, mutex e semáforos, IPC, sinais, deadlocks, bloqueio e penalidade temporal por falta de memória, SJF com média exponencial ou preditor treinado, p50/p95, experimentos completos e interface gráfica. A CLI é apenas uma ferramenta técnica para testar o núcleo; não substitui a GUI planejada.
+**Ainda não implementado:** threads POSIX reais, mutex e semáforos, IPC, sinais, deadlocks, SJF com média exponencial ou preditor treinado, p50/p95, experimentos completos e interface gráfica. A CLI é apenas uma ferramenta técnica para testar o núcleo; não substitui a GUI planejada.
 
 ## Compilação e testes
 
@@ -33,9 +33,10 @@ A memória simulada é opcional. Por exemplo:
 
 ```bash
 ./build/os_llm_cli --frames 2 --page-tokens 2 --page-policy lru --trace
+./build/os_llm_cli --frames 2 --page-fault-latency 2 --steps 1 --snapshots
 ```
 
-Os eventos incluem chegadas, despachos, preempções, conclusões, hits, faults e evicções. O programa não aplica custo extra por page fault nem bloqueia workers; OPT só funciona em replay offline.
+Os eventos incluem chegadas, despachos, preempções, conclusões, hits, faults e evicções. Por padrão, faults não custam ticks extras. Com `--page-fault-latency N` (exige `--frames`), um miss bloqueia a requisição por N ticks virtuais e libera o worker; OPT só funciona em replay offline.
 
 `--scenario` recebe linhas `id,arrival_tick,total_tokens,predicted_tokens,priority`, com no máximo 256 requisições; linhas iniciadas com `#` são comentários. Tempos são **virtuais**, não latências reais de inferência de LLM.
 
@@ -50,7 +51,7 @@ Os eventos incluem chegadas, despachos, preempções, conclusões, hits, faults 
 
 `--steps N` limita a **N avanços da sessão**; `--steps 0` mostra o estado inicial sem executar tokens. `--snapshots` imprime o estado inicial e o estado após cada passo realizado. Um passo ocioso pode saltar o relógio até a próxima chegada. O relatório final indica `paused` ou `completed`, com `-` para ticks ainda não registrados. Sem limite, a sessão executa até terminar.
 
-Os snapshots exibem contagens por estado, workers, progresso de cada PCB e estatísticas de páginas. A CLI **não persiste sessões**: não é possível retomar uma execução em outra invocação. `--trace` pode ser combinado com as opções de inspeção.
+Os snapshots exibem contagens por estado, workers, progresso de cada PCB, estatísticas de páginas e o próximo wakeup virtual. O contrato `os_session_request_wakeup` permite consultar o tick de desbloqueio por ID. Em contenda extrema, uma página evictada durante a espera pode ser recarregada no primeiro retry sem segunda latência; pinning/fragmentação seguem pendentes. A CLI **não persiste sessões**: não é possível retomar uma execução em outra invocação. `--trace` pode ser combinado com as opções de inspeção.
 
 ## Módulos existentes
 

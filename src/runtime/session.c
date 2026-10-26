@@ -8,11 +8,14 @@
 typedef struct {
     size_t request_index;
     uint32_t quantum_used;
+    bool can_generate;
 } OsWorker;
 
 struct OsVirtualSession {
     OsRequest *requests;
     OsWorker *workers;
+    uint64_t *wake_ticks; /* NEVER outside OS_BLOCKED */
+    bool *fault_serviced; /* one completed I/O permits one token retry */
     size_t count;
     OsVirtualConfig config;
     OsFrameCache cache;
@@ -43,6 +46,30 @@ static bool admit(OsVirtualSession *s) {
     return true;
 }
 
+static uint64_t next_wakeup(const OsVirtualSession *s) {
+    uint64_t earliest = OS_REQUEST_NEVER;
+    for (size_t i = 0; i < s->count; ++i)
+        if (s->requests[i].state == OS_BLOCKED && s->wake_ticks[i] < earliest)
+            earliest = s->wake_ticks[i];
+    return earliest;
+}
+
+/* Wakeups at a tick precede arrivals and dispatch, in input order. */
+static bool wake_blocked(OsVirtualSession *s) {
+    for (size_t i = 0; i < s->count; ++i) {
+        OsRequest *r = &s->requests[i];
+        if (r->state != OS_BLOCKED || s->wake_ticks[i] > s->tick) continue;
+        if (s->ready_order == UINT64_MAX || !os_request_transition(r, OS_READY))
+            return false;
+        r->ready_tick = s->tick;
+        r->ready_order = s->ready_order++;
+        s->wake_ticks[i] = OS_REQUEST_NEVER;
+        s->fault_serviced[i] = true;
+        emit(s, OS_EVENT_WOKEN, s->tick, r->id, SIZE_MAX, 0);
+    }
+    return true;
+}
+
 static bool dispatch(OsVirtualSession *s) {
     bool busy = false;
     for (size_t i = 0; i < s->config.worker_count; ++i) {
@@ -55,7 +82,6 @@ static bool dispatch(OsVirtualSession *s) {
         if (!os_request_transition(r, OS_RUNNING) || s->tick < r->ready_tick ||
             UINT64_MAX - r->waiting_ticks < s->tick - r->ready_tick) return false;
         r->waiting_ticks += s->tick - r->ready_tick;
-        if (r->first_run_tick == OS_REQUEST_NEVER) r->first_run_tick = s->tick;
         w->request_index = selected;
         w->quantum_used = 0;
         busy = true;
@@ -65,11 +91,16 @@ static bool dispatch(OsVirtualSession *s) {
 }
 
 static bool access_pages(OsVirtualSession *s) {
-    if (!s->config.memory_enabled) return true;
     for (size_t i = 0; i < s->config.worker_count; ++i) {
-        const size_t index = s->workers[i].request_index;
-        if (index == SIZE_MAX) continue;
-        const OsRequest *r = &s->requests[index];
+        OsWorker *w = &s->workers[i];
+        w->can_generate = false;
+        if (w->request_index == SIZE_MAX) continue;
+        if (!s->config.memory_enabled) {
+            w->can_generate = true;
+            continue;
+        }
+        const size_t index = w->request_index;
+        OsRequest *r = &s->requests[index];
         const OsPageReference page = {.request_id = r->id,
                          .page_id = r->generated_tokens / s->config.tokens_per_page};
         OsFrameAccess access;
@@ -79,6 +110,21 @@ static bool access_pages(OsVirtualSession *s) {
                  i, access.evicted_page.page_id);
         emit(s, access.hit ? OS_EVENT_PAGE_HIT : OS_EVENT_PAGE_FAULT,
              s->tick, r->id, i, page.page_id);
+        if (!access.hit && s->config.page_fault_latency_ticks != 0 &&
+            !s->fault_serviced[index]) {
+            if (s->tick >= UINT64_MAX - s->config.page_fault_latency_ticks ||
+                !os_request_transition(r, OS_BLOCKED)) return false;
+            s->wake_ticks[index] = s->tick + s->config.page_fault_latency_ticks;
+            w->request_index = SIZE_MAX; /* release the worker during I/O */
+            w->quantum_used = 0;
+            emit(s, OS_EVENT_BLOCKED, s->tick, r->id, i, page.page_id);
+            continue;
+        }
+        /* A completed I/O pays latency once; if its page was evicted while
+         * blocked, a retry may reload it without a second delay. Capacity
+         * pressure and pinning are handled in the next roadmap item. */
+        s->fault_serviced[index] = false;
+        w->can_generate = true;
     }
     return true;
 }
@@ -93,12 +139,14 @@ OsRunStatus os_session_create(const OsRequest *requests, size_t count,
         config->worker_count == 0 || config->worker_count > 4096 ||
         config->policy < OS_FCFS || config->policy > OS_PRIORITY_AGING ||
         (config->policy == OS_ROUND_ROBIN && config->quantum_tokens == 0) ||
+        (config->page_fault_latency_ticks != 0 && !config->memory_enabled) ||
         (config->memory_enabled && (config->frame_capacity == 0 ||
          config->tokens_per_page == 0 ||
          (config->page_policy != OS_PAGE_FIFO && config->page_policy != OS_PAGE_LRU))))
         return OS_RUN_INVALID;
     if (count > SIZE_MAX / sizeof(OsRequest) ||
-        config->worker_count > SIZE_MAX / sizeof(OsWorker)) return OS_RUN_ALLOC_FAILURE;
+        config->worker_count > SIZE_MAX / sizeof(OsWorker) ||
+        count > SIZE_MAX / sizeof(uint64_t)) return OS_RUN_ALLOC_FAILURE;
     uint64_t total = 0;
     uint64_t max_arrival = 0;
     for (size_t i = 0; i < count; ++i) {
@@ -111,11 +159,15 @@ OsRunStatus os_session_create(const OsRequest *requests, size_t count,
     if (s == NULL) return OS_RUN_ALLOC_FAILURE;
     s->requests = malloc(count * sizeof(*s->requests));
     s->workers = malloc(config->worker_count * sizeof(*s->workers));
-    if (s->requests == NULL || s->workers == NULL) {
+    s->wake_ticks = malloc(count * sizeof(*s->wake_ticks));
+    s->fault_serviced = calloc(count, sizeof(*s->fault_serviced));
+    if (s->requests == NULL || s->workers == NULL ||
+        s->wake_ticks == NULL || s->fault_serviced == NULL) {
         os_session_destroy(s);
         return OS_RUN_ALLOC_FAILURE;
     }
     memcpy(s->requests, requests, count * sizeof(*requests));
+    for (size_t i = 0; i < count; ++i) s->wake_ticks[i] = OS_REQUEST_NEVER;
     for (size_t i = 0; i < config->worker_count; ++i)
         s->workers[i] = (OsWorker){.request_index = SIZE_MAX};
     s->count = count;
@@ -134,25 +186,29 @@ OsRunStatus os_session_create(const OsRequest *requests, size_t count,
 OsRunStatus os_session_step(OsVirtualSession *s) {
     if (s == NULL) return OS_RUN_INVALID;
     if (s->completed == s->count) return OS_RUN_OK;
-    if (!admit(s)) return OS_RUN_OVERFLOW;
+    if (!wake_blocked(s) || !admit(s)) return OS_RUN_OVERFLOW;
     bool busy = dispatch(s);
     if (!busy) {
-        const uint64_t next = os_gateway_next_arrival(s->requests, s->count);
+        const uint64_t arrival = os_gateway_next_arrival(s->requests, s->count);
+        const uint64_t wake = next_wakeup(s);
+        const uint64_t next = arrival < wake ? arrival : wake;
         if (next == OS_REQUEST_NEVER || next <= s->tick) return OS_RUN_INVALID;
         s->tick = next;
-        if (!admit(s)) return OS_RUN_OVERFLOW;
+        if (!wake_blocked(s) || !admit(s)) return OS_RUN_OVERFLOW;
         busy = dispatch(s);
         if (!busy) return OS_RUN_INVALID;
     }
     if (s->tick == UINT64_MAX) return OS_RUN_OVERFLOW;
     if (!access_pages(s)) return OS_RUN_OVERFLOW;
+    const uint64_t token_start = s->tick;
     ++s->tick;
     /* Preserve legacy ordering: arrivals at tick T precede expiring quanta at T. */
     if (!admit(s)) return OS_RUN_OVERFLOW;
     for (size_t i = 0; i < s->config.worker_count; ++i) {
         OsWorker *w = &s->workers[i];
-        if (w->request_index == SIZE_MAX) continue;
+        if (w->request_index == SIZE_MAX || !w->can_generate) continue;
         OsRequest *r = &s->requests[w->request_index];
+        if (r->first_run_tick == OS_REQUEST_NEVER) r->first_run_tick = token_start;
         ++r->generated_tokens;
         ++w->quantum_used;
         if (r->generated_tokens == r->total_tokens) {
@@ -195,13 +251,18 @@ bool os_session_snapshot(const OsVirtualSession *s,
         (workers != NULL && worker_capacity < s->config.worker_count)) return false;
     OsSessionSnapshot result = {.tick = s->tick, .request_count = s->count,
         .worker_count = s->config.worker_count,
-        .finished = s->completed == s->count};
+        .finished = s->completed == s->count,
+        .next_wakeup_tick = OS_REQUEST_NEVER};
     for (size_t i = 0; i < s->count; ++i) {
         switch (s->requests[i].state) {
             case OS_NEW: ++result.pending; break;
             case OS_READY: ++result.ready; break;
             case OS_RUNNING: ++result.running; break;
-            case OS_BLOCKED: ++result.blocked; break;
+            case OS_BLOCKED:
+                ++result.blocked;
+                if (s->wake_ticks[i] < result.next_wakeup_tick)
+                    result.next_wakeup_tick = s->wake_ticks[i];
+                break;
             case OS_TERMINATED: ++result.completed; break;
             default: return false;
         }
@@ -227,10 +288,24 @@ bool os_session_snapshot(const OsVirtualSession *s,
     return true;
 }
 
+bool os_session_request_wakeup(const OsVirtualSession *s,
+                               uint32_t request_id, uint64_t *wake_tick) {
+    if (s == NULL || wake_tick == NULL) return false;
+    for (size_t i = 0; i < s->count; ++i) {
+        if (s->requests[i].id != request_id) continue;
+        *wake_tick = s->requests[i].state == OS_BLOCKED ?
+                     s->wake_ticks[i] : OS_REQUEST_NEVER;
+        return true;
+    }
+    return false;
+}
+
 void os_session_destroy(OsVirtualSession *s) {
     if (s == NULL) return;
     os_frames_destroy(&s->cache);
     free(s->workers);
+    free(s->wake_ticks);
+    free(s->fault_serviced);
     free(s->requests);
     free(s);
 }
