@@ -50,3 +50,15 @@ este laboratório demonstra a condição de corrida lógica (lost update), não
 acesso não atômico a memória compartilhada. A barreira torna o resultado
 reproduzível: `unsafe` observa 1 em vez de 2, `safe` observa 2.
 O executável é independente do motor e os dois cenários têm testes CTest.
+
+## Detecção de deadlock (commit 13)
+
+`deadlock.{h,c}` mantém um grafo de recursos exclusivos: cada recurso tem
+zero ou um proprietário e cada processo espera no máximo um recurso. A aresta
+de espera `processo → proprietário` é derivada, não duplicada em outro estado.
+`os_deadlock_find_cycle` devolve uma testemunha determinística de ciclo
+(inclusive autoespera), ou comprimento zero quando não há ciclo. Não bloqueia
+threads nem tenta adquirir recursos reais; todas as mutações são chamadas por
+um único coordenador. Limite didático: 128 processos e 128 recursos. Testes
+cobrem ciclos de três, autoespera, remoção de proprietário, cadeias sem ciclo,
+entradas inválidas e consulta de capacidade sem escrita parcial.
