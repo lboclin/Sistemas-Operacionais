@@ -17,6 +17,7 @@ add_library(os_core STATIC
     src/metrics/summary.c
     src/memory/pager.c
     src/memory/frames.c
+    src/workload/workload.c
 )
 target_include_directories(os_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/gateway
@@ -25,9 +26,16 @@ target_include_directories(os_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/runtime
     ${CMAKE_CURRENT_SOURCE_DIR}/src/metrics
     ${CMAKE_CURRENT_SOURCE_DIR}/src/memory
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/workload
 )
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(os_core PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Werror)
+endif()
+
+add_executable(os_llm_workload apps/workload/main.c)
+target_link_libraries(os_llm_workload PRIVATE os_core)
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(os_llm_workload PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Werror)
 endif()
 
 add_executable(os_llm_cli apps/cli/main.c)
@@ -140,4 +148,17 @@ if(BUILD_TESTING)
         target_compile_options(test_trace_replay PRIVATE -UNDEBUG -Wall -Wextra -Wpedantic -Wconversion -Werror)
     endif()
     add_test(NAME trace_replay COMMAND test_trace_replay)
+
+    add_executable(test_workload tests/unit/test_workload.c)
+    target_link_libraries(test_workload PRIVATE os_core)
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(test_workload PRIVATE -UNDEBUG -Wall -Wextra -Wpedantic -Wconversion -Werror)
+    endif()
+    add_test(NAME workload COMMAND test_workload)
+    add_test(NAME workload_help COMMAND os_llm_workload --help)
+    add_test(NAME workload_seed42 COMMAND os_llm_workload --seed 42 --count 4 --arrival-span 10 --min-tokens 2 --max-tokens 8)
+    set_tests_properties(workload_seed42 PROPERTIES PASS_REGULAR_EXPRESSION "# os-llm-scenario v1 seed=42 distribution=uniform count=4")
+    add_test(NAME cli_seeded_fixture COMMAND os_llm_cli --scenario ${CMAKE_CURRENT_SOURCE_DIR}/scenarios/seed42-v1.csv)
+    add_test(NAME cli_unsupported_scenario_version COMMAND os_llm_cli --scenario ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/scenario-v2.csv)
+    set_tests_properties(cli_unsupported_scenario_version PROPERTIES WILL_FAIL TRUE)
 endif()

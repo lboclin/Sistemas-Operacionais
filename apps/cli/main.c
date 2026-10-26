@@ -54,9 +54,32 @@ static bool load_csv(const char *path, OsRequest *requests, size_t *count) {
     size_t n = 0;
     unsigned line_number = 0;
     bool valid = true;
+    bool versioned = false;
+    size_t declared_count = 0;
     while (fgets(line, sizeof line, fp)) {
         ++line_number;
         if (strchr(line, '\n') == NULL && !feof(fp)) { valid = false; break; }
+        if (strncmp(line, "# os-llm-scenario", 17) == 0) {
+            unsigned version = 0;
+            uint64_t seed = 0;
+            char distribution[24] = {0};
+            size_t declared = 0;
+            char extra;
+            if (versioned || n != 0 ||
+                sscanf(line, "# os-llm-scenario v%u seed=%" SCNu64
+                       " distribution=%23s count=%zu %c",
+                       &version, &seed, distribution, &declared, &extra) != 4 ||
+                version != 1 || declared == 0 || declared > MAX_REQUESTS ||
+                (strcmp(distribution, "uniform") != 0 &&
+                 strcmp(distribution, "burst") != 0 &&
+                 strcmp(distribution, "staggered") != 0)) {
+                valid = false;
+                break;
+            }
+            versioned = true;
+            declared_count = declared;
+            continue;
+        }
         if (line[0] == '#' || line[0] == '\n' || line[0] == '\r') continue;
         uint32_t id, arrival, total, predicted;
         int priority;
@@ -68,7 +91,7 @@ static bool load_csv(const char *path, OsRequest *requests, size_t *count) {
         }
         ++n;
     }
-    if (ferror(fp) || n == 0) valid = false;
+    if (ferror(fp) || n == 0 || (versioned && n != declared_count)) valid = false;
     fclose(fp);
     if (!valid) fprintf(stderr, "Invalid scenario at or near line %u (max %u requests)\n", line_number, MAX_REQUESTS);
     *count = n;
