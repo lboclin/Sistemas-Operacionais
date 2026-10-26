@@ -200,6 +200,11 @@ if(BUILD_TESTING)
         target_compile_options(test_export PRIVATE -UNDEBUG -Wall -Wextra -Wpedantic -Wconversion -Werror)
     endif()
     add_test(NAME export COMMAND test_export)
+    add_test(NAME cli_export_files COMMAND ${CMAKE_COMMAND}
+        "-DCLI=$<TARGET_FILE:os_llm_cli>"
+        "-DSCENARIO=${CMAKE_CURRENT_SOURCE_DIR}/scenarios/seed42-v1.csv"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}"
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/system/verify_export.cmake)
 
     add_test(NAME cli_starvation COMMAND os_llm_cli --policy rr --quantum 1 --starvation-threshold 1 --steps 1 --snapshots)
     set_tests_properties(cli_starvation PROPERTIES PASS_REGULAR_EXPRESSION "snapshot step=1 tick=1.*starving=1")
