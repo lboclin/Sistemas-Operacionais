@@ -4,9 +4,9 @@ Simulador acadêmico de Sistemas Operacionais aplicado a requisições de LLM. R
 
 ## Estado atual
 
-**Protótipo funcional (C11, provisório):** PCB e estados, gateway de admissão, FCFS, SJF estimado/oráculo, RR, prioridade com aging, workers virtuais, relógio de 1 tick/token, p50/p95 e métricas de utilização, traces determinísticos com replay verificável, gerador de cargas com seed, paginação FIFO/LRU online integrada e replay offline FIFO/LRU/Ótimo. A CLI aceita cenários CSV, eventos, execução limitada por passos e snapshots intermediários. Há 34 testes automatizados no CTest, aprovados no CI com GCC, Clang e GCC ASan/UBSan.
+**Protótipo funcional (C11, provisório):** PCB e estados, gateway de admissão, FCFS, SJF estimado/oráculo, RR, prioridade com aging, workers virtuais, relógio de 1 tick/token, p50/p95 e métricas de utilização, traces determinísticos com replay verificável, gerador de cargas com seed, paginação FIFO/LRU online integrada e replay offline FIFO/LRU/Ótimo. A CLI aceita cenários CSV, eventos, execução limitada por passos e snapshots intermediários. Há 37 testes automatizados no CTest, aprovados no CI com GCC, Clang e GCC ASan/UBSan. Exportação JSON/CSV versionada e componentes POSIX isolados (pool pthread e fila protegida) estão disponíveis.
 
-**Ainda não implementado:** threads POSIX reais, mutex e semáforos, IPC, sinais, deadlocks, SJF com média exponencial ou preditor treinado, exportação JSON/CSV de resultados, experimentos completos e interface gráfica. A CLI é apenas uma ferramenta técnica para testar o núcleo; não substitui a GUI planejada.
+**Ainda não implementado:** integração entre threads POSIX, fila, escalonamento e KV cache; IPC, sinais, laboratório de corrida, deadlocks, SJF com média exponencial ou preditor treinado, experimentos completos e interface gráfica. A CLI é apenas uma ferramenta técnica para testar o núcleo; não substitui a GUI planejada.
 
 ## Compilação e testes
 
@@ -62,11 +62,13 @@ Os snapshots exibem contagens por estado, workers, progresso de cada PCB, estat�
 - `src/metrics/`: médias, percentis, traces e eventos de execução/paginação;
 - `src/memory/`: replay offline e cache online de frames FIFO/LRU integrado;
 - `src/workload/`: geração determinística de cenários versionados;
+- `src/results/`: exportação de resultados virtuais como JSON v1 e CSV longo;
+- `src/concurrency/`: pool pthread e fila POSIX independentes;
 - `apps/cli/`: adaptador local de execução;
 - `apps/workload/`: gerador de CSV v1;
 - `tests/`: testes unitários e de integração.
 
-A estrutura de repositório prevê também os módulos futuros em `apps/visual/`, `src/concurrency/`, `src/ipc/`, `src/prediction/`, `src/experiments/` e `tools/`.
+A estrutura prevê também os módulos futuros em `apps/visual/`, `src/ipc/`, `src/prediction/`, `src/experiments/` e `tools/`. A biblioteca separada `os_posix` contém o ciclo de vida pthread e a fila POSIX, ainda não conectados ao motor virtual.
 
 ## Documentação e colaboração
 
@@ -95,3 +97,13 @@ O gerador usa SplitMix64 determinístico, com distribuições `uniform`, `burst`
 ## Métricas de desempenho
 
 O resumo da CLI inclui p50/p95 (espera, resposta e turnaround), espera máxima, utilização dos workers, ticks bloqueados e preempções. O limiar opcional `--starvation-threshold N` marca pedidos concluídos com espera acumulada >= N e pedidos atualmente READY com idade >= N. Os percentis usam nearest-rank e consideram apenas pedidos concluídos. Eventos de despacho/preempção/bloqueio/conclusão permitem gerar intervalos de Gantt, ainda sem interface gráfica.
+
+## Exportar resultados e testar POSIX
+
+```bash
+./build/os_llm_cli --scenario scenarios/seed42-v1.csv --policy rr --quantum 2 \
+  --export-json run.json --export-csv run.csv
+ctest --test-dir build -R '^(export|thread_pool|work_queue)$' --output-on-failure
+```
+
+Os artefatos contêm a entrada, configuração, seed quando disponível, PCBs finais, eventos e métricas; tempos são ticks virtuais. O CSV usa colunas `section,index,field,value`. Detalhes em [src/results/README.md](src/results/README.md). Os testes POSIX exercitam inicialização/parada/join e fila limitada com mutex, semáforos e 4000 itens sob concorrência. O pool **ainda não executa requisições do simulador**. [CI verificado (37/37 × 3)](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40307085061).
