@@ -80,7 +80,7 @@ A validação foi local, com reconstrução das fontes equivalentes ao núcleo p
 - `os_frames_lookup` consulta o índice físico da página lógica (`request_id`, `page_id`) sem alterar métricas nem política de substituição.
 - `os_frames_snapshot_request` oferece uma visão da tabela residente de um pedido, com verificação de capacidade e falha sem escrita parcial. O índice do frame não é estável após mutações; não há tabela redundante para sincronizar.
 - Novo teste `page_tables` em CTest: **22 testes configurados**. O teste novo e o teste `frames` foram compilados e executados isoladamente com GCC e Clang (`-Wall -Wextra -Wpedantic -Wconversion -Werror`) e GCC com ASan/UBSan: 2/2 aprovados em cada configuração. A suíte completa não foi executada nesta alteração.
-- **Implementado no commit 03:** latência opcional por falta de página, BLOCKED/READY, worker liberado, wakeup, consulta por requisição e snapshot com próximo wakeup. **Pendente:** política de pressão de memória/fragmentação e exposição dos mapeamentos na API de sessão.
+- **Implementado no commit 03:** latência opcional por falta de página, BLOCKED/READY, worker liberado, wakeup, consulta por requisição e snapshot com próximo wakeup. **Pendente:** exposição dos mapeamentos na API de sessão; a política de pressão usa evicção FIFO/LRU, e a fragmentação interna é observável no snapshot.
 
 ## Próximas frentes
 
@@ -97,3 +97,11 @@ A validação foi local, com reconstrução das fontes equivalentes ao núcleo p
 A página é inserida no cache ao detectar o fault. Se for evictada durante a espera, o primeiro acesso após o wakeup pode recarregá-la sem segunda espera; o contador registra esse novo miss. Este modelo simplificado evita livelock em pressão extrema, mas **não implementa pinning, fila de I/O, fragmentação nem garantias de residência durante o bloqueio** (commit 04).
 
 Teste novo: `page_fault_latency` (bloqueio, wakeup, snapshot, compatibilidade zero, contenda e overflow). A verificação de CI será registrada após execução, sem antecipar resultados.
+
+## Pressão de frames e fragmentação (commit 04)
+
+Frames são páginas de tamanho fixo. Com capacidade cheia, o cache substitui deterministicamente por FIFO ou LRU; não existe espera por frame livre. O estado BLOCKED representa exclusivamente I/O virtual de page fault, não fila de alocação. Páginas de requisições concluídas são liberadas. Em pressão extrema, uma página reservada por um fault pode ser evictada enquanto o pedido aguarda; o primeiro retry após wakeup não cobra nova latência (limitação didática explícita).
+
+`os_frames_page_at` consulta uma posição física sem alterar relógios ou métricas. `OsSessionSnapshot.free_frames` informa a capacidade livre; `internal_fragmentation_tokens` soma os slots ainda não preenchidos nas páginas **residentes**, incluindo páginas alocadas para I/O pendente. Não há fragmentação externa porque todos os frames têm tamanho fixo. A métrica é instantânea, não pico nem histórico.
+
+Teste novo: `memory_pressure` (golden de fragmentação, pressão FIFO, frame liberado, página durante bloqueio, consulta física). Validação CI registrada na execução correspondente.

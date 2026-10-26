@@ -51,7 +51,7 @@ Os eventos incluem chegadas, despachos, preempções, conclusões, hits, faults 
 
 `--steps N` limita a **N avanços da sessão**; `--steps 0` mostra o estado inicial sem executar tokens. `--snapshots` imprime o estado inicial e o estado após cada passo realizado. Um passo ocioso pode saltar o relógio até a próxima chegada. O relatório final indica `paused` ou `completed`, com `-` para ticks ainda não registrados. Sem limite, a sessão executa até terminar.
 
-Os snapshots exibem contagens por estado, workers, progresso de cada PCB, estatísticas de páginas e o próximo wakeup virtual. O contrato `os_session_request_wakeup` permite consultar o tick de desbloqueio por ID. Em contenda extrema, uma página evictada durante a espera pode ser recarregada no primeiro retry sem segunda latência; pinning/fragmentação seguem pendentes. A CLI **não persiste sessões**: não é possível retomar uma execução em outra invocação. `--trace` pode ser combinado com as opções de inspeção.
+Os snapshots exibem contagens por estado, workers, progresso de cada PCB, estatísticas de páginas, frames livres, fragmentação interna de páginas residentes e o próximo wakeup virtual. O contrato `os_session_request_wakeup` permite consultar o tick de desbloqueio por ID. Em contenda extrema, uma página evictada durante a espera pode ser recarregada no primeiro retry sem segunda latência; pinning/fragmentação seguem pendentes. A CLI **não persiste sessões**: não é possível retomar uma execução em outra invocação. `--trace` pode ser combinado com as opções de inspeção.
 
 ## Módulos existentes
 
