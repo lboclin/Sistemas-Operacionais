@@ -13,7 +13,7 @@ A estimativa abaixo é **tempo de desenvolvimento + revisão + testes por entreg
 | 02 | **Feito** (visões por requisição) | `feat(memory): expose per-request resident page mappings` | Consulta e snapshot de mapeamentos lógico→frame por requisição; eviction/liberação refletidas automaticamente, sem duplicar estado | 40–70 min |
 | 03 | **Feito** (I/O virtual, compatível com custo zero) | `feat(runtime): model page-fault blocking and latency` | Estado BLOCKED, custo virtual, liberação do worker, evento de wakeup, progresso e snapshots consistentes | 60–110 min |
 | 04 | **Feito** (evicção FIFO/LRU e fragmentação interna observável) | `feat(memory): handle capacity and fragmentation` | Pressão de memória, política de espera/evicção explicitada, fragmentação e casos extremos | 35–65 min |
-| 05 | Pendente | `feat(events): provide deterministic traces` | Ordem estável de eventos, rastreabilidade e replay verificável sem reconstrução falsa de estados | 25–45 min |
+| 05 | **Feito** (sequência, hash versionado e replay por reexecução) | `feat(events): provide deterministic traces` | Ordem estável de eventos, rastreabilidade e replay verificável sem reconstrução falsa de estados | 25–45 min |
 | 06 | Pendente | `feat(workload): generate seeded scenarios` | Gerador com seed, múltiplas distribuições, formato versionado, validação e fixtures | 30–60 min |
 | 07 | Pendente | `feat(metrics): add percentiles and utilization` | p50/p95, utilização, espera máxima, tempo bloqueado, preempções e dados para Gantt | 30–60 min |
 | 08 | Pendente | `feat(results): export reproducible runs` | JSON/CSV com versão, entrada, configuração, seed, eventos e medidas | 25–50 min |

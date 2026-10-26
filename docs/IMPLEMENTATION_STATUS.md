@@ -105,3 +105,11 @@ Frames são páginas de tamanho fixo. Com capacidade cheia, o cache substitui de
 `os_frames_page_at` consulta uma posição física sem alterar relógios ou métricas. `OsSessionSnapshot.free_frames` informa a capacidade livre; `internal_fragmentation_tokens` soma os slots ainda não preenchidos nas páginas **residentes**, incluindo páginas alocadas para I/O pendente. Não há fragmentação externa porque todos os frames têm tamanho fixo. A métrica é instantânea, não pico nem histórico.
 
 Teste novo: `memory_pressure` (golden de fragmentação, pressão FIFO, frame liberado, página durante bloqueio, consulta física). Validação CI registrada na execução correspondente.
+
+## Traces determinísticos e verificação (commit 05)
+
+Cada `OsEvent` observado recebe `sequence` monotônico. O módulo `src/metrics/trace.{h,c}` captura eventos em ordem, sinaliza falha de alocação, compara campos explicitamente (sem depender de padding) e calcula fingerprint FNV-1a64 com codificação little-endian e versão `OS_TRACE_VERSION=1`. O hash é de integridade/reprodutibilidade, **não criptográfico**.
+
+`os_trace_verify_replay` reexecuta o mesmo cenário fresco e a mesma configuração em uma sessão independente, comparando eventos por índice; não reconstrói estados de PCB a partir do log. Retorna `OS_RUN_OK` para replay executado mesmo se `matched=false`, e informa o primeiro evento divergente. Ordenação atual: chegada por ordem de entrada, despacho por índice do worker, acessos por índice do worker, conclusão/preempção por worker; callbacks síncronos. Eventos de chegada ao fim de um tick podem preceder wakeups processados no início do próximo passo no mesmo tick virtual.
+
+Teste `trace_replay`: golden de sequência e fingerprint, repetição determinística com faults/RR, alteração de evento e configuração divergente. A CLI `--trace` exibe `seq`.

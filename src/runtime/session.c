@@ -21,6 +21,7 @@ struct OsVirtualSession {
     OsFrameCache cache;
     uint64_t tick;
     uint64_t ready_order;
+    uint64_t event_sequence;
     size_t completed;
     OsEventCallback observer;
     void *context;
@@ -30,7 +31,8 @@ static void emit(OsVirtualSession *s, OsEventType type, uint64_t at,
                  uint32_t request_id, size_t worker, uint32_t page_id) {
     if (s->observer == NULL) return;
     const OsEvent event = {.type = type, .tick = at, .request_id = request_id,
-                            .worker_index = worker, .page_id = page_id};
+                            .worker_index = worker, .page_id = page_id,
+                            .sequence = s->event_sequence++};
     s->observer(&event, s->context);
 }
 

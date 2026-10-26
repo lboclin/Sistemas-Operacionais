@@ -22,6 +22,7 @@ typedef struct {
     uint32_t request_id;
     size_t worker_index; /* SIZE_MAX for events not tied to a worker */
     uint32_t page_id;    /* meaningful only for OS_EVENT_PAGE_* */
+    uint64_t sequence;   /* monotonic emission order within an observed run */
 } OsEvent;
 
 /* Synchronous callback: data is temporary and must be copied if retained.
