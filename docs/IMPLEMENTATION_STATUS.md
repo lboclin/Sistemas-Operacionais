@@ -129,3 +129,7 @@ Teste `workload`: golden de seed 42, determinismo, mudança de seed, distribuiç
 `OsSessionSnapshot.starving_ready` e `max_ready_age_ticks` mostram risco de starvation **em requisições atualmente READY**; esta métrica é instantânea e separada da espera acumulada de concluídos. Ticks bloqueados são somados entre requisições, podendo exceder o makespan em execução paralela. O log de dispatch/preempt/blocked/completed já contém fronteiras temporais úteis para construir um Gantt; a visualização não está implementada.
 
 Teste `metrics_golden`: distribuição de espera `[0,1,3]`, p50/p95 nearest-rank, utilização, preempções, starvation e I/O bloqueado.
+
+## CI de compiladores e sanitizers
+
+O workflow `.github/workflows/ci.yml` executa a mesma suíte CTest em GCC Debug, Clang Debug e GCC com AddressSanitizer/UndefinedBehaviorSanitizer em PRs. Resultados específicos devem ser conferidos no GitHub Actions; a configuração por si só não prova aprovação.
