@@ -101,7 +101,7 @@ O resumo da CLI inclui p50/p95 (espera, resposta e turnaround), espera máxima, 
 ## Exportar resultados e testar POSIX
 
 ```bash
-./build/os_llm_cli --scenario scenarios/seed42-v1.csv --policy rr --quantum 2 \\
+./build/os_llm_cli --scenario scenarios/seed42-v1.csv --policy rr --quantum 2 \
   --export-json run.json --export-csv run.csv
 ctest --test-dir build -R '^(export|thread_pool|work_queue)$' --output-on-failure
 ```
