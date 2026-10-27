@@ -43,6 +43,18 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(os_posix PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Werror)
 endif()
 
+# POSIX pipe transport is isolated from the deterministic core.
+add_library(os_ipc STATIC src/ipc/pipe_channel.c)
+target_include_directories(os_ipc PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/ipc)
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(os_ipc PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Werror)
+endif()
+add_executable(os_llm_ipc_demo apps/ipc_demo/main.c)
+target_link_libraries(os_llm_ipc_demo PRIVATE os_ipc)
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(os_llm_ipc_demo PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Werror)
+endif()
+
 # Standalone process-isolated race demonstration (never linked into os_core).
 add_executable(os_llm_race_lab apps/race_lab/main.c)
 target_link_libraries(os_llm_race_lab PRIVATE Threads::Threads)
@@ -244,6 +256,17 @@ if(BUILD_TESTING)
     add_test(NAME race_unsafe COMMAND os_llm_race_lab unsafe)
     set_tests_properties(race_unsafe PROPERTIES TIMEOUT 6
         PASS_REGULAR_EXPRESSION "mode=unsafe expected=2 observed=1 lost=1")
+
+    add_executable(test_pipe_channel tests/concurrency/test_pipe_channel.c)
+    target_link_libraries(test_pipe_channel PRIVATE os_ipc)
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(test_pipe_channel PRIVATE -UNDEBUG -Wall -Wextra -Wpedantic -Wconversion -Werror)
+    endif()
+    add_test(NAME pipe_channel COMMAND test_pipe_channel)
+    set_tests_properties(pipe_channel PROPERTIES TIMEOUT 5)
+    add_test(NAME ipc_demo COMMAND os_llm_ipc_demo)
+    set_tests_properties(ipc_demo PROPERTIES TIMEOUT 5
+        PASS_REGULAR_EXPRESSION "gateway sent=hello ipc worker replied=HELLO IPC")
 
     add_test(NAME cli_starvation COMMAND os_llm_cli --policy rr --quantum 1 --starvation-threshold 1 --steps 1 --snapshots)
     set_tests_properties(cli_starvation PROPERTIES PASS_REGULAR_EXPRESSION "snapshot step=1 tick=1.*starving=1")

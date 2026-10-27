@@ -1,13 +1,13 @@
 # Estratégia de testes
 
-> Atualizado em 26/10/2026. Núcleo C11 virtual testado; laboratório POSIX, exportação de resultados e interface ainda pendentes.
+> Atualizado em 26/10/2026. Núcleo virtual, POSIX e exportação implementados parcialmente; GUI e integração IPC pendentes.
 
 | Tipo | Cobertura atual | Pendente |
 |---|---|---|
 | Unidade | PCB, gateway, FIFO/LRU/OPT, tabelas, gerador com seed | novos contratos POSIX |
 | Integração | gateway→scheduler→runtime→memória→eventos, snapshots, page faults, replay e percentis | exportação JSON/CSV e pthreads |
 | Sistema/CLI | cenários legados/v1, limites, tracing, snapshots, flags inválidas | fluxos E2E com exportação |
-| Concorrência | ainda não implementada | mutex, semáforo, race isolada, deadlock e watchdog |
+| Concorrência | pool pthread, fila POSIX, race isolada, grafo de deadlock, IPC com pipes/fork | deadlock real pthread, integração IPC e SIGUSR1 |
 | Interface | ainda não implementada | GUI e testes E2E após escolha da stack |
 
 ## Execução
@@ -25,3 +25,5 @@ O [GitHub Actions run 40255073092](https://github.com/fragaeduardo/OS-llm-projec
 Nenhum PCB em dois workers simultaneamente; nunca alocar além dos frames configurados; despertar requisições bloqueadas sem livelock; garantir que o preditor não enxergue resposta real; tratamento de `SIGUSR1` fora do handler; corrida e deadlock isolados com timeout/watchdog. Os testes de concorrência não devem depender de uma corrida acontecer necessariamente.
 
 Ver [especificação funcional](FUNCTIONAL_SPEC.md).
+
+Commit 15: testes pipe_channel e ipc_demo (45 configurados, 43 anteriormente aprovados no CI). Os novos testes passaram isoladamente em GCC/Clang/ASan; a matriz completa precisa de validação no PR.
