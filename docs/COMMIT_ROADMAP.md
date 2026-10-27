@@ -42,6 +42,8 @@ Os commits 11–14 foram publicados em PRs separados após CI: [#12](https://git
 
 Se houver falha de teste, incompatibilidade de contrato, autorização ausente ou mudanças de colegas, parar/replanejar sem forçar escrita. Nunca recriar ou sobrescrever commits alheios.
 
-## O restante da aplicação (15–28, ainda não agendado)
+## O restante da aplicação (15–28, em andamento)
 
-Conforme o [plano funcional](FUNCTIONAL_SPEC.md): IPC POSIX, SIGUSR1, SJF-EMA, treino offline e integração do preditor, geração/coleta com LLM, quatro experimentos, relatórios, decisão e adaptação da interface visual web/desktop, telas de escalonamento/memória/concorrência, testes ponta a ponta, CI e entrega final. Reestimar depois do commit 14 porque as escolhas de linguagem e interface ainda estão abertas.
+**Commit 15 (F12 parcial, em validação):** transporte POSIX por pipe com framing e demo gateway/worker em processos reais. Dois testes novos: framing e round-trip. A integração IPC com o runtime principal permanece pendente; só declarar concluído após CI do PR.
+
+Próximos: integração IPC, SIGUSR1, SJF-EMA, treino e integração do preditor, coleta com LLM, experimentos, relatórios, decisão da GUI e telas de escalonamento/memória/concorrência, testes E2E e entrega final. Linguagem e interface ainda são decisões abertas.

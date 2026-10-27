@@ -17,6 +17,7 @@
 | F09 Deadlock | Parcial | grafo didático de espera, ciclo, prevenção por ordem global e recuperação controlada; não simula travamento real de mutexes pthread |
 | F10 Memória KV simulada | Parcial | frames online por página, evicção FIFO/LRU, fragmentação interna e bloqueio opcional por fault; sem pinning |
 | F11 Substituição | Parcial | FIFO/LRU online e FIFO/LRU/OPT offline |
+| F12 IPC | Parcial | pipe POSIX entre processos em demo isolada; não integrado ao runtime |
 | F16 Métricas/eventos | Parcial | médias, p50/p95, utilização, espera máxima, starvation por limiar, traces e replay por reexecução |
 | Snapshots/stepping | Implementado no motor virtual | sessão opaca, snapshots entre passos; sem persistência nem GUI |
 | F20 Testes | Parcial | 43 testes CTest aprovados em três configurações no CI; faltam experimentos, IPC, GUI e estresse do sistema completo |
@@ -153,3 +154,7 @@ Os três commits foram publicados após aprovação de CI em PRs separados. **Na
 - [021fd78](https://github.com/fragaeduardo/OS-llm-project/commit/021fd78834b70c9470ecd7a28261b13866348285): aquisição não bloqueante por ordem global, liberação controlada da vítima e 1000 ciclos de recuperação/progresso com timeout CTest de 5s.
 
 **Limites:** a execução POSIX confirma tokens simulados, não executa modelo LLM. O detector e a recuperação de deadlock operam sobre um grafo didático, sem bloquear/desbloquear mutexes reais; não substituem laboratório de deadlock pthread ou detecção em runtime integrado. Os 14 commits do primeiro bloco do roadmap estão entregues no escopo acima, mas a aplicação acadêmica completa permanece pendente.
+
+## IPC POSIX — F12 parcial (commit 15, PR de validação)
+
+Transporte independente src/ipc/pipe_channel.c com framing big-endian de 4 bytes, limite 65536 bytes, retries EINTR, EOF/truncamento e validação de buffer. Demo apps/ipc_demo/main.c usa fork e dois pipes para round-trip gateway/worker. Dois testes CTest adicionais: pipe_channel e ipc_demo (45 configurados). Testes isolados aprovados localmente com GCC 14, Clang 17 e GCC ASan/UBSan; o demo passou com GCC. A suíte integral de 45 precisa de validação CI antes do merge. Não há conexão com PCBs/runtime nem tratamento de SIGUSR1. SIGPIPE fica sob responsabilidade do chamador.

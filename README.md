@@ -6,7 +6,7 @@ Simulador acadêmico de Sistemas Operacionais aplicado a requisições de LLM. R
 
 **Protótipo funcional (C11, provisório):** PCB e estados, gateway de admissão, FCFS, SJF estimado/oráculo, RR, prioridade com aging, workers virtuais, relógio de 1 tick/token, p50/p95 e métricas de utilização, traces determinísticos com replay verificável, gerador de cargas com seed, paginação FIFO/LRU online integrada e replay offline FIFO/LRU/Ótimo. A CLI aceita cenários CSV, eventos, execução limitada por passos e snapshots intermediários. Há 43 testes automatizados no CTest, aprovados no CI com GCC, Clang e GCC ASan/UBSan. Exportação JSON/CSV versionada, adaptador POSIX com pthreads/fila, race lab isolado e grafo didático de deadlock estão disponíveis.
 
-**Ainda não implementado:** inferência real nos workers, deadlock real entre mutexes do runtime e memória, IPC, sinais, SJF com média exponencial ou preditor treinado, experimentos completos e interface gráfica. A CLI é apenas uma ferramenta técnica para testar o núcleo; não substitui a GUI planejada.
+**Ainda não implementado:** inferência real nos workers, deadlock real entre mutexes do runtime e memória, integração do IPC ao runtime, sinais, SJF com média exponencial ou preditor treinado, experimentos completos e interface gráfica. O IPC por pipes existe como laboratório isolado entre dois processos reais. A CLI é apenas uma ferramenta técnica para testar o núcleo; não substitui a GUI planejada.
 
 ## Compilação e testes
 
@@ -64,6 +64,7 @@ Os snapshots exibem contagens por estado, workers, progresso de cada PCB, estat�
 - `src/workload/`: geração determinística de cenários versionados;
 - `src/results/`: exportação de resultados virtuais como JSON v1 e CSV longo;
 - `src/concurrency/`: pool pthread, fila POSIX, adaptador de execução com ACK por token e grafo de deadlock;
+- `src/ipc/`: pipes POSIX com framing e demonstração de comunicação entre processos;
 - `apps/cli/`: adaptador local de execução;
 - `apps/workload/`: gerador de CSV v1;
 - `apps/race_lab/`: laboratório safe/unsafe isolado por subprocesso;
@@ -108,3 +109,7 @@ ctest --test-dir build -R '^(export|thread_pool|work_queue|parallel_runtime|race
 ```
 
 Os artefatos contêm a entrada, configuração, seed quando disponível, PCBs finais, eventos e métricas; tempos são ticks virtuais. O CSV usa colunas `section,index,field,value`. Detalhes em [src/results/README.md](src/results/README.md). Os testes POSIX exercitam inicialização/parada/join, fila limitada com 4000 itens, execução do adaptador com invariantes de exclusividade, race lab isolado e detecção/recuperação em grafo. O pool confirma tarefas simuladas de token, mas não faz inferência real. O deadlock modelado não bloqueia mutexes reais. [CI verificado (43/43 × 3)](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40387581428).
+
+## IPC entre processos (F12 parcial)
+
+Execute o programa os_llm_ipc_demo para observar gateway e worker trocando mensagens por dois pipes POSIX. Os testes CTest pipe_channel e ipc_demo cobrem o protocolo e o round-trip. A integração com o motor principal e SIGUSR1 continuam pendentes. Os dois testes novos elevam o total configurado para 45; a matriz completa precisa de validação no CI do PR. Consulte src/ipc/README.md.
