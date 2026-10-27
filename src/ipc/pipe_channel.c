@@ -26,8 +26,8 @@ static OsIpcStatus read_exact(int fd, unsigned char *data, size_t size, bool hea
     return OS_IPC_OK;
 }
 OsIpcStatus os_ipc_write_frame(int fd, const void *payload, size_t length) {
-    if (fd < 0 || length > OS_IPC_MAX_PAYLOAD || (length && payload == NULL))
-        return OS_IPC_INVALID;
+    if (fd < 0 || (length && payload == NULL)) return OS_IPC_INVALID;
+    if (length > OS_IPC_MAX_PAYLOAD) return OS_IPC_TOO_LARGE;
     const uint32_t n = (uint32_t)length;
     const unsigned char header[4] = {
         (unsigned char)(n >> 24), (unsigned char)(n >> 16),

@@ -66,7 +66,7 @@ int main(void) {
     size_t n = 7;
     assert(os_ipc_write_frame(-1, "a", 1) == OS_IPC_INVALID);
     assert(os_ipc_write_frame(1, NULL, 1) == OS_IPC_INVALID);
-    assert(os_ipc_write_frame(1, "a", OS_IPC_MAX_PAYLOAD + 1u) == OS_IPC_INVALID);
+    assert(os_ipc_write_frame(1, "a", OS_IPC_MAX_PAYLOAD + 1u) == OS_IPC_TOO_LARGE);
     assert(os_ipc_read_frame(-1, NULL, 0, &n) == OS_IPC_INVALID);
     assert(os_ipc_read_frame(0, NULL, 1, &n) == OS_IPC_INVALID);
     assert(os_ipc_read_frame(0, NULL, 0, NULL) == OS_IPC_INVALID);
