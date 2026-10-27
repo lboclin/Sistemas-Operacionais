@@ -1,3 +1,4 @@
+#define _XOPEN_SOURCE 700
 #include "request.h"
 #include "scheduler.h"
 #include "session.h"
@@ -13,6 +14,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #define MAX_REQUESTS 256
 
@@ -90,10 +93,11 @@ static bool load_csv(const char *path, OsRequest *requests, size_t *count,
             continue;
         }
         if (line[0] == '#' || line[0] == '\n' || line[0] == '\r') continue;
-        uint32_t id, arrival, total, predicted;
+        uint32_t id, total, predicted;
+        uint64_t arrival;
         int priority;
         char extra;
-        if (sscanf(line, " %" SCNu32 " , %" SCNu32 " , %" SCNu32 " , %" SCNu32 " , %d %c",
+        if (sscanf(line, " %" SCNu32 " , %" SCNu64 " , %" SCNu32 " , %" SCNu32 " , %d %c",
                    &id, &arrival, &total, &predicted, &priority, &extra) != 5 ||
             n == MAX_REQUESTS || !os_request_init(&requests[n], id, arrival, total, predicted, priority)) {
             valid = false; break;
@@ -131,15 +135,110 @@ static void capture_and_print(const OsEvent *event, void *context) {
     if (observer->print) print_event(event, NULL);
 }
 
-static bool write_export(const char *path, bool json, const OsRunArtifact *artifact) {
-    FILE *out = fopen(path, "wb");
-    if (out == NULL) { perror(path); return false; }
-    bool ok = json ? os_export_json(out, artifact) : os_export_csv(out, artifact);
-    if (fclose(out) != 0) ok = false;
-    if (!ok) {
-        (void)remove(path);
-        fprintf(stderr, "Could not write export: %s\n", path);
+static char *canonical_path(const char *path) {
+    char *resolved = realpath(path, NULL);
+    if (resolved != NULL) return resolved;
+    char *copy = strdup(path);
+    if (copy == NULL) return NULL;
+    char *slash = strrchr(copy, '/');
+    const char *base = copy;
+    char *directory = NULL;
+    if (slash != NULL) {
+        *slash = '\0';
+        base = slash + 1;
+        directory = realpath(copy[0] == '\0' ? "/" : copy, NULL);
+    } else {
+        directory = realpath(".", NULL);
     }
+    if (directory == NULL || *base == '\0') {
+        free(copy);
+        free(directory);
+        return NULL;
+    }
+    const size_t length = strlen(directory) + strlen(base) + 2;
+    char *result = malloc(length);
+    if (result != NULL) (void)snprintf(result, length, "%s/%s", directory, base);
+    free(copy);
+    free(directory);
+    return result;
+}
+
+static bool paths_alias(const char *left, const char *right) {
+    struct stat left_stat, right_stat;
+    if (stat(left, &left_stat) == 0 && stat(right, &right_stat) == 0 &&
+        left_stat.st_dev == right_stat.st_dev && left_stat.st_ino == right_stat.st_ino)
+        return true;
+    char *a = canonical_path(left);
+    char *b = canonical_path(right);
+    const bool same = a != NULL && b != NULL && strcmp(a, b) == 0;
+    free(a);
+    free(b);
+    return same;
+}
+
+static bool stage_export(const char *path, bool json, const OsRunArtifact *artifact,
+                         char **temporary_path) {
+    const size_t length = strlen(path) + sizeof ".tmp.XXXXXX";
+    char *temp = malloc(length);
+    if (temp == NULL) return false;
+    (void)snprintf(temp, length, "%s.tmp.XXXXXX", path);
+    const int fd = mkstemp(temp);
+    if (fd < 0) {
+        perror(path);
+        free(temp);
+        return false;
+    }
+    FILE *out = fdopen(fd, "wb");
+    bool ok = out != NULL;
+    if (ok) {
+        ok = json ? os_export_json(out, artifact) : os_export_csv(out, artifact);
+        if (fclose(out) != 0) ok = false;
+    } else {
+        (void)close(fd);
+    }
+    if (!ok) {
+        (void)unlink(temp);
+        fprintf(stderr, "Could not write export: %s\n", path);
+        free(temp);
+        return false;
+    }
+    *temporary_path = temp;
+    return true;
+}
+
+static bool write_exports(const char *json_path, const char *csv_path,
+                          const OsRunArtifact *artifact) {
+    char *json_target = json_path == NULL ? NULL : canonical_path(json_path);
+    char *csv_target = csv_path == NULL ? NULL : canonical_path(csv_path);
+    char *json_temp = NULL;
+    char *csv_temp = NULL;
+    if ((json_path != NULL && json_target == NULL) ||
+        (csv_path != NULL && csv_target == NULL) ||
+        (json_path != NULL && !stage_export(json_target, true, artifact, &json_temp)) ||
+        (csv_path != NULL && !stage_export(csv_target, false, artifact, &csv_temp))) {
+        if (json_temp != NULL) { (void)unlink(json_temp); free(json_temp); }
+        if (csv_temp != NULL) { (void)unlink(csv_temp); free(csv_temp); }
+        free(json_target);
+        free(csv_target);
+        return false;
+    }
+    bool ok = true;
+    if (json_temp != NULL && rename(json_temp, json_target) != 0) {
+        perror(json_target);
+        ok = false;
+    }
+    if (ok && csv_temp != NULL && rename(csv_temp, csv_target) != 0) {
+        perror(csv_target);
+        ok = false;
+    }
+    if (!ok) {
+        if (json_temp != NULL) (void)unlink(json_temp);
+        if (csv_temp != NULL) (void)unlink(csv_temp);
+    }
+    free(json_temp);
+    free(csv_temp);
+    free(json_target);
+    free(csv_target);
     return ok;
 }
 
@@ -249,9 +348,10 @@ int main(int argc, char **argv) {
         fputs("--page-tokens, --page-policy and --page-fault-latency require --frames\n", stderr);
         return 2;
     }
-    if (export_json != NULL && export_csv != NULL &&
-        strcmp(export_json, export_csv) == 0) {
-        fputs("JSON and CSV output paths must differ\n", stderr);
+    if ((scenario != NULL && export_json != NULL && paths_alias(scenario, export_json)) ||
+        (scenario != NULL && export_csv != NULL && paths_alias(scenario, export_csv)) ||
+        (export_json != NULL && export_csv != NULL && paths_alias(export_json, export_csv))) {
+        fputs("Scenario and export paths must be different files\n", stderr);
         return 2;
     }
     OsRequest requests[MAX_REQUESTS];
@@ -356,8 +456,7 @@ int main(int argc, char **argv) {
             .count = count, .config = &cfg, .metrics = &summary,
             .trace = &captured, .finished = finished,
             .scenario_source = scenario != NULL, .has_seed = has_seed, .seed = seed};
-        if ((export_json != NULL && !write_export(export_json, true, &artifact)) ||
-            (export_csv != NULL && !write_export(export_csv, false, &artifact))) {
+        if (!write_exports(export_json, export_csv, &artifact)) {
             os_trace_destroy(&captured);
             return 1;
         }

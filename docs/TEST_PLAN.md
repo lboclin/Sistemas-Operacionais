@@ -18,7 +18,7 @@ cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
 
-O [GitHub Actions run 40255073092](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40255073092) confirmou **34/34** testes em GCC Debug, Clang Debug e GCC ASan/UBSan. A suíte é baseada em asserts, mantidos ativos mesmo com NDEBUG para os alvos registrados. Os testes golden incluem page fault, fragmentação, fingerprint de trace, seed 42 e percentis nearest-rank.
+Uma execução histórica na origem confirmou **34/34** testes em GCC Debug, Clang Debug e GCC ASan/UBSan; seus logs não foram migrados. Consulte as [execuções deste repositório](https://github.com/lboclin/Sistemas-Operacionais/actions). A suíte é baseada em asserts, mantidos ativos mesmo com NDEBUG para os alvos registrados. Os testes golden incluem page fault, fragmentação, fingerprint de trace, seed 42 e percentis nearest-rank.
 
 ## Riscos que continuam exigindo testes
 
@@ -26,4 +26,4 @@ Nenhum PCB em dois workers simultaneamente; nunca alocar além dos frames config
 
 Ver [especificação funcional](FUNCTIONAL_SPEC.md).
 
-Commit 15: testes pipe_channel e ipc_demo (45 configurados, 43 anteriormente aprovados no CI). Os novos testes passaram isoladamente em GCC/Clang/ASan; o [CI 40427656618](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40427656618) também concluiu com sucesso nas três configurações, com 45 testes CTest configurados.
+Commit 15: testes pipe_channel e ipc_demo (45 configurados, 43 anteriormente aprovados no CI). Os novos testes passaram isoladamente em GCC/Clang/ASan; o CI histórico da origem também concluiu com sucesso nas três configurações, com 45 testes CTest configurados.

@@ -52,4 +52,30 @@ foreach(required IN ITEMS
         message(FATAL_ERROR "Paused JSON missing ${required}")
     endif()
 endforeach()
+
+file(SHA256 "${SCENARIO}" scenario_before)
+execute_process(
+    COMMAND "${CLI}" --scenario "${SCENARIO}" --export-json "${SCENARIO}"
+    RESULT_VARIABLE rc OUTPUT_VARIABLE output ERROR_VARIABLE error
+)
+if(rc EQUAL 0)
+    message(FATAL_ERROR "Export to the input scenario should be rejected")
+endif()
+file(SHA256 "${SCENARIO}" scenario_after)
+if(NOT scenario_before STREQUAL scenario_after)
+    message(FATAL_ERROR "Rejected export modified the input scenario")
+endif()
+
+file(SHA256 "${json}" json_before)
+execute_process(
+    COMMAND "${CLI}" --export-json "${json}" --export-csv "${OUTPUT_DIR}/./cli-export-smoke.json"
+    RESULT_VARIABLE rc OUTPUT_VARIABLE output ERROR_VARIABLE error
+)
+if(rc EQUAL 0)
+    message(FATAL_ERROR "Aliased JSON and CSV output paths should be rejected")
+endif()
+file(SHA256 "${json}" json_after)
+if(NOT json_before STREQUAL json_after)
+    message(FATAL_ERROR "Rejected aliased export modified the existing output")
+endif()
 file(REMOVE "${json}" "${csv}" "${paused}")

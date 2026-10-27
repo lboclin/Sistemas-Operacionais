@@ -59,7 +59,7 @@ static int supervise(const char *program, const char *mode) {
     if (pid < 0) return 2;
     if (pid == 0) {
         char *const args[] = {(char *)program, "--child", (char *)mode, NULL};
-        execv(program, args);
+        execvp(program, args);
         _exit(127);
     }
     struct timespec now;

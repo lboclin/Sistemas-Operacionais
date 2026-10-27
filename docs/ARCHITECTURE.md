@@ -1,9 +1,9 @@
 # LLM OS Lab — Plano 01: arquitetura e organização do repositório
 
-> **Estado:** proposta de organização, pronta para orientar a criação de um repositório no GitHub. **Nenhum código foi implementado.**  
+> **Estado:** documento de planejamento inicial; a implementação evoluiu e está registrada em `IMPLEMENTATION_STATUS.md`.
 > **Data:** 23/10/2026  
 > **Origem do escopo:** *LLM-Sched: um mini sistema operacional para servir requisições de LLM*, proposta da disciplina de Sistemas Operacionais.  
-> **Repositório:** `OS-llm-project` (privado, criado em `fragaeduardo`).  
+> **Repositório:** `Sistemas-Operacionais` (público, mantido por `lboclin`).
 > **Decisões deliberadamente pendentes:** C11 ou C++20; interface web ou desktop e seu framework; bibliotecas de teste; protocolo definitivo de comunicação entre interface e motor; pipe ou memória compartilhada POSIX para IPC; política exata para simulação versus concorrência real.
 
 ## 1. Objetivo desta etapa

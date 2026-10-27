@@ -121,6 +121,8 @@ if(BUILD_TESTING)
     add_test(NAME cli_help COMMAND os_llm_cli --help)
     add_test(NAME cli_round_robin COMMAND os_llm_cli --policy rr --quantum 2)
     add_test(NAME cli_scenario COMMAND os_llm_cli --scenario ${CMAKE_CURRENT_SOURCE_DIR}/scenarios/sample.csv)
+    add_test(NAME cli_u64_arrival COMMAND os_llm_cli --scenario ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/large-arrival.csv --steps 0)
+    set_tests_properties(cli_u64_arrival PROPERTIES PASS_REGULAR_EXPRESSION "1 +4294967296")
     add_test(NAME cli_memory_trace COMMAND os_llm_cli --frames 2 --page-tokens 2 --page-policy lru --trace)
     add_test(NAME cli_invalid_online_opt COMMAND os_llm_cli --frames 2 --page-policy opt)
     set_tests_properties(cli_invalid_online_opt PROPERTIES WILL_FAIL TRUE)
@@ -251,6 +253,10 @@ if(BUILD_TESTING)
     set_tests_properties(deadlock_graph PROPERTIES TIMEOUT 5)
 
     add_test(NAME race_safe COMMAND os_llm_race_lab safe)
+    add_test(NAME race_safe_path COMMAND ${CMAKE_COMMAND} -E env
+        "PATH=$<TARGET_FILE_DIR:os_llm_race_lab>:$ENV{PATH}" os_llm_race_lab safe)
+    set_tests_properties(race_safe_path PROPERTIES TIMEOUT 6
+        PASS_REGULAR_EXPRESSION "mode=safe expected=2 observed=2 lost=0")
     set_tests_properties(race_safe PROPERTIES TIMEOUT 6
         PASS_REGULAR_EXPRESSION "mode=safe expected=2 observed=2 lost=0")
     add_test(NAME race_unsafe COMMAND os_llm_race_lab unsafe)
