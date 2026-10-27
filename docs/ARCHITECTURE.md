@@ -343,11 +343,6 @@ A ordem é **de integração**, não de início dos trabalhos: UI, documentaçã
 
 ## 12. Relação com o Plano 02
 
-Este arquivo responde **onde ficam as coisas, quem é responsável, o que pode depender de quê e como colaborar**. O arquivo [`02_ESPECIFICACAO_FUNCIONAL_LLM_OS_LAB.md`](02_ESPECIFICACAO_FUNCIONAL_LLM_OS_LAB.md) responde **o que cada funcionalidade deve fazer, como validar e quais decisões permanecem alternativas**.
-
-### Base consultada
-
-- Proposta acadêmica original do grupo (arquivo `.docx` recebido na conversa), seções 1–6.
-- Skills *Eduardo Skills Graph*: `repository-architecture`, `modular-design-principles`, `testes-e-qualidade` e orientações de documentação/UX previamente consultadas.
+Este arquivo descreve a organização inicial do repositório. A [especificação funcional](FUNCTIONAL_SPEC.md) descreve o comportamento esperado e os critérios de validação.
 
 > **Importante:** este documento é um planejamento, não uma alegação de que o GitHub, CI, frontend, testes ou funções já estejam implementados.

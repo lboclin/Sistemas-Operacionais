@@ -1,6 +1,6 @@
 # Estado da implementação
 
-> Atualizado em 26/10/2026. Descreve o código da branch `main`. O projeto acadêmico ainda não está completo.
+> Atualizado em 27/10/2026. Descreve o código da branch `main`. O projeto acadêmico ainda não está completo.
 
 ## Entregue e limitações
 
@@ -20,7 +20,7 @@
 | F12 IPC | Parcial | pipe POSIX entre processos em demo isolada; não integrado ao runtime |
 | F16 Métricas/eventos | Parcial | médias, p50/p95, utilização, espera máxima, starvation por limiar, traces e replay por reexecução |
 | Snapshots/stepping | Implementado no motor virtual | sessão opaca, snapshots entre passos; sem persistência nem GUI |
-| F20 Testes | Parcial | 45 testes CTest aprovados em três configurações no CI; faltam experimentos, IPC integrado, GUI e estresse do sistema completo |
+| F20 Testes | Parcial | 47 testes CTest configurados; faltam experimentos, IPC integrado, GUI e estresse do sistema completo |
 
 ## Funcionalidades verificáveis agora
 
@@ -56,15 +56,7 @@ ctest --test-dir build --output-on-failure
 
 ## Testes
 
-Validação remota dos 43 testes anteriores, após os commits 11–14, ocorreu na origem. Os logs do Actions não foram migrados; consulte as [execuções deste repositório](https://github.com/lboclin/Sistemas-Operacionais/actions).
-
-- GCC Debug: **43/43** (antes do IPC).
-- Clang Debug: **43/43** (antes do IPC).
-- GCC com AddressSanitizer + UndefinedBehaviorSanitizer: **43/43** (antes do IPC).
-
-Após F12, o CI da origem concluiu com sucesso nos três compiladores/configurações, com **45 testes CTest configurados**. Os logs não foram migrados; consulte as [execuções atuais](https://github.com/lboclin/Sistemas-Operacionais/actions).
-
-A matriz cobre núcleo virtual, CLIs, exportação, fila POSIX (4000 itens), integração do adaptador pthread com o escalonador/cache (comparação de traces), race lab em subprocesso e detector/prevenção/recuperação do grafo de deadlock (1000 ciclos). **Não** cobre deadlock real de mutexes pthread, IPC, GUI, experimentos ou ThreadSanitizer.
+Os 47 testes CTest cobrem o núcleo virtual, CLI, exportação, fila POSIX, integração do adaptador pthread com o escalonador/cache, race lab em subprocesso, grafo de deadlock e IPC por pipes. Não cobrem deadlock real de mutexes pthread, GUI, experimentos ou ThreadSanitizer.
 
 ## Restrições explícitas
 
@@ -80,14 +72,14 @@ A matriz cobre núcleo virtual, CLIs, exportação, fila POSIX (4000 itens), int
 
 - A validação de um PCB ainda não admitido agora é centralizada em `os_request_is_fresh` (`src/core/`), aplicada tanto em `os_gateway_validate` quanto em `os_gateway_admit`.
 - Campos indevidamente preenchidos antes da admissão (`ready_tick`, `ready_order`, marcas de execução, contadores) passam a ser rejeitados sem modificar a estrutura.
-- Novo teste `fresh_pcb` registrado em CTest: **22 testes configurados** no projeto. O novo teste foi executado isoladamente com GCC, Clang e ASan/UBSan (aprovado); a suíte integral não foi reexecutada nesta alteração.
-- Planejamento dos próximos commits: [COMMIT_ROADMAP.md](COMMIT_ROADMAP.md). Tempos são estimativas de trabalho, não datas de commit fabricadas.
+- O teste `fresh_pcb` verifica a rejeição de PCBs com campos de execução preenchidos antes da admissão.
+- [Roadmap de implementação](COMMIT_ROADMAP.md).
 
 ## Mapeamento de páginas residentes por requisição (25/10/2026)
 
 - `os_frames_lookup` consulta o índice físico da página lógica (`request_id`, `page_id`) sem alterar métricas nem política de substituição.
 - `os_frames_snapshot_request` oferece uma visão da tabela residente de um pedido, com verificação de capacidade e falha sem escrita parcial. O índice do frame não é estável após mutações; não há tabela redundante para sincronizar.
-- Novo teste `page_tables` em CTest: **22 testes configurados**. O teste novo e o teste `frames` foram compilados e executados isoladamente com GCC e Clang (`-Wall -Wextra -Wpedantic -Wconversion -Werror`) e GCC com ASan/UBSan: 2/2 aprovados em cada configuração. A suíte completa não foi executada nesta alteração.
+- O teste `page_tables` verifica as consultas de páginas residentes por requisição e o comportamento dos snapshots.
 - **Implementado no commit 03:** latência opcional por falta de página, BLOCKED/READY, worker liberado, wakeup, consulta por requisição e snapshot com próximo wakeup. **Pendente:** exposição dos mapeamentos na API de sessão; a política de pressão usa evicção FIFO/LRU, e a fragmentação interna é observável no snapshot.
 
 ## Próximas frentes
@@ -138,7 +130,7 @@ Teste `metrics_golden`: distribuição de espera `[0,1,3]`, p50/p95 nearest-rank
 
 ## CI de compiladores e sanitizers
 
-O workflow `.github/workflows/ci.yml` executa a mesma suíte CTest em GCC Debug, Clang Debug e GCC com AddressSanitizer/UndefinedBehaviorSanitizer em PRs. A primeira execução da matriz na origem passou com 34/34 em cada configuração; logs da origem não foram migrados.
+O workflow `.github/workflows/ci.yml` executa a suíte CTest em GCC Debug, Clang Debug e GCC com AddressSanitizer/UndefinedBehaviorSanitizer em pull requests e por execução manual.
 
 ## Exportação e base POSIX (commits 08–10, 26/10)
 
@@ -146,7 +138,7 @@ O workflow `.github/workflows/ci.yml` executa a mesma suíte CTest em GCC Debug,
 - [1523d7f](https://github.com/lboclin/Sistemas-Operacionais/commit/1523d7f19934ba33ef4d1b9a1813a6df15c653f8): biblioteca `os_posix` com pool pthread real, índices de workers, solicitação de parada, espera por condição, join e limpeza após falha parcial de inicialização. Callbacks devem respeitar parada cooperativa; ainda não há submissão de jobs ao pool.
 - [a390a53](https://github.com/lboclin/Sistemas-Operacionais/commit/a390a53a97a21eda465b2fb4855eb655a4c906ae): fila limitada de valores com mutex e semáforos POSIX, bloqueio de produtores/consumidores, `close` que acorda bloqueados e drena itens, stress 4 produtores × 4 consumidores × 1000 itens. `destroy` requer que as threads tenham terminado. A fila ainda não está acoplada ao pool.
 
-Os três commits foram publicados após aprovação de CI em PRs separados. **Na etapa 08–10** ainda não existia runtime POSIX integrado; a integração posterior está descrita no bloco E. A interface gráfica segue pendente.
+**Na etapa 08–10** ainda não existia runtime POSIX integrado; a integração posterior está descrita no bloco E. A interface gráfica segue pendente.
 
 ## Bloco E — integração e laboratórios (26/10/2026)
 
@@ -159,4 +151,4 @@ Os três commits foram publicados após aprovação de CI em PRs separados. **Na
 
 ## IPC POSIX — F12 parcial (commit 15, incorporado à main)
 
-Transporte independente src/ipc/pipe_channel.c com framing big-endian de 4 bytes, limite 65536 bytes, retries EINTR, EOF/truncamento e validação de buffer. Demo apps/ipc_demo/main.c usa fork e dois pipes para round-trip gateway/worker. Dois testes CTest adicionais: pipe_channel e ipc_demo (45 configurados). Testes isolados aprovados localmente com GCC 14, Clang 17 e GCC ASan/UBSan; o demo passou com GCC. A suíte de 45 testes foi aprovada nas três configurações do CI da origem, antes da migração; logs e PRs da origem não foram migrados. Consulte as [execuções atuais](https://github.com/lboclin/Sistemas-Operacionais/actions). Não há conexão com PCBs/runtime nem tratamento de SIGUSR1. SIGPIPE fica sob responsabilidade do chamador.
+Transporte independente `src/ipc/pipe_channel.c` com framing big-endian de 4 bytes, limite de 65536 bytes, retries `EINTR`, EOF/truncamento e validação de buffer. A demo `apps/ipc_demo/main.c` usa `fork` e dois pipes para round-trip gateway/worker. O transporte não está ligado ao runtime principal e não trata `SIGUSR1`; `SIGPIPE` fica sob responsabilidade do chamador.

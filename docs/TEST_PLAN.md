@@ -1,16 +1,15 @@
 # Estratégia de testes
 
-> Atualizado em 26/10/2026. Núcleo virtual, POSIX e exportação implementados parcialmente; GUI e integração IPC pendentes.
+O CTest organiza os testes por unidade, integração, CLI e concorrência. O conjunto atual contém 47 testes.
 
-| Tipo | Cobertura atual | Pendente |
-|---|---|---|
-| Unidade | PCB, gateway, FIFO/LRU/OPT, tabelas, gerador com seed | novos contratos POSIX |
-| Integração | gateway→scheduler→runtime→memória→eventos, snapshots, page faults, replay e percentis | exportação JSON/CSV e pthreads |
-| Sistema/CLI | cenários legados/v1, limites, tracing, snapshots, flags inválidas | fluxos E2E com exportação |
-| Concorrência | pool pthread, fila POSIX, race isolada, grafo de deadlock, IPC com pipes/fork | deadlock real pthread, integração IPC e SIGUSR1 |
-| Interface | ainda não implementada | GUI e testes E2E após escolha da stack |
+| Área | Cobertura |
+|---|---|
+| Unidade | PCB, gateway, escalonamento, memória, geração de cenários e métricas |
+| Integração | sessões, snapshots, page faults, traces, replay e exportação |
+| CLI | cenários CSV, argumentos, execução passo a passo e exportação de resultados |
+| Concorrência e IPC | pool pthread, fila POSIX, adaptador paralelo, race lab, grafo de deadlock e pipes |
 
-## Execução
+## Executar
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
@@ -18,12 +17,10 @@ cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
 
-Uma execução histórica na origem confirmou **34/34** testes em GCC Debug, Clang Debug e GCC ASan/UBSan; seus logs não foram migrados. Consulte as [execuções deste repositório](https://github.com/lboclin/Sistemas-Operacionais/actions). A suíte é baseada em asserts, mantidos ativos mesmo com NDEBUG para os alvos registrados. Os testes golden incluem page fault, fragmentação, fingerprint de trace, seed 42 e percentis nearest-rank.
+O [GitHub Actions](https://github.com/lboclin/Sistemas-Operacionais/actions) executa a suíte com GCC Debug, Clang Debug e GCC com AddressSanitizer e UndefinedBehaviorSanitizer.
 
-## Riscos que continuam exigindo testes
+## Limites da cobertura
 
-Nenhum PCB em dois workers simultaneamente; nunca alocar além dos frames configurados; despertar requisições bloqueadas sem livelock; garantir que o preditor não enxergue resposta real; tratamento de `SIGUSR1` fora do handler; corrida e deadlock isolados com timeout/watchdog. Os testes de concorrência não devem depender de uma corrida acontecer necessariamente.
-
-Ver [especificação funcional](FUNCTIONAL_SPEC.md).
-
-Commit 15: testes pipe_channel e ipc_demo (45 configurados, 43 anteriormente aprovados no CI). Os novos testes passaram isoladamente em GCC/Clang/ASan; o CI histórico da origem também concluiu com sucesso nas três configurações, com 45 testes CTest configurados.
+- O laboratório de deadlock verifica ciclos em um grafo didático; não provoca deadlock real entre mutexes pthread.
+- O transporte por pipes é testado isoladamente e ainda não integra o runtime principal.
+- A interface gráfica, os experimentos completos e o ThreadSanitizer não fazem parte da suíte atual.

@@ -1,6 +1,6 @@
 # Roadmap de implementação por commits — OS-llm-project
 
-> Planejamento revisável de 25/10/2026, baseado na `main` a partir do commit `140ff8a` e na especificação [FUNCTIONAL_SPEC.md](FUNCTIONAL_SPEC.md). Este documento **não cria commits futuros automaticamente**; tarefas agendadas somente tentam executar o próximo trabalho quando houver acesso e testes.  
+> Planejamento revisável de 25/10/2026, baseado na `main` a partir do commit `140ff8a` e na especificação [FUNCTIONAL_SPEC.md](FUNCTIONAL_SPEC.md).
 > **Regra:** cada commit contém uma mudança coesa, testes relevantes e documentação do comportamento real. Não usar timestamps retroativos, commits vazios, force push ou publicar integrações quebradas.
 
 ## Primeira metade: 14 commits
@@ -24,9 +24,9 @@ A estimativa abaixo é **tempo de desenvolvimento + revisão + testes por entreg
 | 13 | **Feito**: `ba86156` | `feat(deadlock): detect resource wait cycles` | Grafo didático de recursos exclusivos e detecção de ciclos com testemunha determinística | 60–100 min |
 | 14 | **Feito (modelo)**: `021fd78` | `feat(deadlock): prevent and recover safely` | Aquisição não bloqueante em ordem global, recuperação por liberação da vítima, 1000 ciclos de liveness e watchdog CTest | 60–100 min |
 
-Os commits 08–10 passaram pela matriz GCC Debug, Clang Debug e GCC ASan/UBSan na origem (**38/38** em cada configuração); os logs antigos não foram migrados. O commit 09 inicia threads reais e as encerra cooperativamente; o commit 10 cria fila protegida por mutex e semáforos. **A integração chegou no commit 11**, com um adaptador separado: o coordenador é dono exclusivo dos PCBs, scheduler, cache KV e métricas; pthreads processam confirmações de tarefas de token. Não há inferência real nem acesso paralelo ao cache.
+Os commits 08–10 adicionaram exportação JSON/CSV, pool pthread e fila POSIX. O runtime integrado veio no commit 11: um coordenador mantém a propriedade dos PCBs, scheduler, cache KV e métricas, enquanto os pthreads confirmam tarefas simuladas de token. Não há inferência real nem acesso paralelo ao cache.
 
-Os commits 11–14 foram publicados em PRs separados na origem e aprovados em CI (39/39, 41/41, 42/42 e 43/43 testes, respectivamente). PRs e execuções de Actions da origem não foram migrados; consulte a [CI deste repositório](https://github.com/lboclin/Sistemas-Operacionais/actions). **Desvio de escopo:** o deadlock do commit 14 é um grafo didático, não um travamento real de mutexes pthread; o watchdog de liveness é o TIMEOUT do CTest. A integração de deadlock real entre recursos do runtime/memória e a interface visual permanecem pendentes.
+Os commits 11–14 adicionaram o adaptador POSIX e os laboratórios de corrida e deadlock. O deadlock do commit 14 é representado por um grafo didático; ele não trava mutexes pthread. A integração com o runtime e a interface visual continuam pendentes.
 
 ## Sessões de trabalho planejadas
 
@@ -38,12 +38,10 @@ Os commits 11–14 foram publicados em PRs separados na origem e aprovados em CI
 | D | 08–10 | Exportação e primeira base pthread/sync | ~2h40–4h40 |
 | E | 11–14 | Integração POSIX, corrida, deadlock/detecção/prevenção | ~4h45–7h55 |
 
-**Intervalos:** dentro de um bloco, 20–40 min pode ser razoável para tarefas pequenas; tarefas de maior risco só são concluídas quando validadas. Planejar pausas de aproximadamente **6 horas entre o término de um bloco e o início do próximo**. Horários exatos dependem do tempo efetivo de cada bloco e da disponibilidade de execução. Tarefas agendadas em horário fixo são **tentativas de continuar**, não garantia de quantidade de commits nem substituto da validação.
-
 Se houver falha de teste, incompatibilidade de contrato, autorização ausente ou mudanças de colegas, parar/replanejar sem forçar escrita. Nunca recriar ou sobrescrever commits alheios.
 
 ## O restante da aplicação (15–28, em andamento)
 
-**Commit 15 (F12 parcial, feito: `46736ae`):** transporte POSIX por pipe com framing e demo gateway/worker em processos reais. Dois testes novos: framing e round-trip. A integração IPC com o runtime principal permanece pendente. A suíte de 45 testes passou na matriz GCC, Clang e ASan/UBSan antes da migração; o PR da origem não foi migrado. Consulte a [CI deste repositório](https://github.com/lboclin/Sistemas-Operacionais/actions).
+**Commit 15 (F12 parcial, feito: `46736ae`):** transporte POSIX por pipe com framing e demo gateway/worker em processos reais. Os testes cobrem framing e round-trip. A integração IPC com o runtime principal permanece pendente.
 
 Próximos: integração IPC, SIGUSR1, SJF-EMA, treino e integração do preditor, coleta com LLM, experimentos, relatórios, decisão da GUI e telas de escalonamento/memória/concorrência, testes E2E e entrega final. Linguagem e interface ainda são decisões abertas.

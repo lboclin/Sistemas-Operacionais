@@ -12,6 +12,5 @@ ctest --test-dir build -R '^(thread_pool|work_queue|parallel_runtime|race_safe|r
 
 O teste de liveness executa 1000 ciclos sintéticos com recuperação e
 progresso posterior; CTest limita a 5s. O executável de corrida usa
-subprocesso e watchdog de 3s. A matriz completa passou na origem (os logs não foram migrados):
-43/43 em GCC Debug, Clang Debug e GCC ASan/UBSan. **Não há teste
-ThreadSanitizer nem reprodução de deadlock real de mutexes pthread**.
+subprocesso e watchdog de 3s. A suíte não usa ThreadSanitizer nem reproduz
+deadlock real entre mutexes pthread.
