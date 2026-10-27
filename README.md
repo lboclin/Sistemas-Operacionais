@@ -4,7 +4,7 @@ Simulador acadêmico de Sistemas Operacionais aplicado a requisições de LLM. R
 
 ## Estado atual
 
-**Protótipo funcional (C11, provisório):** PCB e estados, gateway de admissão, FCFS, SJF estimado/oráculo, RR, prioridade com aging, workers virtuais, relógio de 1 tick/token, p50/p95 e métricas de utilização, traces determinísticos com replay verificável, gerador de cargas com seed, paginação FIFO/LRU online integrada e replay offline FIFO/LRU/Ótimo. A CLI aceita cenários CSV, eventos, execução limitada por passos e snapshots intermediários. Há 43 testes automatizados no CTest, aprovados no CI com GCC, Clang e GCC ASan/UBSan. Exportação JSON/CSV versionada, adaptador POSIX com pthreads/fila, race lab isolado e grafo didático de deadlock estão disponíveis.
+**Protótipo funcional (C11, provisório):** PCB e estados, gateway de admissão, FCFS, SJF estimado/oráculo, RR, prioridade com aging, workers virtuais, relógio de 1 tick/token, p50/p95 e métricas de utilização, traces determinísticos com replay verificável, gerador de cargas com seed, paginação FIFO/LRU online integrada e replay offline FIFO/LRU/Ótimo. A CLI aceita cenários CSV, eventos, execução limitada por passos e snapshots intermediários. Há 45 testes automatizados no CTest, aprovados no CI com GCC, Clang e GCC ASan/UBSan. Exportação JSON/CSV versionada, adaptador POSIX com pthreads/fila, race lab isolado e grafo didático de deadlock estão disponíveis.
 
 **Ainda não implementado:** inferência real nos workers, deadlock real entre mutexes do runtime e memória, integração do IPC ao runtime, sinais, SJF com média exponencial ou preditor treinado, experimentos completos e interface gráfica. O IPC por pipes existe como laboratório isolado entre dois processos reais. A CLI é apenas uma ferramenta técnica para testar o núcleo; não substitui a GUI planejada.
 
@@ -112,4 +112,4 @@ Os artefatos contêm a entrada, configuração, seed quando disponível, PCBs fi
 
 ## IPC entre processos (F12 parcial)
 
-Execute o programa os_llm_ipc_demo para observar gateway e worker trocando mensagens por dois pipes POSIX. Os testes CTest pipe_channel e ipc_demo cobrem o protocolo e o round-trip. A integração com o motor principal e SIGUSR1 continuam pendentes. Os dois testes novos elevam o total configurado para 45; a matriz completa precisa de validação no CI do PR. Consulte src/ipc/README.md.
+Execute o programa os_llm_ipc_demo para observar gateway e worker trocando mensagens por dois pipes POSIX. Os testes CTest pipe_channel e ipc_demo cobrem o protocolo e o round-trip. A integração com o motor principal e SIGUSR1 continuam pendentes. Os dois testes novos elevam o total configurado para 45; a matriz completa foi aprovada em GCC, Clang e ASan/UBSan ([CI 40427656618](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40427656618)). Consulte src/ipc/README.md.

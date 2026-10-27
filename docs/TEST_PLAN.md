@@ -26,4 +26,4 @@ Nenhum PCB em dois workers simultaneamente; nunca alocar além dos frames config
 
 Ver [especificação funcional](FUNCTIONAL_SPEC.md).
 
-Commit 15: testes pipe_channel e ipc_demo (45 configurados, 43 anteriormente aprovados no CI). Os novos testes passaram isoladamente em GCC/Clang/ASan; a matriz completa precisa de validação no PR.
+Commit 15: testes pipe_channel e ipc_demo (45 configurados, 43 anteriormente aprovados no CI). Os novos testes passaram isoladamente em GCC/Clang/ASan; o [CI 40427656618](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40427656618) também concluiu com sucesso nas três configurações, com 45 testes CTest configurados.

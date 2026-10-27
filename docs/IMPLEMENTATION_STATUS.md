@@ -20,7 +20,7 @@
 | F12 IPC | Parcial | pipe POSIX entre processos em demo isolada; não integrado ao runtime |
 | F16 Métricas/eventos | Parcial | médias, p50/p95, utilização, espera máxima, starvation por limiar, traces e replay por reexecução |
 | Snapshots/stepping | Implementado no motor virtual | sessão opaca, snapshots entre passos; sem persistência nem GUI |
-| F20 Testes | Parcial | 43 testes CTest aprovados em três configurações no CI; faltam experimentos, IPC, GUI e estresse do sistema completo |
+| F20 Testes | Parcial | 45 testes CTest aprovados em três configurações no CI; faltam experimentos, IPC integrado, GUI e estresse do sistema completo |
 
 ## Funcionalidades verificáveis agora
 
@@ -56,11 +56,13 @@ ctest --test-dir build --output-on-failure
 
 ## Testes
 
-Validação **remota mais recente** no [GitHub Actions, run 40387581428](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40387581428), após os commits 11–14:
+Validação remota dos 43 testes anteriores no [GitHub Actions, run 40387581428](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40387581428), após os commits 11–14:
 
-- GCC Debug: **43/43**.
-- Clang Debug: **43/43**.
-- GCC com AddressSanitizer + UndefinedBehaviorSanitizer: **43/43**.
+- GCC Debug: **43/43** (antes do IPC).
+- Clang Debug: **43/43** (antes do IPC).
+- GCC com AddressSanitizer + UndefinedBehaviorSanitizer: **43/43** (antes do IPC).
+
+Após F12, o [CI 40427656618](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40427656618) concluiu com sucesso nos três compiladores/configurações, agora com **45 testes CTest configurados**.
 
 A matriz cobre núcleo virtual, CLIs, exportação, fila POSIX (4000 itens), integração do adaptador pthread com o escalonador/cache (comparação de traces), race lab em subprocesso e detector/prevenção/recuperação do grafo de deadlock (1000 ciclos). **Não** cobre deadlock real de mutexes pthread, IPC, GUI, experimentos ou ThreadSanitizer.
 
@@ -155,6 +157,6 @@ Os três commits foram publicados após aprovação de CI em PRs separados. **Na
 
 **Limites:** a execução POSIX confirma tokens simulados, não executa modelo LLM. O detector e a recuperação de deadlock operam sobre um grafo didático, sem bloquear/desbloquear mutexes reais; não substituem laboratório de deadlock pthread ou detecção em runtime integrado. Os 14 commits do primeiro bloco do roadmap estão entregues no escopo acima, mas a aplicação acadêmica completa permanece pendente.
 
-## IPC POSIX — F12 parcial (commit 15, PR de validação)
+## IPC POSIX — F12 parcial (commit 15, incorporado à main)
 
-Transporte independente src/ipc/pipe_channel.c com framing big-endian de 4 bytes, limite 65536 bytes, retries EINTR, EOF/truncamento e validação de buffer. Demo apps/ipc_demo/main.c usa fork e dois pipes para round-trip gateway/worker. Dois testes CTest adicionais: pipe_channel e ipc_demo (45 configurados). Testes isolados aprovados localmente com GCC 14, Clang 17 e GCC ASan/UBSan; o demo passou com GCC. A suíte integral de 45 precisa de validação CI antes do merge. Não há conexão com PCBs/runtime nem tratamento de SIGUSR1. SIGPIPE fica sob responsabilidade do chamador.
+Transporte independente src/ipc/pipe_channel.c com framing big-endian de 4 bytes, limite 65536 bytes, retries EINTR, EOF/truncamento e validação de buffer. Demo apps/ipc_demo/main.c usa fork e dois pipes para round-trip gateway/worker. Dois testes CTest adicionais: pipe_channel e ipc_demo (45 configurados). Testes isolados aprovados localmente com GCC 14, Clang 17 e GCC ASan/UBSan; o demo passou com GCC. A suíte de 45 testes foi aprovada nas três configurações do [CI 40427656618](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40427656618), antes do merge do PR #17. Não há conexão com PCBs/runtime nem tratamento de SIGUSR1. SIGPIPE fica sob responsabilidade do chamador.

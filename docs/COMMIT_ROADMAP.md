@@ -44,6 +44,6 @@ Se houver falha de teste, incompatibilidade de contrato, autorização ausente o
 
 ## O restante da aplicação (15–28, em andamento)
 
-**Commit 15 (F12 parcial, em validação):** transporte POSIX por pipe com framing e demo gateway/worker em processos reais. Dois testes novos: framing e round-trip. A integração IPC com o runtime principal permanece pendente; só declarar concluído após CI do PR.
+**Commit 15 (F12 parcial, feito: `46736ae`):** transporte POSIX por pipe com framing e demo gateway/worker em processos reais. Dois testes novos: framing e round-trip. A integração IPC com o runtime principal permanece pendente. O PR [#17](https://github.com/fragaeduardo/OS-llm-project/pull/17) passou na matriz [CI 40427656618](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40427656618), com 45 testes configurados em GCC, Clang e ASan/UBSan, e foi incorporado à `main`.
 
 Próximos: integração IPC, SIGUSR1, SJF-EMA, treino e integração do preditor, coleta com LLM, experimentos, relatórios, decisão da GUI e telas de escalonamento/memória/concorrência, testes E2E e entrega final. Linguagem e interface ainda são decisões abertas.
