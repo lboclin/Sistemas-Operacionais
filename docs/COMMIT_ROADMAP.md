@@ -5,7 +5,7 @@
 
 ## Primeira metade: 14 commits
 
-A estimativa abaixo é **tempo de desenvolvimento + revisão + testes por entrega**, não um atraso obrigatório para publicar. Tarefas complexas têm faixas maiores porque exigir 20–40 minutos reduziria a qualidade.
+As estimativas incluem desenvolvimento, revisão e testes; tarefas mais complexas têm faixas maiores.
 
 | # | Estado | Mensagem sugerida | Entrega verificável | Esforço previsto |
 |---|---|---|---|---|
@@ -37,8 +37,6 @@ Os commits 11–14 adicionaram o adaptador POSIX e os laboratórios de corrida e
 | C | 05–07 | Eventos, workloads e métricas | ~1h25–2h45 |
 | D | 08–10 | Exportação e primeira base pthread/sync | ~2h40–4h40 |
 | E | 11–14 | Integração POSIX, corrida, deadlock/detecção/prevenção | ~4h45–7h55 |
-
-Se houver falha de teste, incompatibilidade de contrato, autorização ausente ou mudanças de colegas, parar/replanejar sem forçar escrita. Nunca recriar ou sobrescrever commits alheios.
 
 ## O restante da aplicação (15–28, em andamento)
 
