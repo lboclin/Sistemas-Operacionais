@@ -17,6 +17,7 @@
 | F09 Deadlock | Parcial | grafo didático de espera, ciclo, prevenção por ordem global e recuperação controlada; não simula travamento real de mutexes pthread |
 | F10 Memória KV simulada | Parcial | frames online por página, evicção FIFO/LRU, fragmentação interna e bloqueio opcional por fault; sem pinning |
 | F11 Substituição | Parcial | FIFO/LRU online e FIFO/LRU/OPT offline |
+| F13 SIGUSR1 | Parcial | laboratório separado: sinal com handler mínimo, snapshot consistente fora do handler e testes CTest; integração com o runtime geral pendente |
 | F12 IPC | Parcial | pipe POSIX entre processos em demo isolada; não integrado ao runtime |
 | F16 Métricas/eventos | Parcial | médias, p50/p95, utilização, espera máxima, starvation por limiar, traces e replay por reexecução |
 | Snapshots/stepping | Implementado no motor virtual | sessão opaca, snapshots entre passos; sem persistência nem GUI |
@@ -160,3 +161,12 @@ Os três commits foram publicados após aprovação de CI em PRs separados. **Na
 ## IPC POSIX — F12 parcial (commit 15, incorporado à main)
 
 Transporte independente src/ipc/pipe_channel.c com framing big-endian de 4 bytes, limite 65536 bytes, retries EINTR, EOF/truncamento e validação de buffer. Demo apps/ipc_demo/main.c usa fork e dois pipes para round-trip gateway/worker. Dois testes CTest adicionais: pipe_channel e ipc_demo (45 configurados). Testes isolados aprovados localmente com GCC 14, Clang 17 e GCC ASan/UBSan; o demo passou com GCC. A suíte de 45 testes foi aprovada nas três configurações do [CI 40427656618](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40427656618), antes do merge do PR #17. Não há conexão com PCBs/runtime nem tratamento de SIGUSR1. SIGPIPE fica sob responsabilidade do chamador.
+
+## Laboratório SIGUSR1 (bloco F, commit 16)
+
+O executável `os_llm_signal_demo` cria uma sessão pequena com memória
+paginada, avança ticks por ENTER e aceita `SIGUSR1` para consultar
+um snapshot seguro. O handler modifica somente um `volatile sig_atomic_t`;
+`pselect` espera sem perder o evento entre checagem da flag e espera.
+Os CTests `signal_snapshot` e `signal_invalid_args` cobrem o modo automático
+e argumentos inválidos. Não representa ainda um dump do runtime POSIX completo.

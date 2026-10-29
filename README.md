@@ -8,6 +8,20 @@ Simulador acadêmico de Sistemas Operacionais aplicado a requisições de LLM. R
 
 **Ainda não implementado:** inferência real nos workers, deadlock real entre mutexes do runtime e memória, integração do IPC ao runtime, sinais, SJF com média exponencial ou preditor treinado, experimentos completos e interface gráfica. O IPC por pipes existe como laboratório isolado entre dois processos reais. A CLI é apenas uma ferramenta técnica para testar o núcleo; não substitui a GUI planejada.
 
+## Demonstração com SIGUSR1 (laboratório isolado)
+
+O executável `os_llm_signal_demo` permite avançar uma sessão virtual e
+solicitar um snapshot com `kill -USR1 PID`. O handler marca apenas um
+`sig_atomic_t`; a consulta de filas, PCBs, workers e memória é realizada
+fora do contexto do sinal.
+
+```bash
+./build/os_llm_signal_demo --self-test
+./build/os_llm_signal_demo
+```
+
+A demonstração não integra ainda o controlador principal do runtime POSIX.
+
 ## Compilação e testes
 
 Requer um compilador C11 e CMake >= 3.16. Em Linux:

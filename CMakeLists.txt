@@ -62,6 +62,13 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(os_llm_race_lab PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Werror)
 endif()
 
+# Separate POSIX signal demonstration; handler never accesses simulation state.
+add_executable(os_llm_signal_demo apps/signal_demo/main.c)
+target_link_libraries(os_llm_signal_demo PRIVATE os_core)
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(os_llm_signal_demo PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Werror)
+endif()
+
 add_executable(os_llm_workload apps/workload/main.c)
 target_link_libraries(os_llm_workload PRIVATE os_core)
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
@@ -267,6 +274,12 @@ if(BUILD_TESTING)
     add_test(NAME ipc_demo COMMAND os_llm_ipc_demo)
     set_tests_properties(ipc_demo PROPERTIES TIMEOUT 5
         PASS_REGULAR_EXPRESSION "gateway sent=hello ipc worker replied=HELLO IPC")
+
+    add_test(NAME signal_snapshot COMMAND os_llm_signal_demo --self-test)
+    set_tests_properties(signal_snapshot PROPERTIES TIMEOUT 5
+        PASS_REGULAR_EXPRESSION "signal snapshot tick=1 ready=1 running=0 blocked=1 completed=0")
+    add_test(NAME signal_invalid_args COMMAND os_llm_signal_demo --not-an-option)
+    set_tests_properties(signal_invalid_args PROPERTIES WILL_FAIL TRUE)
 
     add_test(NAME cli_starvation COMMAND os_llm_cli --policy rr --quantum 1 --starvation-threshold 1 --steps 1 --snapshots)
     set_tests_properties(cli_starvation PROPERTIES PASS_REGULAR_EXPRESSION "snapshot step=1 tick=1.*starving=1")
