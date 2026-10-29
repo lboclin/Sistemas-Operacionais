@@ -162,6 +162,24 @@ Os três commits foram publicados após aprovação de CI em PRs separados. **Na
 
 Transporte independente src/ipc/pipe_channel.c com framing big-endian de 4 bytes, limite 65536 bytes, retries EINTR, EOF/truncamento e validação de buffer. Demo apps/ipc_demo/main.c usa fork e dois pipes para round-trip gateway/worker. Dois testes CTest adicionais: pipe_channel e ipc_demo (45 configurados). Testes isolados aprovados localmente com GCC 14, Clang 17 e GCC ASan/UBSan; o demo passou com GCC. A suíte de 45 testes foi aprovada nas três configurações do [CI 40427656618](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40427656618), antes do merge do PR #17. Não há conexão com PCBs/runtime nem tratamento de SIGUSR1. SIGPIPE fica sob responsabilidade do chamador.
 
+## Integração IPC → runtime POSIX (bloco F, commit 17)
+
+O novo `os_llm_ipc_runtime` conecta os módulos existentes `os_ipc` e
+`os_posix` sem alterar seus contratos: gateway e subprocesso trocam frames
+binários versionados (inteiros big-endian, nunca structs nativas), três PCBs
+são reconstruídos por `os_request_init` e executados por `os_posix_run`.
+A resposta devolve IDs, estados, tokens gerados e ticks de conclusão,
+além de quantidade concluída e makespan. O gateway verifica esses valores
+contra `os_virtual_run` local. Há três CTests: RR, FCFS e rejeição de
+payload com magic inválida, com limites de 30/30/5 segundos.
+
+É uma demonstração de cenário fixo, sem servidor persistente, inferência
+real, multiplexação de workers por processo ou streaming. A validação local
+anterior ao commit compilou o programa e executou os três cenários com
+GCC/Clang usando um stub do runtime; isso **não** comprova a compilação
+integrada ou o CTest completo no repositório. A execução do CI ainda
+precisa ser verificada separadamente.
+
 ## Laboratório SIGUSR1 (bloco F, commit 16)
 
 O executável `os_llm_signal_demo` cria uma sessão pequena com memória

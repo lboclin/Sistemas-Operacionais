@@ -124,6 +124,26 @@ ctest --test-dir build -R '^(export|thread_pool|work_queue|parallel_runtime|race
 
 Os artefatos contêm a entrada, configuração, seed quando disponível, PCBs finais, eventos e métricas; tempos são ticks virtuais. O CSV usa colunas `section,index,field,value`. Detalhes em [src/results/README.md](src/results/README.md). Os testes POSIX exercitam inicialização/parada/join, fila limitada com 4000 itens, execução do adaptador com invariantes de exclusividade, race lab isolado e detecção/recuperação em grafo. O pool confirma tarefas simuladas de token, mas não faz inferência real. O deadlock modelado não bloqueia mutexes reais. [CI verificado (43/43 × 3)](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40387581428).
 
+## IPC conectado ao runtime POSIX (laboratório do commit 17)
+
+O executável `os_llm_ipc_runtime` faz o gateway enviar três PCBs serializados
+por pipe a um subprocesso `fork`. O subprocesso valida os campos, reconstrói
+os PCBs e chama `os_posix_run` com duas pthreads; a resposta contém
+progresso e tempos de conclusão. O gateway confere o resultado com a
+execução virtual determinística local.
+
+```bash
+./build/os_llm_ipc_runtime --rr
+./build/os_llm_ipc_runtime --fcfs
+./build/os_llm_ipc_runtime --malformed
+ctest --test-dir build -R '^ipc_runtime_' --output-on-failure
+```
+
+Este é um cenário fixo de demonstração, não um servidor IPC persistente:
+não há transporte de prompts, inferência LLM, streaming ou coordenação
+de múltiplos processos workers. Detalhes do protocolo em
+[src/ipc/README.md](src/ipc/README.md).
+
 ## IPC entre processos (F12 parcial)
 
-Execute o programa os_llm_ipc_demo para observar gateway e worker trocando mensagens por dois pipes POSIX. Os testes CTest pipe_channel e ipc_demo cobrem o protocolo e o round-trip. A integração com o motor principal e SIGUSR1 continuam pendentes. Os dois testes novos elevam o total configurado para 45; a matriz completa foi aprovada em GCC, Clang e ASan/UBSan ([CI 40427656618](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40427656618)). Consulte src/ipc/README.md.
+Execute o programa os_llm_ipc_demo para observar gateway e worker trocando mensagens por dois pipes POSIX. Os testes CTest pipe_channel e ipc_demo cobrem o protocolo e o round-trip. A integração didática com o runtime está no executável separado descrito acima; o laboratório SIGUSR1 também é independente. Os dois testes novos elevam o total configurado para 45; a matriz completa foi aprovada em GCC, Clang e ASan/UBSan ([CI 40427656618](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40427656618)). Consulte src/ipc/README.md.

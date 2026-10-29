@@ -55,6 +55,13 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(os_llm_ipc_demo PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Werror)
 endif()
 
+# Framed PCB transfer across fork; child executes the existing pthread adapter.
+add_executable(os_llm_ipc_runtime apps/ipc_runtime/main.c)
+target_link_libraries(os_llm_ipc_runtime PRIVATE os_ipc os_posix)
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(os_llm_ipc_runtime PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Werror)
+endif()
+
 # Standalone process-isolated race demonstration (never linked into os_core).
 add_executable(os_llm_race_lab apps/race_lab/main.c)
 target_link_libraries(os_llm_race_lab PRIVATE Threads::Threads)
@@ -274,6 +281,16 @@ if(BUILD_TESTING)
     add_test(NAME ipc_demo COMMAND os_llm_ipc_demo)
     set_tests_properties(ipc_demo PROPERTIES TIMEOUT 5
         PASS_REGULAR_EXPRESSION "gateway sent=hello ipc worker replied=HELLO IPC")
+
+    add_test(NAME ipc_runtime_rr COMMAND os_llm_ipc_runtime --rr)
+    set_tests_properties(ipc_runtime_rr PROPERTIES TIMEOUT 30
+        PASS_REGULAR_EXPRESSION "ipc runtime policy=rr completed=3.*verified=yes")
+    add_test(NAME ipc_runtime_fcfs COMMAND os_llm_ipc_runtime --fcfs)
+    set_tests_properties(ipc_runtime_fcfs PROPERTIES TIMEOUT 30
+        PASS_REGULAR_EXPRESSION "ipc runtime policy=fcfs completed=3.*verified=yes")
+    add_test(NAME ipc_runtime_malformed COMMAND os_llm_ipc_runtime --malformed)
+    set_tests_properties(ipc_runtime_malformed PROPERTIES TIMEOUT 5
+        PASS_REGULAR_EXPRESSION "ipc runtime rejected malformed request")
 
     add_test(NAME signal_snapshot COMMAND os_llm_signal_demo --self-test)
     set_tests_properties(signal_snapshot PROPERTIES TIMEOUT 5
