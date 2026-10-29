@@ -102,7 +102,9 @@ static bool kill_and_reap(pid_t child, int *status) {
 static bool expired(const struct timespec *start, int seconds) {
     struct timespec now;
     if (clock_gettime(CLOCK_MONOTONIC, &now) != 0) return true;
-    return now.tv_sec - start->tv_sec >= seconds;
+    const time_t elapsed = now.tv_sec - start->tv_sec;
+    return elapsed > seconds ||
+           (elapsed == seconds && now.tv_nsec >= start->tv_nsec);
 }
 
 static int parent_run(bool circular) {
