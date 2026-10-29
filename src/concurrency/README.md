@@ -37,7 +37,7 @@ O teste de fila inclui 4 produtores, 4 consumidores e 4000 itens, verificando
 que cada ID é consumido exatamente uma vez, além de fechamento durante
 espera em fila vazia/cheia. O teste de integração compara PCBs, métricas e
 traces do adaptador com o motor virtual para FCFS, RR, prioridade, paging e
-page-fault latency. Os laboratórios de race e deadlock seguem pendentes.
+page-fault latency. Os laboratórios de race e deadlock pthread existem como executáveis separados, sem modificar o runtime principal.
 
 ## Demonstração de condição de corrida (commit 12)
 
@@ -77,3 +77,17 @@ O teste `deadlock_liveness` cobre prevenção, rejeição por ordem/conflito e
 CTest impõe watchdog de 5 segundos. É um modelo didático de grafo de recursos,
 não um gerenciador de locks do SO, nem prova ausência de deadlock em sistemas
 arbitrários com múltiplas esperas simultâneas.
+
+## Deadlock real com pthreads em subprocesso (commit 18)
+
+`os_llm_deadlock_lab ordered` usa ordem global 0→1 e conclui duas threads.
+`os_llm_deadlock_lab deadlock` faz duas threads segurarem mutexes distintos
+antes de uma barreira e depois aguardarem o mutex da outra. O processo pai
+recebe um marcador de sincronização e encerra o filho travado com `SIGKILL`
+após 2 segundos; sem marcador ou término por sinal, o teste falha.
+O laboratório é independente do grafo de espera, não instrumenta os mutexes
+do runtime e não fornece detecção automática em produção.
+
+```bash
+ctest --test-dir build -R '^deadlock_pthread_' --output-on-failure
+```

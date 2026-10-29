@@ -1,6 +1,6 @@
 # Estado da implementação
 
-> Atualizado em 26/10/2026. Descreve o código da branch `main`. O projeto acadêmico ainda não está completo.
+> Atualizado em 29/10/2026. Inclui os commits 16–18 do bloco F. O projeto acadêmico ainda não está completo.
 
 ## Entregue e limitações
 
@@ -14,14 +14,14 @@
 | F06 Prioridade com aging | Parcial | envelhecimento em dispatch |
 | F07 Pool de workers | Parcial | adaptador POSIX usa pthreads + fila com ACK por token; coordenador serializa scheduler/cache/métricas; não há inferência real |
 | F08 Sincronização | Parcial | fila POSIX e adaptador integrados; race lab safe/unsafe isolado e determinístico; sem teste ThreadSanitizer |
-| F09 Deadlock | Parcial | grafo didático de espera, ciclo, prevenção por ordem global e recuperação controlada; não simula travamento real de mutexes pthread |
+| F09 Deadlock | Parcial | grafo didático de espera, prevenção/recuperação; laboratório isolado de deadlock real com pthreads e watchdog; sem detecção integrada ao runtime |
 | F10 Memória KV simulada | Parcial | frames online por página, evicção FIFO/LRU, fragmentação interna e bloqueio opcional por fault; sem pinning |
 | F11 Substituição | Parcial | FIFO/LRU online e FIFO/LRU/OPT offline |
 | F13 SIGUSR1 | Parcial | laboratório separado: sinal com handler mínimo, snapshot consistente fora do handler e testes CTest; integração com o runtime geral pendente |
-| F12 IPC | Parcial | pipe POSIX entre processos em demo isolada; não integrado ao runtime |
+| F12 IPC | Parcial | pipes POSIX e demo de gateway → subprocesso executando os_posix_run em cenário fixo; sem servidor IPC persistente |
 | F16 Métricas/eventos | Parcial | médias, p50/p95, utilização, espera máxima, starvation por limiar, traces e replay por reexecução |
 | Snapshots/stepping | Implementado no motor virtual | sessão opaca, snapshots entre passos; sem persistência nem GUI |
-| F20 Testes | Parcial | 45 testes CTest aprovados em três configurações no CI; faltam experimentos, IPC integrado, GUI e estresse do sistema completo |
+| F20 Testes | Parcial | 53 testes CTest configurados na branch; 45 do baseline aprovados em CI, 8 novos ainda sem suíte integrada/CI comprovada |
 
 ## Funcionalidades verificáveis agora
 
@@ -188,3 +188,23 @@ um snapshot seguro. O handler modifica somente um `volatile sig_atomic_t`;
 `pselect` espera sem perder o evento entre checagem da flag e espera.
 Os CTests `signal_snapshot` e `signal_invalid_args` cobrem o modo automático
 e argumentos inválidos. Não representa ainda um dump do runtime POSIX completo.
+
+## Deadlock pthread real isolado (bloco F, commit 18)
+
+O executável `os_llm_deadlock_lab` demonstra dois mutexes POSIX reais
+com duas pthreads. No modo `ordered`, ambas adquirem os recursos na ordem
+0→1 e terminam. No modo `deadlock`, cada thread adquire um mutex diferente,
+a barreira libera as duas para esperar circularmente e o processo pai recebe
+um marcador de sincronização. O watchdog de 2 segundos usa `SIGKILL` no
+subprocesso e verifica o término por sinal. Sem o marcador ou com saída
+prematura, o teste falha em vez de declarar deadlock. Há três CTests:
+`deadlock_pthread_ordered`, `deadlock_pthread_controlled` e
+`deadlock_pthread_invalid`, com timeouts 8/6/3 segundos.
+
+Validação isolada: compilação com GCC e Clang usando
+`-std=c11 -Wall -Wextra -Wpedantic -Wconversion -Werror -pthread`;
+cenários ordenado, circular e argumentos inválidos passaram em ambos.
+Também passaram os cenários isolados com GCC ASan/UBSan. Não foi executada
+a compilação integrada nem a suíte CTest completa desta branch; o CI
+está configurado apenas para PR e disparo manual. Este laboratório não é
+um detector genérico do runtime e não altera `src/concurrency/deadlock.c`.

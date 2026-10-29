@@ -76,6 +76,13 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(os_llm_signal_demo PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Werror)
 endif()
 
+# Deliberate pthread deadlock is isolated in a child with a parent watchdog.
+add_executable(os_llm_deadlock_lab apps/deadlock_lab/main.c)
+target_link_libraries(os_llm_deadlock_lab PRIVATE Threads::Threads)
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(os_llm_deadlock_lab PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Werror)
+endif()
+
 add_executable(os_llm_workload apps/workload/main.c)
 target_link_libraries(os_llm_workload PRIVATE os_core)
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
@@ -297,6 +304,15 @@ if(BUILD_TESTING)
         PASS_REGULAR_EXPRESSION "signal snapshot tick=1 ready=1 running=0 blocked=1 completed=0")
     add_test(NAME signal_invalid_args COMMAND os_llm_signal_demo --not-an-option)
     set_tests_properties(signal_invalid_args PROPERTIES WILL_FAIL TRUE)
+
+    add_test(NAME deadlock_pthread_ordered COMMAND os_llm_deadlock_lab ordered)
+    set_tests_properties(deadlock_pthread_ordered PROPERTIES TIMEOUT 8
+        PASS_REGULAR_EXPRESSION "mode=ordered completed=2 watchdog=none deadlock=no")
+    add_test(NAME deadlock_pthread_controlled COMMAND os_llm_deadlock_lab deadlock)
+    set_tests_properties(deadlock_pthread_controlled PROPERTIES TIMEOUT 6
+        PASS_REGULAR_EXPRESSION "mode=deadlock acquired=2 watchdog=SIGKILL deadlock=observed")
+    add_test(NAME deadlock_pthread_invalid COMMAND os_llm_deadlock_lab invalid)
+    set_tests_properties(deadlock_pthread_invalid PROPERTIES TIMEOUT 3 WILL_FAIL TRUE)
 
     add_test(NAME cli_starvation COMMAND os_llm_cli --policy rr --quantum 1 --starvation-threshold 1 --steps 1 --snapshots)
     set_tests_properties(cli_starvation PROPERTIES PASS_REGULAR_EXPRESSION "snapshot step=1 tick=1.*starving=1")

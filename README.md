@@ -4,9 +4,9 @@ Simulador acadêmico de Sistemas Operacionais aplicado a requisições de LLM. R
 
 ## Estado atual
 
-**Protótipo funcional (C11, provisório):** PCB e estados, gateway de admissão, FCFS, SJF estimado/oráculo, RR, prioridade com aging, workers virtuais, relógio de 1 tick/token, p50/p95 e métricas de utilização, traces determinísticos com replay verificável, gerador de cargas com seed, paginação FIFO/LRU online integrada e replay offline FIFO/LRU/Ótimo. A CLI aceita cenários CSV, eventos, execução limitada por passos e snapshots intermediários. Há 45 testes automatizados no CTest, aprovados no CI com GCC, Clang e GCC ASan/UBSan. Exportação JSON/CSV versionada, adaptador POSIX com pthreads/fila, race lab isolado e grafo didático de deadlock estão disponíveis.
+**Protótipo funcional (C11, provisório):** PCB e estados, gateway de admissão, FCFS, SJF estimado/oráculo, RR, prioridade com aging, workers virtuais, relógio de 1 tick/token, p50/p95 e métricas de utilização, traces determinísticos com replay verificável, gerador de cargas com seed, paginação FIFO/LRU online integrada e replay offline FIFO/LRU/Ótimo. A CLI aceita cenários CSV, eventos, execução limitada por passos e snapshots intermediários. Há 53 testes CTest configurados nesta branch; os 45 testes anteriores foram aprovados no CI com GCC, Clang e GCC ASan/UBSan, mas os oito novos ainda não passaram por uma execução integrada de CI. Exportação JSON/CSV versionada, adaptador POSIX com pthreads/fila, race lab isolado, grafo didático de deadlock e laboratório pthread com deadlock real em subprocesso estão disponíveis.
 
-**Ainda não implementado:** inferência real nos workers, deadlock real entre mutexes do runtime e memória, integração do IPC ao runtime, sinais, SJF com média exponencial ou preditor treinado, experimentos completos e interface gráfica. O IPC por pipes existe como laboratório isolado entre dois processos reais. A CLI é apenas uma ferramenta técnica para testar o núcleo; não substitui a GUI planejada.
+**Ainda não implementado:** inferência real nos workers, detecção de deadlock de mutexes integrada ao runtime, IPC persistente, tratamento de sinais no runtime principal, SJF com média exponencial ou preditor treinado, experimentos completos e interface gráfica. O IPC por pipes inclui demos isoladas e uma conexão didática com o runtime POSIX em subprocesso. A CLI é apenas uma ferramenta técnica para testar o núcleo; não substitui a GUI planejada.
 
 ## Demonstração com SIGUSR1 (laboratório isolado)
 
@@ -124,6 +124,28 @@ ctest --test-dir build -R '^(export|thread_pool|work_queue|parallel_runtime|race
 
 Os artefatos contêm a entrada, configuração, seed quando disponível, PCBs finais, eventos e métricas; tempos são ticks virtuais. O CSV usa colunas `section,index,field,value`. Detalhes em [src/results/README.md](src/results/README.md). Os testes POSIX exercitam inicialização/parada/join, fila limitada com 4000 itens, execução do adaptador com invariantes de exclusividade, race lab isolado e detecção/recuperação em grafo. O pool confirma tarefas simuladas de token, mas não faz inferência real. O deadlock modelado não bloqueia mutexes reais. [CI verificado (43/43 × 3)](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40387581428).
 
+## Laboratório de deadlock real com pthreads (commit 18)
+
+O executável `os_llm_deadlock_lab` usa duas pthreads e dois mutexes reais.
+No modo `ordered`, as duas threads adquirem os mutexes na mesma ordem
+e terminam. No modo `deadlock`, cada thread segura um mutex diferente;
+uma barreira garante a posse simultânea antes de tentar adquirir o outro.
+O experimento acontece **somente em processo filho**. O pai recebe uma
+confirmação de que os dois primeiros mutexes foram adquiridos e encerra
+o filho com `SIGKILL` após 2 segundos de impasse. Um timeout sem essa
+confirmação é tratado como falha, não como deadlock demonstrado.
+
+```bash
+./build/os_llm_deadlock_lab ordered
+./build/os_llm_deadlock_lab deadlock
+ctest --test-dir build -R '^deadlock_pthread_' --output-on-failure
+```
+
+Este laboratório não é um detector genérico de deadlock e não conecta
+o grafo didático a mutexes do runtime principal. A compilação e os
+cenários isolados foram verificados com GCC, Clang e GCC ASan/UBSan;
+a suíte integrada de 53 testes ainda requer execução no repositório.
+
 ## IPC conectado ao runtime POSIX (laboratório do commit 17)
 
 O executável `os_llm_ipc_runtime` faz o gateway enviar três PCBs serializados
@@ -146,4 +168,4 @@ de múltiplos processos workers. Detalhes do protocolo em
 
 ## IPC entre processos (F12 parcial)
 
-Execute o programa os_llm_ipc_demo para observar gateway e worker trocando mensagens por dois pipes POSIX. Os testes CTest pipe_channel e ipc_demo cobrem o protocolo e o round-trip. A integração didática com o runtime está no executável separado descrito acima; o laboratório SIGUSR1 também é independente. Os dois testes novos elevam o total configurado para 45; a matriz completa foi aprovada em GCC, Clang e ASan/UBSan ([CI 40427656618](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40427656618)). Consulte src/ipc/README.md.
+Execute o programa os_llm_ipc_demo para observar gateway e worker trocando mensagens por dois pipes POSIX. Os testes CTest pipe_channel e ipc_demo cobrem o protocolo e o round-trip. A integração didática com o runtime está no executável separado descrito acima; o laboratório SIGUSR1 também é independente. Os dois testes do transporte elevaram o baseline a 45; esta branch configura 53 testes; a matriz completa foi aprovada em GCC, Clang e ASan/UBSan ([CI 40427656618](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40427656618)). Consulte src/ipc/README.md.
