@@ -22,6 +22,7 @@ struct OsVirtualSession {
     size_t count;
     OsVirtualConfig config;
     OsFrameCache cache;
+    OsEmaEstimator ema;
     uint64_t tick;
     uint64_t ready_order;
     uint64_t event_sequence;
@@ -84,8 +85,10 @@ static bool dispatch(OsVirtualSession *s) {
     for (size_t i = 0; i < s->config.worker_count; ++i) {
         OsWorker *w = &s->workers[i];
         if (w->request_index != SIZE_MAX) { busy = true; continue; }
-        const size_t selected = os_scheduler_select(s->requests, s->count,
-            s->config.policy, s->tick, s->config.aging_interval);
+        const size_t selected = s->config.policy == OS_SJF_EMA ?
+            os_scheduler_select_ema(s->requests, s->count, &s->ema) :
+            os_scheduler_select(s->requests, s->count,
+                                s->config.policy, s->tick, s->config.aging_interval);
         if (selected == SIZE_MAX) continue;
         OsRequest *r = &s->requests[selected];
         if (!os_request_transition(r, OS_RUNNING) || s->tick < r->ready_tick ||
@@ -147,7 +150,10 @@ OsRunStatus os_session_create(const OsRequest *requests, size_t count,
     *out = NULL;
     if (config == NULL || !os_gateway_validate(requests, count) ||
         config->worker_count == 0 || config->worker_count > 4096 ||
-        config->policy < OS_FCFS || config->policy > OS_PRIORITY_AGING ||
+        config->policy < OS_FCFS || config->policy > OS_SJF_EMA ||
+        (config->policy == OS_SJF_EMA &&
+         (config->ema_initial_tokens == 0 ||
+          !(config->ema_alpha >= 0.0 && config->ema_alpha <= 1.0))) ||
         (config->policy == OS_ROUND_ROBIN && config->quantum_tokens == 0) ||
         (config->page_fault_latency_ticks != 0 && !config->memory_enabled) ||
         (config->memory_enabled && (config->frame_capacity == 0 ||
@@ -190,6 +196,12 @@ OsRunStatus os_session_create(const OsRequest *requests, size_t count,
     s->context = context;
     if (config->memory_enabled &&
         !os_frames_init(&s->cache, config->frame_capacity, config->page_policy)) {
+        os_session_destroy(s);
+        return OS_RUN_ALLOC_FAILURE;
+    }
+    if (config->policy == OS_SJF_EMA &&
+        !os_ema_init(&s->ema, requests, count,
+                     config->ema_alpha, config->ema_initial_tokens)) {
         os_session_destroy(s);
         return OS_RUN_ALLOC_FAILURE;
     }
@@ -242,6 +254,8 @@ OsRunStatus os_session_step_with_executor(OsVirtualSession *s,
         if (r->generated_tokens == r->total_tokens) {
             if (!os_request_transition(r, OS_TERMINATED)) return OS_RUN_INVALID;
             r->finished_tick = s->tick;
+            if (s->config.policy == OS_SJF_EMA &&
+                !os_ema_observe(&s->ema, r)) return OS_RUN_INVALID;
             if (s->config.memory_enabled) (void)os_frames_release(&s->cache, r->id);
             w->request_index = SIZE_MAX;
             ++s->completed;
@@ -397,6 +411,7 @@ bool os_session_request_wakeup(const OsVirtualSession *s,
 void os_session_destroy(OsVirtualSession *s) {
     if (s == NULL) return;
     os_frames_destroy(&s->cache);
+    os_ema_destroy(&s->ema);
     free(s->workers);
     free(s->jobs);
     free(s->wake_ticks);

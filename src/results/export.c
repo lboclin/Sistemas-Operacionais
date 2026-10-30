@@ -57,6 +57,10 @@ static void write_config(Writer *w, const OsVirtualConfig *c) {
     W_SIZE(w, "worker_count", c->worker_count);
     W_U64(w, "quantum_tokens", c->quantum_tokens);
     W_U64(w, "aging_interval", c->aging_interval);
+    if (c->policy == OS_SJF_EMA) {
+        W_DOUBLE(w, "ema_alpha", c->ema_alpha);
+        W_U64(w, "ema_initial_tokens", c->ema_initial_tokens);
+    }
     field(w, "memory_enabled", c->memory_enabled ? "true" : "false", false);
     W_SIZE(w, "frame_capacity", c->frame_capacity);
     W_U64(w, "tokens_per_page", c->tokens_per_page);

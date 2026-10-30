@@ -4,9 +4,9 @@ Simulador acadêmico de Sistemas Operacionais aplicado a requisições de LLM. R
 
 ## Estado atual
 
-**Protótipo funcional (C11, provisório):** PCB e estados, gateway de admissão, FCFS, SJF estimado/oráculo, RR, prioridade com aging, workers virtuais, relógio de 1 tick/token, p50/p95 e métricas de utilização, traces determinísticos com replay verificável, gerador de cargas com seed, paginação FIFO/LRU online integrada e replay offline FIFO/LRU/Ótimo. A CLI aceita cenários CSV, eventos, execução limitada por passos e snapshots intermediários. Há 53 testes CTest configurados nesta branch; os 45 testes anteriores foram aprovados no CI com GCC, Clang e GCC ASan/UBSan, mas os oito novos ainda não passaram por uma execução integrada de CI. Exportação JSON/CSV versionada, adaptador POSIX com pthreads/fila, race lab isolado, grafo didático de deadlock e laboratório pthread com deadlock real em subprocesso estão disponíveis.
+**Protótipo funcional (C11, provisório):** PCB e estados, gateway de admissão, FCFS, SJF estimado/oráculo, RR, prioridade com aging, workers virtuais, relógio de 1 tick/token, p50/p95 e métricas de utilização, traces determinísticos com replay verificável, gerador de cargas com seed, paginação FIFO/LRU online integrada e replay offline FIFO/LRU/Ótimo. A CLI aceita cenários CSV, eventos, execução limitada por passos e snapshots intermediários. Os testes incluem agora casos específicos de SJF-EMA; a suíte completa desta branch ainda não foi validada por CI. Os 45 testes do baseline anterior foram aprovados com GCC, Clang e GCC ASan/UBSan. Exportação JSON/CSV versionada, adaptador POSIX com pthreads/fila, race lab isolado, grafo didático de deadlock e laboratório pthread com deadlock real em subprocesso estão disponíveis.
 
-**Ainda não implementado:** inferência real nos workers, detecção de deadlock de mutexes integrada ao runtime, IPC persistente, tratamento de sinais no runtime principal, SJF com média exponencial ou preditor treinado, experimentos completos e interface gráfica. O IPC por pipes inclui demos isoladas e uma conexão didática com o runtime POSIX em subprocesso. A CLI é apenas uma ferramenta técnica para testar o núcleo; não substitui a GUI planejada.
+**Ainda não implementado:** inferência real nos workers, detecção de deadlock de mutexes integrada ao runtime, IPC persistente, tratamento de sinais no runtime principal, preditor treinado para SJF (o SJF-EMA já está implementado), experimentos completos e interface gráfica. O IPC por pipes inclui demos isoladas e uma conexão didática com o runtime POSIX em subprocesso. A CLI é apenas uma ferramenta técnica para testar o núcleo; não substitui a GUI planejada.
 
 ## Demonstração com SIGUSR1 (laboratório isolado)
 
@@ -37,6 +37,7 @@ Para reproduzir a demonstração:
 ```bash
 ./build/os_llm_cli
 ./build/os_llm_cli --policy sjf --workers 2
+./build/os_llm_cli --policy ema --ema-alpha 0.5 --ema-initial 6 --scenario scenarios/ema-demo.csv
 ./build/os_llm_cli --policy oracle
 ./build/os_llm_cli --policy rr --quantum 2
 ./build/os_llm_cli --policy priority
@@ -53,6 +54,21 @@ A memória simulada é opcional. Por exemplo:
 Os eventos incluem chegadas, despachos, preempções, conclusões, hits, faults, evicções, bloqueios e wakeups. Cada evento observado tem `sequence` monotônico; `src/metrics/trace.h` oferece captura, fingerprint versionado e `src/runtime/replay.h` verifica replay por reexecução, sem inventar estados. Por padrão, faults não custam ticks extras. Com `--page-fault-latency N` (exige `--frames`), um miss bloqueia a requisição por N ticks virtuais e libera o worker; OPT só funciona em replay offline.
 
 `--scenario` recebe linhas `id,arrival_tick,total_tokens,predicted_tokens,priority`, com no máximo 256 requisições; linhas iniciadas com `#` são comentários. Tempos são **virtuais**, não latências reais de inferência de LLM.
+
+### SJF por média exponencial (EMA)
+
+Use `--policy ema` para estimar bursts por `tau_next = alpha * last_burst + (1-alpha) * tau_previous`.
+`--ema-alpha` aceita valores de 0 a 1 (padrão 0.5); `--ema-initial` define
+o palpite inicial positivo em tokens (padrão 6). As duas opções exigem
+`--policy ema`. Como o CSV v1 ainda não possui classe de tarefa,
+**cada prioridade funciona provisoriamente como classe de histórico**, sem
+atribuir precedência de CPU à prioridade no modo EMA. Antes da primeira
+conclusão de cada classe, as estimativas são iguais; empates seguem
+`ready_order` e ID. O histórico é local à sessão e atualizado somente
+com `generated_tokens` de requisições **TERMINATED**. Os comprimentos
+reais de tarefas pendentes não entram no cálculo; não há inferência de LLM.
+O SJF legado (`--policy sjf`) continua lendo `predicted_tokens` do CSV;
+o oráculo (`--policy oracle`) usa `total_tokens` apenas para comparação.
 
 
 ## Inspecionar a execução passo a passo
