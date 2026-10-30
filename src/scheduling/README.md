@@ -9,6 +9,6 @@ provisoriamente como classe de histórico (o cenário CSV v1 não tem classe).
 Todas começam com a mesma estimativa; somente requisições concluídas
 atualizam a classe com `generated_tokens`. Empates usam `ready_order` e ID.
 O histórico é por sessão, determinístico e não consulta o comprimento
-real de requisições ainda não concluídas. Não há preditor de IA treinado.
+real de requisições ainda não concluídas. O preditor offline G20 é aplicado pelo adaptador externo G21, sem alterações no núcleo C.
 
 Exemplo: `./build/os_llm_cli --policy ema --ema-alpha 0.5 --ema-initial 6 --scenario scenarios/ema-demo.csv`.

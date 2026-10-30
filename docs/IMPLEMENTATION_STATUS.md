@@ -9,7 +9,8 @@
 | F01 PCB e estados | Parcial | estruturas e transições verificadas |
 | F02 Gateway | Parcial | validação, duplicidade e admissão por tick |
 | F03 FCFS | Parcial | escalonador virtual |
-| F04 SJF | Parcial | SJF-EMA online por classe de prioridade, SJF estimado e oráculo; preditor treinado pendente |
+| F04 SJF | Parcial | SJF-EMA online por prioridade, SJF estimado e oráculo; preditor offline G20 e comparação G21 via adaptador, sem IA no core C |
+| F14 Preditor de tokens | Parcial | regressão offline G20, integração G21 por cenário CSV v1 e comparação FCFS/EMA/IA/oráculo; sem inferência online de LLM |
 | F05 Round Robin | Parcial | quantum em tokens com preempção |
 | F06 Prioridade com aging | Parcial | envelhecimento em dispatch |
 | F07 Pool de workers | Parcial | adaptador POSIX usa pthreads + fila com ACK por token; coordenador serializa scheduler/cache/métricas; não há inferência real |

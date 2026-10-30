@@ -330,4 +330,14 @@ if(BUILD_TESTING)
 
     add_test(NAME cli_starvation COMMAND os_llm_cli --policy rr --quantum 1 --starvation-threshold 1 --steps 1 --snapshots)
     set_tests_properties(cli_starvation PROPERTIES PASS_REGULAR_EXPRESSION "snapshot step=1 tick=1.*starving=1")
+    # G21: offline model predictions -> unchanged C11 CLI; Python is optional.
+    find_package(Python3 COMPONENTS Interpreter QUIET)
+    if(Python3_Interpreter_FOUND)
+        add_test(NAME sjf_ai_comparison COMMAND ${CMAKE_COMMAND} -E env
+            "OSLLM_CLI=$<TARGET_FILE:os_llm_cli>"
+            ${Python3_EXECUTABLE} -m unittest discover
+            -s ${CMAKE_CURRENT_SOURCE_DIR}/tools/predictor -p test_compare_sjf.py -v)
+        set_tests_properties(sjf_ai_comparison PROPERTIES TIMEOUT 120)
+    endif()
+
 endif()
