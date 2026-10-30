@@ -46,4 +46,11 @@ Se houver falha de teste, incompatibilidade de contrato, autorização ausente o
 
 **Commit 15 (F12 parcial, feito: `46736ae`):** transporte POSIX por pipe com framing e demo gateway/worker em processos reais. Dois testes novos: framing e round-trip. A integração IPC com o runtime principal permanece pendente. O PR [#17](https://github.com/fragaeduardo/OS-llm-project/pull/17) passou na matriz [CI 40427656618](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40427656618), com 45 testes configurados em GCC, Clang e ASan/UBSan, e foi incorporado à `main`.
 
-Próximos: integração IPC, SIGUSR1, SJF-EMA, treino e integração do preditor, coleta com LLM, experimentos, relatórios, decisão da GUI e telas de escalonamento/memória/concorrência, testes E2E e entrega final. Linguagem e interface ainda são decisões abertas.
+### Bloco G — Previsão e cargas (30/10/2026)
+
+- **G19** `5411946`: SJF-EMA online com histórico por prioridade, atualização após conclusão, testes.
+- **G20** `eaad60d`: preditor ridge offline com avaliação por split, modelo versionado e testes.
+- **G21** `09f815b`: adaptador de comparação FCFS/EMA/IA/oráculo via CSV v1, sem dependência Python no core C.
+- **G22** (este commit): coleta opcional de metadados de saída por endpoint OpenAI-compatible, fixture sintética rotulada, geração de workloads determinísticos com CSV v1 + features G21 + proveniência, testes com mock local (7/7). **Nenhum LLM real foi consultado.** A suíte CTest completa e o CI do bloco G ainda não foram validados; manter essa limitação explícita.
+
+**Próximos:** bloco H de experimentos e relatórios comparativos, depois GUI, testes E2E e entrega final. Linguagem e interface ainda são decisões abertas.

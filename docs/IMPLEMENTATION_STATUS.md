@@ -1,6 +1,6 @@
 # Estado da implementação
 
-> Atualizado em 29/10/2026. Inclui os commits 16–18 do bloco F. O projeto acadêmico ainda não está completo.
+> Atualizado em 30/10/2026. Inclui o bloco F e os commits G19–G22. O projeto acadêmico ainda não está completo.
 
 ## Entregue e limitações
 
@@ -11,6 +11,7 @@
 | F03 FCFS | Parcial | escalonador virtual |
 | F04 SJF | Parcial | SJF-EMA online por prioridade, SJF estimado e oráculo; preditor offline G20 e comparação G21 via adaptador, sem IA no core C |
 | F14 Preditor de tokens | Parcial | regressão offline G20, integração G21 por cenário CSV v1 e comparação FCFS/EMA/IA/oráculo; sem inferência online de LLM |
+| F15 Workloads | Parcial | G22: coleta opt-in de metadados via endpoint OpenAI-compatible, fallback sintético rotulado, geração por seed e export CSV v1 + features G21 + proveniência; sem coleta real de LLM neste commit |
 | F05 Round Robin | Parcial | quantum em tokens com preempção |
 | F06 Prioridade com aging | Parcial | envelhecimento em dispatch |
 | F07 Pool de workers | Parcial | adaptador POSIX usa pthreads + fila com ACK por token; coordenador serializa scheduler/cache/métricas; não há inferência real |
@@ -57,6 +58,8 @@ ctest --test-dir build --output-on-failure
 `--steps N` limita a execução a N passos; `--snapshots` exibe o estado inicial e cada avanço. A CLI encerra o processo após o limite e não permite retomada entre invocações. Médias em execução parcial consideram somente PCBs concluídos.
 
 ## Testes
+
+G22: **7 testes Python unittest passaram localmente**, cobrindo mock HTTP, falhas e determinismo; sem endpoint de LLM real. CTest registra `workload_capture_py` se Python 3 estiver disponível. A suíte CTest completa e a matriz CI **não foram executadas nesta branch** nesta etapa; não alegar validação integral.
 
 Validação remota dos 43 testes anteriores no [GitHub Actions, run 40387581428](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40387581428), após os commits 11–14:
 

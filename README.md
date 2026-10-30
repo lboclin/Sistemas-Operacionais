@@ -6,7 +6,7 @@ Simulador acadêmico de Sistemas Operacionais aplicado a requisições de LLM. R
 
 **Protótipo funcional (C11, provisório):** PCB e estados, gateway de admissão, FCFS, SJF estimado/oráculo, RR, prioridade com aging, workers virtuais, relógio de 1 tick/token, p50/p95 e métricas de utilização, traces determinísticos com replay verificável, gerador de cargas com seed, paginação FIFO/LRU online integrada e replay offline FIFO/LRU/Ótimo. A CLI aceita cenários CSV, eventos, execução limitada por passos e snapshots intermediários. Os testes incluem agora casos específicos de SJF-EMA; a suíte completa desta branch ainda não foi validada por CI. Os 45 testes do baseline anterior foram aprovados com GCC, Clang e GCC ASan/UBSan. Exportação JSON/CSV versionada, adaptador POSIX com pthreads/fila, race lab isolado, grafo didático de deadlock e laboratório pthread com deadlock real em subprocesso estão disponíveis.
 
-**Ainda não implementado:** inferência real nos workers, detecção de deadlock de mutexes integrada ao runtime, IPC persistente, tratamento de sinais no runtime principal, preditor treinado para SJF (o SJF-EMA já está implementado), experimentos completos e interface gráfica. O IPC por pipes inclui demos isoladas e uma conexão didática com o runtime POSIX em subprocesso. A CLI é apenas uma ferramenta técnica para testar o núcleo; não substitui a GUI planejada.
+**Ainda não implementado:** inferência real nos workers, detecção de deadlock de mutexes integrada ao runtime, IPC persistente, tratamento de sinais no runtime principal, experimentos completos e interface gráfica. O preditor offline e sua integração por adaptador (G20/G21) já existem; o G22 acrescenta coleta opcional de metadados e workloads reproduzíveis, sem executar LLM no motor C. O IPC por pipes inclui demos isoladas e uma conexão didática com o runtime POSIX em subprocesso. A CLI é apenas uma ferramenta técnica para testar o núcleo; não substitui a GUI planejada.
 
 ## Demonstração com SIGUSR1 (laboratório isolado)
 
@@ -70,6 +70,18 @@ reais de tarefas pendentes não entram no cálculo; não há inferência de LLM.
 O SJF legado (`--policy sjf`) continua lendo `predicted_tokens` do CSV;
 o oráculo (`--policy oracle`) usa `total_tokens` apenas para comparação.
 
+
+### Workloads observados ou sintéticos (G22)
+
+A ferramenta opcional `tools/workload_capture/capture.py` coleta metadados de comprimento de saída de um endpoint OpenAI-compatible **somente com opt-in**, ou gera cargas a partir de uma fixture **sintética** claramente rotulada. Não salva prompts, respostas ou chaves; gera `scenario.csv` compatível com a CLI v1, `features.csv` compatível com o adaptador SJF-IA e `scenario.meta.json` com proveniência. Não houve coleta de LLM real neste commit.
+
+```bash
+python3 tools/workload_capture/capture.py generate --seed 42 --count 12 --distribution burst --profile memory-pressure --output-dir /tmp/osllm-g22-synthetic
+./build/os_llm_cli --scenario /tmp/osllm-g22-synthetic/scenario.csv --policy ema
+python3 -m unittest discover -s tools/workload_capture -p 'test_capture.py' -v
+```
+
+Detalhes da coleta opt-in, segurança, limitações e formato: [tools/workload_capture/README.md](tools/workload_capture/README.md). `predicted_tokens` é preenchido com o limite pré-geração `max_new_tokens` (não oráculo); o adaptador G21 pode substituí-lo por previsões de um modelo treinado em dados independentes.
 
 ## Inspecionar a execução passo a passo
 
