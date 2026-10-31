@@ -103,10 +103,11 @@ static bool load_csv(const char *path, OsRequest *requests, size_t *count,
             continue;
         }
         if (line[0] == '#' || line[0] == '\n' || line[0] == '\r') continue;
-        uint32_t id, arrival, total, predicted;
+        uint32_t id, total, predicted;
+        uint64_t arrival;
         int priority;
         char extra;
-        if (sscanf(line, " %" SCNu32 " , %" SCNu32 " , %" SCNu32 " , %" SCNu32 " , %d %c",
+        if (sscanf(line, " %" SCNu32 " , %" SCNu64 " , %" SCNu32 " , %" SCNu32 " , %d %c",
                    &id, &arrival, &total, &predicted, &priority, &extra) != 5 ||
             n == MAX_REQUESTS || !os_request_init(&requests[n], id, arrival, total, predicted, priority)) {
             valid = false; break;

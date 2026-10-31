@@ -22,6 +22,7 @@ from predictor import (MODEL_SCHEMA, PREDICTION_SCHEMA, check_model,
 SCHEMA = "os-llm-sjf-comparison/v1"
 MAX_REQUESTS = 256
 UINT32_MAX = 2**32 - 1
+UINT64_MAX = 2**64 - 1
 HEADER = re.compile(r"# os-llm-scenario v1 seed=([0-9]+) distribution=(uniform|burst|staggered) count=([0-9]+)\s*$")
 FEATURES = {"request_id", "prompt_tokens", "max_new_tokens", "task_category"}
 POLICIES = (("fcfs", "fcfs", "FCFS"),
@@ -86,7 +87,7 @@ def load_scenario(path):
         if len(values) != 5:
             raise ValueError(f"scenario line {number}: expected five CSV fields")
         rid = bounded_int(values[0], "request ID", 1)
-        arrival = bounded_int(values[1], "arrival tick")
+        arrival = bounded_int(values[1], "arrival tick", maximum=UINT64_MAX)
         total = bounded_int(values[2], "total tokens", 1)
         predicted = bounded_int(values[3], "existing prediction", 1)
         priority = signed_priority(values[4])

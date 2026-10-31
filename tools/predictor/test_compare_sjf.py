@@ -111,6 +111,18 @@ Path(arg('--export-json')).write_text(json.dumps(export))
         self.invoke(ok=False)
         self.assertFalse(self.out.exists())
 
+    def test_arrival_tick_full_64bit_range(self):
+        text = DEMO_SCENARIO.read_text(encoding="utf-8")
+        self.scenario.write_text(text.replace("101,0,18,18,1",
+            "101,4294967296,18,18,1"), encoding="utf-8")
+        self.invoke()
+        rows = json.loads((self.out / "fcfs.json").read_text())["input"]
+        self.assertEqual(rows[0]["arrival_tick"], 4294967296)
+        self.scenario.write_text(text.replace("101,0,18,18,1",
+            "101,18446744073709551616,18,18,1"), encoding="utf-8")
+        self.invoke(output=self.base / "bad", ok=False)
+        self.assertFalse((self.base / "bad").exists())
+
     @unittest.skipUnless(os.environ.get("OSLLM_CLI"), "requires compiled C CLI via CTest")
     def test_real_c_cli_end_to_end(self):
         # Train the real G20 model on synthetic IDs 1..16, then predict for

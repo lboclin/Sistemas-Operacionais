@@ -149,6 +149,10 @@ if(BUILD_TESTING)
     add_test(NAME cli_help COMMAND os_llm_cli --help)
     add_test(NAME cli_round_robin COMMAND os_llm_cli --policy rr --quantum 2)
     add_test(NAME cli_scenario COMMAND os_llm_cli --scenario ${CMAKE_CURRENT_SOURCE_DIR}/scenarios/sample.csv)
+    add_test(NAME cli_u64_arrival COMMAND os_llm_cli
+        --scenario ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/large-arrival.csv --steps 0)
+    set_tests_properties(cli_u64_arrival PROPERTIES PASS_REGULAR_EXPRESSION "1 +4294967296")
+
     add_test(NAME cli_ema COMMAND os_llm_cli --policy ema --ema-alpha 0.5 --ema-initial 6
              --scenario ${CMAKE_CURRENT_SOURCE_DIR}/scenarios/ema-demo.csv)
     set_tests_properties(cli_ema PROPERTIES PASS_REGULAR_EXPRESSION "Policy: SJF-EMA.*Execution: completed")
