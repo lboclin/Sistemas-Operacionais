@@ -342,6 +342,13 @@ if(BUILD_TESTING)
             ${Python3_EXECUTABLE} -m unittest discover
             -s ${CMAKE_CURRENT_SOURCE_DIR}/tools/predictor -p test_compare_sjf.py -v)
         set_tests_properties(sjf_ai_comparison PROPERTIES TIMEOUT 120)
+        add_test(NAME experiments_runner_py COMMAND ${CMAKE_COMMAND} -E env
+            "OSLLM_CLI=$<TARGET_FILE:os_llm_cli>"
+            "OSLLM_RACE=$<TARGET_FILE:os_llm_race_lab>"
+            "OSLLM_DEADLOCK=$<TARGET_FILE:os_llm_deadlock_lab>"
+            ${Python3_EXECUTABLE} -m unittest discover
+            -s ${CMAKE_CURRENT_SOURCE_DIR}/tools/experiments -p test_runner.py -v)
+        set_tests_properties(experiments_runner_py PROPERTIES TIMEOUT 120)
         # G22: optional offline workload capture tests with a loopback HTTP mock.
         add_test(NAME workload_capture_py COMMAND ${CMAKE_COMMAND} -E env
             "OSLLM_CLI=$<TARGET_FILE:os_llm_cli>"

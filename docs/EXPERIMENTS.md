@@ -15,3 +15,7 @@ Fixar o cenário, seeds, número de workers, capacidade e política de memória 
 Média/p50/p95 de espera, resposta e retorno, throughput, maior espera/starvation, utilização dos workers, page faults e fragmentação interna.
 
 Exportar configurações, origem da carga, versão, definições de métricas e ambiente junto aos resultados. Repetir execuções com threads reais para observar a variabilidade.
+
+## H23 — runner de campanhas
+
+Comandos, resultados e limitações em [tools/experiments/README.md](../tools/experiments/README.md). O runner registra resultados virtuais e observações de laboratórios, sinaliza atividades não implementadas como skipped e não fabrica comparações de modelos reais.
