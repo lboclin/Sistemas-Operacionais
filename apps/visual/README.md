@@ -39,3 +39,7 @@ O Gantt usa os eventos exportados pelo motor C (sequência, tick, tipo, PCB e wo
 ## I27 — Memória e laboratórios
 
 Painel executa o motor C com `--frames`, `--page-tokens`, FIFO/LRU e `--page-fault-latency`. Somente eventos/métricas realmente exportados são visualizados: não há mapa fictício de frames. OPT é offline. As demos são invocadas em subprocessos isolados por allowlist (`race safe|unsafe`, `deadlock ordered|deadlock`) com watchdog 8s, confirmação dos modos perigosos e caminhos dos executáveis configurados apenas pelo administrador: `--race-lab` e `--deadlock-lab`. Testes Python: `test_memory_lab.py`.
+
+## I28 — Resultados e relatórios
+
+Cada execução concluída é exibida em comparação pareada apenas quando compartilha o mesmo input (ids, chegadas, total de tokens, prioridade). Comparação e gráficos usam métricas do JSON original, sem modelos artificiais. O botão Exportar JSON bruto salva o último JSON completo. O botão Importar relatório H24 lê um `report.json` produzido por `tools/analysis/report.py` no navegador sem dar acesso ao servidor a paths arbitrários. O relatório precisa corresponder ao schema `os-llm-report/v1`. A UI distingue ticks virtuais de latência real. Testes JS: `node --test tests/visual/test_reports.cjs` e CTest opcional `visual_reports_js`.
