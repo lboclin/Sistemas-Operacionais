@@ -31,3 +31,7 @@ ctest --test-dir build --output-on-failure
 ```
 
 CMake registra `visual_api_py` automaticamente quando houver Python. O teste de mock verifica contratos e segurança; apenas o teste `test_real_compiled_simulator` exercita o binário do projeto. A UI não depende de backends remotos nem persiste cenários.
+
+## I26 — Gantt e replay visual
+
+O Gantt usa os eventos exportados pelo motor C (sequência, tick, tipo, PCB e worker). Intervalos são construídos somente quando há dispatched e um evento de término/preempção/bloqueio correspondente; intervalos abertos são explicitados, jamais completados artificialmente. Controles de play, pause, step e reset são apenas reprodução visual: não interrompem processos, métricas ou o motor. Limites de precisão de inteiros JavaScript invalidam apenas a visualização. Testes: `node --test tests/visual/test_timeline.cjs` (CTest `visual_timeline_js` se Node estiver disponível).
