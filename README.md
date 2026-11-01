@@ -201,3 +201,7 @@ de múltiplos processos workers. Detalhes do protocolo em
 ## IPC entre processos (F12 parcial)
 
 Execute o programa os_llm_ipc_demo para observar gateway e worker trocando mensagens por dois pipes POSIX. Os testes CTest pipe_channel e ipc_demo cobrem o protocolo e o round-trip. A integração didática com o runtime está no executável separado descrito acima; o laboratório SIGUSR1 também é independente. Os dois testes do transporte elevaram o baseline a 45; esta branch configura 53 testes; a matriz completa foi aprovada em GCC, Clang e ASan/UBSan ([CI 40427656618](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40427656618)). Consulte src/ipc/README.md.
+
+## Interface gráfica local (Bloco I)
+
+Após compilar o projeto, inicie `python3 apps/visual/server.py --cli ./build/os_llm_cli --port 8765` e abra `http://127.0.0.1:8765`. A interface inclui dashboard, Gantt/replay visual, memória virtual FIFO/LRU, laboratórios POSIX isolados e comparação/exportação de runs e relatório H24. Somente a CLI C gera as métricas; não há inferência LLM real. Veja [apps/visual/README.md](apps/visual/README.md).

@@ -108,6 +108,7 @@ function display(result) {
   $('run-state').className = 'pill done';
   if (window.OSLLMTimeline && window.OSLLMTimeline.show) window.OSLLMTimeline.show(result);
   if (window.OSLLMMemory) window.OSLLMMemory.show(result);
+  if (window.OSLLMReports && window.OSLLMReports.onRun) window.OSLLMReports.onRun(result);
 }
 async function run() {
   if (busy) return;

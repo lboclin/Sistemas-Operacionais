@@ -14,6 +14,7 @@ ASSETS = {'/': ('index.html', 'text/html; charset=utf-8'),
           '/app.js': ('app.js', 'application/javascript; charset=utf-8'),
           '/timeline.js': ('timeline.js', 'application/javascript; charset=utf-8'),
           '/memory.js': ('memory.js', 'application/javascript; charset=utf-8'),
+          '/reports.js': ('reports.js', 'application/javascript; charset=utf-8'),
           '/style.css': ('style.css', 'text/css; charset=utf-8')}
 MAX_BODY = 64 * 1024
 MAX_OUTPUT = 16 * 1024 * 1024
