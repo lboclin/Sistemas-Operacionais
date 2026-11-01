@@ -6,6 +6,7 @@
   <meta name="color-scheme" content="dark">
   <title>OS-LLM Studio · Laboratório de Sistemas Operacionais</title>
   <link rel="stylesheet" href="/style.css">
+  <script src="/timeline.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
 <body>
@@ -14,7 +15,7 @@
     <div class="brand"><span class="brand-mark" aria-hidden="true">◈</span><span>OS<span class="accent">.</span>LLM <small>STUDIO</small></span></div>
     <div class="nav-label">AMBIENTE</div>
     <div class="nav-item active"><span aria-hidden="true">▤</span> Visão geral <span class="nav-state">ATIVO</span></div>
-    <div class="nav-item"><span aria-hidden="true">◫</span> Escalonamento <small>I26</small></div>
+    <div class="nav-item"><span aria-hidden="true">◫</span> Escalonamento <small>ATIVO</small></div>
     <div class="nav-item"><span aria-hidden="true">▦</span> Memória <small>I27</small></div>
     <div class="nav-item"><span aria-hidden="true">◉</span> Experimentos <small>I28</small></div>
     <div class="sidebar-bottom"><span class="live-dot"></span> MOTOR VIRTUAL <p>Simulação determinística · 1 tick por token</p></div>
@@ -47,6 +48,14 @@
       </section>
     </div>
     <section class="panel upcoming" aria-label="Funcionalidades futuras"><div class="panel-heading"><div><span class="eyebrow">EM DESENVOLVIMENTO</span><h2>Próximas visualizações</h2></div></div><div class="upcoming-grid"><div><span class="feature-icon">▥</span><strong>Gantt e replay</strong><p>Timeline e reprodução visual · I26</p></div><div><span class="feature-icon">▦</span><strong>Memória KV</strong><p>Frames, faults e concorrência · I27</p></div><div><span class="feature-icon">◴</span><strong>Relatórios</strong><p>Comparação entre execuções · I28</p></div></div></section>
+    <section class="panel timeline-panel" id="timeline-panel" aria-label="Gantt e replay visual" hidden>
+<div class="panel-heading"><div><span class="eyebrow">03 / ESCALONAMENTO</span><h2>Gantt e replay de eventos</h2></div><span class="pill">TICKS VIRTUAIS</span></div>
+<p class="caption" id="timeline-status" role="status">Aguardando exportação do motor C.</p>
+<div class="timeline-controls"><button class="button secondary" type="button" id="timeline-start">↤ Início</button><button class="button secondary" type="button" id="timeline-step">Passo</button><button class="button secondary" type="button" id="timeline-play">▶ Reproduzir</button><button class="button secondary" type="button" id="timeline-pause">Pausar replay</button><label for="timeline-scrub" class="sr-only">Posição do replay</label><input id="timeline-scrub" type="range" min="0" max="0" value="0"><span id="timeline-position">0 eventos</span></div>
+<div id="timeline-chart" class="timeline-chart" role="img" aria-label="Intervalos observados por worker"></div>
+<h3>Eventos (últimos 150 até a posição selecionada)</h3><ol id="timeline-log" class="timeline-log" aria-label="Eventos do motor"></ol>
+<p class="caption">Os intervalos são reconstruídos exclusivamente entre dispatched e completed/preempted/blocked. Não são tempos reais de inferência. O replay não altera a execução.</p>
+</section>
     <footer>OS-LLM Studio · Projeto acadêmico · A execução utiliza um relógio virtual determinístico.</footer>
   </main>
 </div>

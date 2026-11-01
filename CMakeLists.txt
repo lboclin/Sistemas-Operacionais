@@ -336,6 +336,11 @@ if(BUILD_TESTING)
     set_tests_properties(cli_starvation PROPERTIES PASS_REGULAR_EXPRESSION "snapshot step=1 tick=1.*starving=1")
     # G21: offline model predictions -> unchanged C11 CLI; Python is optional.
     find_package(Python3 COMPONENTS Interpreter QUIET)
+    find_program(OSLLM_NODE_EXECUTABLE node)
+    if(OSLLM_NODE_EXECUTABLE)
+        add_test(NAME visual_timeline_js COMMAND ${OSLLM_NODE_EXECUTABLE} --test ${CMAKE_CURRENT_SOURCE_DIR}/tests/visual/test_timeline.cjs)
+        set_tests_properties(visual_timeline_js PROPERTIES TIMEOUT 30)
+    endif()
     if(Python3_Interpreter_FOUND)
         add_test(NAME sjf_ai_comparison COMMAND ${CMAKE_COMMAND} -E env
             "OSLLM_CLI=$<TARGET_FILE:os_llm_cli>"

@@ -25,6 +25,7 @@ function invalidate() {
   $('empty-state').hidden = false;
   $('run-state').textContent = 'AGUARDANDO';
   $('run-state').className = 'pill';
+  if (window.OSLLMTimeline && window.OSLLMTimeline.reset) window.OSLLMTimeline.reset();
 }
 function renderRows() {
   const body = $('requests');
@@ -104,6 +105,7 @@ function display(result) {
   $('results').hidden = false;
   $('run-state').textContent = 'CONCLUÍDO';
   $('run-state').className = 'pill done';
+  if (window.OSLLMTimeline && window.OSLLMTimeline.show) window.OSLLMTimeline.show(result);
 }
 async function run() {
   if (busy) return;
