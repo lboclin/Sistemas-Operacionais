@@ -13,11 +13,13 @@ ROOT = Path(__file__).resolve().parent
 ASSETS = {'/': ('index.html', 'text/html; charset=utf-8'),
           '/app.js': ('app.js', 'application/javascript; charset=utf-8'),
           '/timeline.js': ('timeline.js', 'application/javascript; charset=utf-8'),
+          '/memory.js': ('memory.js', 'application/javascript; charset=utf-8'),
           '/style.css': ('style.css', 'text/css; charset=utf-8')}
 MAX_BODY = 64 * 1024
 MAX_OUTPUT = 16 * 1024 * 1024
 MAX_REQUESTS = 256
 POLICIES = {'fcfs', 'sjf', 'ema', 'oracle', 'rr', 'priority'}
+LAB_CHOICES = {'race':('safe','unsafe'),'deadlock':('ordered','deadlock')}
 DECIMAL = re.compile(r'(0|[1-9][0-9]*)\Z')
 SIGNED = re.compile(r'(0|-?[1-9][0-9]*)\Z')
 
@@ -39,7 +41,7 @@ def integer(value, name, low, high, signed=False):
 
 
 def validate(payload):
-    if not isinstance(payload, dict) or set(payload) != {'requests', 'policy', 'workers', 'quantum'}:
+    if not isinstance(payload, dict) or not {'requests','policy','workers','quantum'} <= set(payload) or set(payload) - {'requests','policy','workers','quantum','memory'}:
         raise InputError('Configuração inválida: use requests, policy, workers e quantum')
     policy = payload['policy']
     if type(policy) is not str or policy not in POLICIES:
@@ -64,7 +66,17 @@ def validate(payload):
             'predicted_tokens': integer(row['predicted_tokens'], 'predicted_tokens', 1, 4294967295),
             'priority': integer(row['priority'], 'priority', -2147483648, 2147483647, signed=True)
         })
-    return {'requests': requests, 'policy': policy, 'workers': workers, 'quantum': quantum}
+    memory = payload.get('memory')
+    if memory is not None:
+        if not isinstance(memory,dict) or set(memory) != {'frames','page_tokens','policy','fault_latency'}:
+            raise InputError('Campos inválidos de memória')
+        if type(memory['policy']) is not str or memory['policy'] not in ('fifo','lru'):
+            raise InputError('Política online deve ser FIFO ou LRU')
+        memory = {'frames':integer(memory['frames'],'frames',1,4096),
+                  'page_tokens':integer(memory['page_tokens'],'page_tokens',1,4294967295),
+                  'policy':memory['policy'],
+                  'fault_latency':integer(memory['fault_latency'],'fault_latency',0,18446744073709551614)}
+    return {'requests':requests,'policy':policy,'workers':workers,'quantum':quantum,'memory':memory}
 
 
 def simulate(cli, payload, timeout=25):
@@ -75,6 +87,10 @@ def simulate(cli, payload, timeout=25):
                                     f"{r['predicted_tokens']},{r['priority']}\n" for r in data['requests']), encoding='ascii')
         args = [str(cli), '--scenario', str(scenario), '--policy', data['policy'],
                 '--workers', str(data['workers']), '--export-json', str(export)]
+        if data['memory'] is not None:
+            mem=data['memory']
+            args += ['--frames',str(mem['frames']),'--page-tokens',str(mem['page_tokens']),
+                     '--page-policy',mem['policy'],'--page-fault-latency',str(mem['fault_latency'])]
         if data['policy'] == 'rr':
             args += ['--quantum', str(data['quantum'])]
         if data['policy'] == 'ema':
@@ -107,9 +123,34 @@ def simulate(cli, payload, timeout=25):
         return result
 
 
+def validate_lab(payload):
+    if not isinstance(payload,dict) or set(payload) != {'lab','mode','acknowledge'}:
+        raise InputError('Contrato inválido do laboratório')
+    lab,mode,ack=payload['lab'],payload['mode'],payload['acknowledge']
+    if type(lab) is not str or type(mode) is not str or lab not in LAB_CHOICES or mode not in LAB_CHOICES[lab]:
+        raise InputError('Laboratório não permitido')
+    if type(ack) is not bool or (mode in ('unsafe','deadlock') and not ack):
+        raise InputError('Confirmação explícita obrigatória')
+    return lab,mode
+
+
+def execute_lab(binary,mode,timeout=8):
+    if binary is None or not binary.is_file() or not os.access(binary,os.X_OK):
+        raise InputError('Binário do laboratório indisponível')
+    try:
+        result=subprocess.run([str(binary),mode],capture_output=True,timeout=timeout,check=False)
+    except subprocess.TimeoutExpired as exc:
+        raise InputError('Laboratório excedeu watchdog') from exc
+    if result.returncode != 0:
+        raise InputError('Laboratório terminou com erro')
+    return {'output':result.stdout[:2048].decode('utf-8',errors='replace').strip(),'exit_code':result.returncode,'mode':mode}
+
+
 class Handler(BaseHTTPRequestHandler):
     cli = None
     timeout_seconds = 25
+    race_lab = None
+    deadlock_lab = None
 
     def security_headers(self):
         self.send_header('X-Content-Type-Options', 'nosniff')
@@ -148,7 +189,7 @@ class Handler(BaseHTTPRequestHandler):
         if origin and origin not in {f'http://127.0.0.1:{self.server.server_port}', f'http://localhost:{self.server.server_port}'}:
             self.send_data(403, b'Origin rejected', 'text/plain; charset=utf-8')
             return
-        if self.path != '/api/run':
+        if self.path not in ('/api/run','/api/lab'):
             self.send_data(404, b'Not found', 'text/plain; charset=utf-8')
             return
         if self.headers.get('Content-Type', '').split(';', 1)[0].strip().lower() != 'application/json':
@@ -160,7 +201,12 @@ class Handler(BaseHTTPRequestHandler):
             return
         try:
             request = json.loads(self.rfile.read(int(length)).decode('utf-8'))
-            result = simulate(self.cli, request, timeout=self.timeout_seconds)
+            if self.path == '/api/lab':
+                lab, mode=validate_lab(request)
+                executable=self.race_lab if lab=='race' else self.deadlock_lab
+                result=execute_lab(executable,mode)
+            else:
+                result=simulate(self.cli,request,timeout=self.timeout_seconds)
             output = json.dumps(result, ensure_ascii=False, allow_nan=False).encode('utf-8')
             if len(output) > MAX_OUTPUT:
                 raise InputError('Resposta grande demais para o painel')
@@ -180,6 +226,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--cli', type=Path, default=Path('build/os_llm_cli'))
     parser.add_argument('--port', type=int, default=8765)
+    parser.add_argument('--race-lab',type=Path,default=Path('build/os_llm_race_lab'))
+    parser.add_argument('--deadlock-lab',type=Path,default=Path('build/os_llm_deadlock_lab'))
     args = parser.parse_args()
     cli = args.cli.expanduser().resolve()
     if not cli.is_file() or not os.access(cli, os.X_OK):
@@ -187,6 +235,8 @@ def main():
     if not 1024 <= args.port <= 65535:
         parser.error('Use uma porta entre 1024 e 65535')
     Handler.cli = cli
+    Handler.race_lab=args.race_lab.expanduser().resolve()
+    Handler.deadlock_lab=args.deadlock_lab.expanduser().resolve()
     with ThreadingHTTPServer(('127.0.0.1', args.port), Handler) as server:
         print(f'OS-LLM Studio: http://127.0.0.1:{server.server_port}', flush=True)
         try:

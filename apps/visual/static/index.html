@@ -6,6 +6,7 @@
   <meta name="color-scheme" content="dark">
   <title>OS-LLM Studio · Laboratório de Sistemas Operacionais</title>
   <link rel="stylesheet" href="/style.css">
+  <script src="/memory.js" defer></script>
   <script src="/timeline.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
@@ -56,6 +57,14 @@
 <h3>Eventos (últimos 150 até a posição selecionada)</h3><ol id="timeline-log" class="timeline-log" aria-label="Eventos do motor"></ol>
 <p class="caption">Os intervalos são reconstruídos exclusivamente entre dispatched e completed/preempted/blocked. Não são tempos reais de inferência. O replay não altera a execução.</p>
 </section>
+<section class="panel memory-panel" aria-labelledby="mem-title"><div class="panel-heading"><div><span class="eyebrow">04 / CACHE KV</span><h2 id="mem-title">Memória virtual</h2></div><span class="pill">FIFO / LRU</span></div>
+<div class="form-row memory-fields"><label class="memory-toggle"><input id="mem-on" type="checkbox"> Ativar memória</label><label>Frames<input id="mem-frames" type="number" min="1" max="4096" value="2" disabled></label><label>Tokens / página<input id="mem-tokens" type="number" min="1" value="2" disabled></label><label>Política<select id="mem-policy" disabled><option value="fifo">FIFO</option><option value="lru">LRU</option></select></label><label>Latência (ticks)<input id="mem-latency" type="number" min="0" value="1" disabled></label></div>
+<p class="caption">A política OPT é exclusiva do replay offline, não pode ser usada nesta CLI online. Execute novamente para aplicar mudanças.</p>
+<p class="caption" id="mem-empty">Execute um cenário para ver os eventos e as métricas reais.</p><div id="mem-result" hidden><div class="memory-numbers"><div>Hits<strong id="mem-hits">—</strong></div><div>Faults<strong id="mem-faults">—</strong></div><div>Evicções<strong id="mem-evicts">—</strong></div><div>Frames pico<strong id="mem-peak">—</strong></div></div><p id="mem-info" class="caption"></p><h3>Eventos</h3><ol class="memory-log" id="mem-log"></ol></div></section>
+<section class="panel memory-panel" aria-labelledby="labs-title"><div class="panel-heading"><div><span class="eyebrow">05 / POSIX</span><h2 id="labs-title">Laboratórios controlados</h2></div><span class="pill">SUBPROCESSO</span></div>
+<p class="caption">Os laboratórios de corrida e deadlock não integram a simulação de LLMs. Modos demonstrativos exigem confirmação e usam watchdog.</p>
+<div class="lab-actions"><button class="button secondary" data-lab="race" data-mode="safe">Corrida segura</button><button class="button secondary" data-lab="race" data-mode="unsafe">Perda controlada</button><button class="button secondary" data-lab="deadlock" data-mode="ordered">Ordem global</button><button class="button secondary" data-lab="deadlock" data-mode="deadlock">Deadlock isolado</button></div>
+<p class="caption" role="status" id="lab-status">Nenhum laboratório foi executado.</p></section>
     <footer>OS-LLM Studio · Projeto acadêmico · A execução utiliza um relógio virtual determinístico.</footer>
   </main>
 </div>

@@ -35,3 +35,7 @@ CMake registra `visual_api_py` automaticamente quando houver Python. O teste de 
 ## I26 — Gantt e replay visual
 
 O Gantt usa os eventos exportados pelo motor C (sequência, tick, tipo, PCB e worker). Intervalos são construídos somente quando há dispatched e um evento de término/preempção/bloqueio correspondente; intervalos abertos são explicitados, jamais completados artificialmente. Controles de play, pause, step e reset são apenas reprodução visual: não interrompem processos, métricas ou o motor. Limites de precisão de inteiros JavaScript invalidam apenas a visualização. Testes: `node --test tests/visual/test_timeline.cjs` (CTest `visual_timeline_js` se Node estiver disponível).
+
+## I27 — Memória e laboratórios
+
+Painel executa o motor C com `--frames`, `--page-tokens`, FIFO/LRU e `--page-fault-latency`. Somente eventos/métricas realmente exportados são visualizados: não há mapa fictício de frames. OPT é offline. As demos são invocadas em subprocessos isolados por allowlist (`race safe|unsafe`, `deadlock ordered|deadlock`) com watchdog 8s, confirmação dos modos perigosos e caminhos dos executáveis configurados apenas pelo administrador: `--race-lab` e `--deadlock-lab`. Testes Python: `test_memory_lab.py`.
