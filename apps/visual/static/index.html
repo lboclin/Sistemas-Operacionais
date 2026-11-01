@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>OS-LLM Studio · Laboratório de Sistemas Operacionais</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" aria-label="Navegação do laboratório">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">◈</span><span>OS<span class="accent">.</span>LLM <small>STUDIO</small></span></div>
+    <div class="nav-label">AMBIENTE</div>
+    <div class="nav-item active"><span aria-hidden="true">▤</span> Visão geral <span class="nav-state">ATIVO</span></div>
+    <div class="nav-item"><span aria-hidden="true">◫</span> Escalonamento <small>I26</small></div>
+    <div class="nav-item"><span aria-hidden="true">▦</span> Memória <small>I27</small></div>
+    <div class="nav-item"><span aria-hidden="true">◉</span> Experimentos <small>I28</small></div>
+    <div class="sidebar-bottom"><span class="live-dot"></span> MOTOR VIRTUAL <p>Simulação determinística · 1 tick por token</p></div>
+  </aside>
+  <main class="main">
+    <header class="topbar"><div><span class="eyebrow">LABORATÓRIO / DASHBOARD</span><h1>Controle de processos<span class="accent">.</span></h1><p>Configure requisições e acompanhe a execução do escalonador em tempo virtual.</p></div><div class="top-tag"><span class="live-dot"></span> AMBIENTE LOCAL</div></header>
+    <div class="notice" id="notice" role="status" aria-live="polite">Pronto para configurar um cenário. Os indicadores aparecerão após a execução.</div>
+    <section class="metric-grid" aria-label="Indicadores da simulação">
+      <article class="metric"><span>REQUISIÇÕES CONCLUÍDAS</span><strong id="m-completed">—</strong><small>de <span id="m-count">—</span> requisições</small></article>
+      <article class="metric"><span>ESPERA MÉDIA</span><strong id="m-wait">—</strong><small>ticks virtuais</small></article>
+      <article class="metric"><span>THROUGHPUT</span><strong id="m-throughput">—</strong><small>requisições / tick</small></article>
+      <article class="metric"><span>TEMPO TOTAL</span><strong id="m-duration">—</strong><small>ticks virtuais</small></article>
+    </section>
+    <div class="content-grid">
+      <section class="panel" aria-labelledby="scenario-heading">
+        <div class="panel-heading"><div><span class="eyebrow">01 / CONFIGURAÇÃO</span><h2 id="scenario-heading">Cenário de entrada</h2></div><button class="button text-button" type="button" id="preset-btn">Restaurar exemplo</button></div>
+        <div class="form-row">
+          <label>Política<select id="policy"><option value="fcfs">FCFS · Chegada</option><option value="sjf">SJF · Estimado</option><option value="ema">SJF · Média exponencial</option><option value="oracle">SJF · Oráculo experimental</option><option value="rr">Round Robin</option><option value="priority">Prioridade com aging</option></select></label>
+          <label>Workers<input id="workers" type="number" min="1" max="16" value="1" required></label>
+          <label>Quantum <span class="hint">(RR)</span><input id="quantum" type="number" min="1" value="2" disabled></label>
+        </div>
+        <div class="table-title"><h3>Fila de requisições</h3><div class="actions"><button id="import-btn" class="button secondary" type="button">Importar CSV</button><input type="file" id="file" accept=".csv,text/csv,text/plain" hidden><button id="add-btn" class="button secondary" type="button">+ Requisição</button></div></div>
+        <div class="table-scroll"><table class="request-table"><thead><tr><th>ID</th><th>Chegada</th><th>Tokens saída</th><th>Previstos</th><th>Prioridade</th><th><span class="sr-only">Excluir</span></th></tr></thead><tbody id="requests"></tbody></table></div>
+        <div class="panel-footer"><span id="entry-count">0 / 256 requisições</span><button id="run-btn" class="button primary" type="button">▶ Executar simulação</button></div>
+      </section>
+      <section class="panel result-panel" aria-labelledby="result-heading">
+        <div class="panel-heading"><div><span class="eyebrow">02 / EXECUÇÃO</span><h2 id="result-heading">Estado dos processos</h2></div><span class="pill" id="run-state">AGUARDANDO</span></div>
+        <div id="empty-state" class="empty"><div class="empty-icon">▥</div><h3>Uma visão clara de cada processo</h3><p>Execute um cenário para consultar PCBs, esperas, tempos de resposta e resultados calculados pelo motor C.</p></div>
+        <div id="results" hidden><div class="result-summary"><div><span>POLÍTICA</span><strong id="r-policy">—</strong></div><div><span>EVENTOS REGISTRADOS</span><strong id="r-events">—</strong></div></div><div class="table-scroll"><table class="result-table"><thead><tr><th>PCB</th><th>Estado</th><th>Primeira execução</th><th>Conclusão</th><th>Espera</th></tr></thead><tbody id="result-rows"></tbody></table></div><p class="caption">Fonte: exportação JSON do simulador. Não são tempos reais de inferência de LLM.</p></div>
+      </section>
+    </div>
+    <section class="panel upcoming" aria-label="Funcionalidades futuras"><div class="panel-heading"><div><span class="eyebrow">EM DESENVOLVIMENTO</span><h2>Próximas visualizações</h2></div></div><div class="upcoming-grid"><div><span class="feature-icon">▥</span><strong>Gantt e replay</strong><p>Timeline e reprodução visual · I26</p></div><div><span class="feature-icon">▦</span><strong>Memória KV</strong><p>Frames, faults e concorrência · I27</p></div><div><span class="feature-icon">◴</span><strong>Relatórios</strong><p>Comparação entre execuções · I28</p></div></div></section>
+    <footer>OS-LLM Studio · Projeto acadêmico · A execução utiliza um relógio virtual determinístico.</footer>
+  </main>
+</div>
+</body>
+</html>

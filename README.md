@@ -2,6 +2,10 @@
 
 Simulador acadêmico de Sistemas Operacionais aplicado a requisições de LLM. Repositório privado, em desenvolvimento incremental.
 
+## Interface gráfica local (Bloco I25)
+
+Dashboard web com Python stdlib e HTML/CSS/JS em [apps/visual](apps/visual/README.md). Após compilar o motor C11, execute `python3 apps/visual/server.py --cli ./build/os_llm_cli --port 8765` e abra http://127.0.0.1:8765 no próprio computador. O I25 oferece cenários, políticas, execuções e indicadores reais da exportação do simulador; Gantt, memória e relatórios visuais ficam para I26–I28. A aplicação não executa inferência de LLM.
+
 ## Estado atual
 
 **Protótipo funcional (C11, provisório):** PCB e estados, gateway de admissão, FCFS, SJF estimado/oráculo, RR, prioridade com aging, workers virtuais, relógio de 1 tick/token, p50/p95 e métricas de utilização, traces determinísticos com replay verificável, gerador de cargas com seed, paginação FIFO/LRU online integrada e replay offline FIFO/LRU/Ótimo. A CLI aceita cenários CSV, eventos, execução limitada por passos e snapshots intermediários. Os testes incluem agora casos específicos de SJF-EMA; a suíte completa desta branch ainda não foi validada por CI. Os 45 testes do baseline anterior foram aprovados com GCC, Clang e GCC ASan/UBSan. Exportação JSON/CSV versionada, adaptador POSIX com pthreads/fila, race lab isolado, grafo didático de deadlock e laboratório pthread com deadlock real em subprocesso estão disponíveis.
