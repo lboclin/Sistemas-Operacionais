@@ -26,6 +26,7 @@ function invalidate() {
   $('run-state').textContent = 'AGUARDANDO';
   $('run-state').className = 'pill';
   if (window.OSLLMTimeline && window.OSLLMTimeline.reset) window.OSLLMTimeline.reset();
+  if (window.OSLLMMemory) window.OSLLMMemory.reset();
 }
 function renderRows() {
   const body = $('requests');
@@ -77,7 +78,7 @@ function validateForm() {
   for (const [name, str, min, max] of [['Workers',workers,1,16],['Quantum',quantum,1,4294967295]]) {
     if (!/^[1-9][0-9]*$/.test(str) || !Number.isSafeInteger(Number(str)) || Number(str)<min || Number(str)>max) throw Error(`${name}: valor inválido.`);
   }
-  return {requests:requests.map((r) => ({...r})),policy:$('policy').value,workers,quantum};
+  return {requests:requests.map((r) => ({...r})),policy:$('policy').value,workers,quantum,memory:window.OSLLMMemory?window.OSLLMMemory.config():null};
 }
 function display(result) {
   const m = result.metrics;
@@ -106,6 +107,7 @@ function display(result) {
   $('run-state').textContent = 'CONCLUÍDO';
   $('run-state').className = 'pill done';
   if (window.OSLLMTimeline && window.OSLLMTimeline.show) window.OSLLMTimeline.show(result);
+  if (window.OSLLMMemory) window.OSLLMMemory.show(result);
 }
 async function run() {
   if (busy) return;
