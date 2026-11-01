@@ -1,0 +1,181 @@
+'use strict';
+const $ = (id) => document.getElementById(id);
+const fields = ['id', 'arrival_tick', 'total_tokens', 'predicted_tokens', 'priority'];
+const labels = ['ID', 'Chegada', 'Tokens de saída', 'Tokens previstos', 'Prioridade'];
+const demo = [
+  {id:'1',arrival_tick:'0',total_tokens:'6',predicted_tokens:'5',priority:'1'},
+  {id:'2',arrival_tick:'0',total_tokens:'2',predicted_tokens:'2',priority:'3'},
+  {id:'3',arrival_tick:'2',total_tokens:'3',predicted_tokens:'4',priority:'2'}
+];
+let requests = demo.map((r) => ({...r}));
+let busy = false;
+function node(tag, className, value) {
+  const result = document.createElement(tag);
+  if (className) result.className = className;
+  if (value !== undefined) result.textContent = String(value);
+  return result;
+}
+function notice(text, kind = '') {
+  $('notice').className = kind ? 'notice ' + kind : 'notice';
+  $('notice').textContent = text;
+}
+function invalidate() {
+  for (const key of ['m-completed','m-wait','m-throughput','m-duration','m-count']) $(key).textContent = '—';
+  $('results').hidden = true;
+  $('empty-state').hidden = false;
+  $('run-state').textContent = 'AGUARDANDO';
+  $('run-state').className = 'pill';
+}
+function renderRows() {
+  const body = $('requests');
+  body.replaceChildren();
+  requests.forEach((request, index) => {
+    const tr = document.createElement('tr');
+    fields.forEach((key, i) => {
+      const td = document.createElement('td');
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.inputMode = 'numeric';
+      input.autocomplete = 'off';
+      input.value = request[key];
+      input.setAttribute('aria-label', `${labels[i]} da requisição ${index + 1}`);
+      input.addEventListener('input', () => {
+        request[key] = input.value.trim();
+        invalidate();
+      });
+      td.append(input);
+      tr.append(td);
+    });
+    const td = document.createElement('td');
+    const remove = node('button','remove','×');
+    remove.type = 'button';
+    remove.setAttribute('aria-label', `Remover requisição ${index + 1}`);
+    remove.addEventListener('click', () => {requests.splice(index, 1); renderRows(); invalidate();});
+    td.append(remove);
+    tr.append(td);
+    body.append(tr);
+  });
+  $('entry-count').textContent = `${requests.length} / 256 requisições`;
+  $('add-btn').disabled = requests.length >= 256 || busy;
+}
+function validateForm() {
+  if (requests.length < 1 || requests.length > 256) throw Error('Adicione de 1 a 256 requisições.');
+  const seen = new Set();
+  const limits = [[1n,4294967295n],[0n,18446744073709551614n],[1n,4294967295n],[1n,4294967295n],[-2147483648n,2147483647n]];
+  for (let index = 0; index < requests.length; index++) {
+    for (let pos = 0; pos < fields.length; pos++) {
+      const key = fields[pos], value = requests[index][key];
+      if (!/^(0|[1-9][0-9]*)$/.test(value) && !(key === 'priority' && /^(0|-[1-9][0-9]*|[1-9][0-9]*)$/.test(value))) throw Error(`Linha ${index+1}: ${labels[pos]} inválido.`);
+      const number = BigInt(value);
+      if (number < limits[pos][0] || number > limits[pos][1]) throw Error(`Linha ${index+1}: ${labels[pos]} fora do intervalo.`);
+    }
+    if (seen.has(requests[index].id)) throw Error(`ID duplicado: ${requests[index].id}`);
+    seen.add(requests[index].id);
+  }
+  const workers = $('workers').value, quantum = $('quantum').value;
+  for (const [name, str, min, max] of [['Workers',workers,1,16],['Quantum',quantum,1,4294967295]]) {
+    if (!/^[1-9][0-9]*$/.test(str) || !Number.isSafeInteger(Number(str)) || Number(str)<min || Number(str)>max) throw Error(`${name}: valor inválido.`);
+  }
+  return {requests:requests.map((r) => ({...r})),policy:$('policy').value,workers,quantum};
+}
+function display(result) {
+  const m = result.metrics;
+  const number = (key, digits = 2) => typeof m[key] === 'number' && Number.isFinite(m[key]) ? m[key].toLocaleString('pt-BR',{maximumFractionDigits:digits}) : '—';
+  $('m-completed').textContent = number('completed',0);
+  $('m-count').textContent = result.input.length;
+  $('m-wait').textContent = number('average_wait_ticks');
+  $('m-throughput').textContent = number('throughput_per_tick',4);
+  $('m-duration').textContent = number('makespan_ticks',0);
+  $('r-policy').textContent = result.config.policy;
+  $('r-events').textContent = Array.isArray(result.events) ? result.events.length : '—';
+  const body = $('result-rows');
+  body.replaceChildren();
+  result.requests.forEach((request) => {
+    const tr = document.createElement('tr');
+    const data = [request.id,request.state,request.first_run_tick ?? '—',request.finished_tick ?? '—',request.waiting_ticks];
+    data.forEach((value,index) => {
+      const td = document.createElement('td');
+      if (index === 1) td.append(node('span','state-pill',value)); else td.textContent = String(value);
+      tr.append(td);
+    });
+    body.append(tr);
+  });
+  $('empty-state').hidden = true;
+  $('results').hidden = false;
+  $('run-state').textContent = 'CONCLUÍDO';
+  $('run-state').className = 'pill done';
+}
+async function run() {
+  if (busy) return;
+  let data;
+  try { data = validateForm(); } catch (error) {notice(error.message,'error'); return;}
+  busy = true;
+  $('run-btn').disabled = true;
+  $('run-btn').textContent = 'Executando…';
+  notice('Executando no simulador local. Os resultados serão exibidos ao concluir.');
+  try {
+    const response = await fetch('/api/run', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    const result = await response.json();
+    if (!response.ok) throw Error(result.error || 'O simulador não conseguiu executar este cenário.');
+    display(result);
+    notice(`Simulação concluída: ${result.metrics.completed} processo(s) finalizado(s).`, 'success');
+  } catch (error) {
+    invalidate();
+    notice(error.message || 'Falha de comunicação com o servidor local.', 'error');
+  } finally {
+    busy = false;
+    $('run-btn').disabled = false;
+    $('run-btn').textContent = '▶ Executar simulação';
+    $('add-btn').disabled = requests.length >= 256;
+  }
+}
+function importCSV(text) {
+  const rows = [];
+  let declared = null;
+  for (const raw of text.replace(/^\uFEFF/,'').split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (line.startsWith('# os-llm-scenario')) {
+      const match = /^# os-llm-scenario v1 seed=\d+ distribution=(uniform|burst|staggered) count=(\d+)$/.exec(line);
+      if (!match || declared !== null || rows.length > 0) throw Error('Cabeçalho CSV incompatível com o formato v1.');
+      declared = Number(match[2]);
+      continue;
+    }
+    if (line.startsWith('#')) continue;
+    const values = line.split(',').map((s) => s.trim());
+    if (values.length !== 5) throw Error('CSV inválido: cada linha deve possuir 5 campos.');
+    rows.push(Object.fromEntries(fields.map((key,index) => [key,values[index]])));
+    if (rows.length > 256) throw Error('O limite é de 256 requisições.');
+  }
+  if (declared !== null && rows.length !== declared) throw Error('Quantidade divergente do cabeçalho CSV.');
+  if (!rows.length) throw Error('O CSV não contém requisições.');
+  const previous = requests;
+  requests = rows;
+  try {validateForm();} catch(e) {requests = previous; throw e;}
+  renderRows(); invalidate();
+  notice(`Importadas ${rows.length} requisições. Confira os parâmetros e execute.`,'success');
+}
+$('policy').addEventListener('change', () => {$('quantum').disabled = $('policy').value !== 'rr';invalidate();});
+$('workers').addEventListener('change', invalidate);
+$('quantum').addEventListener('change', invalidate);
+$('preset-btn').addEventListener('click', () => {requests = demo.map(r => ({...r}));renderRows();invalidate();notice('Cenário de exemplo restaurado.');});
+$('add-btn').addEventListener('click', () => {
+  if (requests.length >= 256) return;
+  const used = new Set(requests.map(r=>r.id));
+  let id = 1;
+  while (used.has(String(id))) id++;
+  requests.push({id:String(id), arrival_tick:'0',total_tokens:'5',predicted_tokens:'5',priority:'1'});
+  renderRows();invalidate();
+});
+$('import-btn').addEventListener('click', () => $('file').click());
+$('file').addEventListener('change', async () => {
+  const file = $('file').files?.[0];
+  if (!file) return;
+  try {
+    if (file.size > 65536) throw Error('CSV excede 64 KB.');
+    importCSV(await file.text());
+  } catch(error) {notice(error.message,'error');}
+  $('file').value = '';
+});
+$('run-btn').addEventListener('click', run);
+renderRows();

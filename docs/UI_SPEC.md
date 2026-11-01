@@ -27,3 +27,7 @@ Controles rotulados, navegação por teclado, estados de erro/vazio/carregamento
 
 ## Decisões pendentes
 Web local versus desktop, framework, estilo visual, snapshots por polling versus stream e transporte UI↔motor. Não instalar framework no scaffold.
+
+## Decisão do Bloco I25 (2026-11-01)
+
+Escolhida interface **web local** em `apps/visual`: servidor Python stdlib vinculado a `127.0.0.1` e frontend HTML/CSS/JS sem dependências remotas. O endpoint `/api/run` valida até 256 requisições e invoca o executável C via subprocess com argumentos permitidos e timeout; devolve os JSONs reais de `os_llm_cli`. O MVP mostra formulário e métricas/PCBs finais. Não representa o modo de concorrência POSIX como inferência real, não inventa dados e não oferece pausa persistente; Gantt/replay, memória e relatórios ficam para I26–I28. Ver [README de apps/visual](../apps/visual/README.md).
