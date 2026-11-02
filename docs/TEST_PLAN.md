@@ -42,3 +42,7 @@ O passo adicional `ctest --repeat until-fail:6` aprovou **54 execuções** dos s
 - Testes longos de carga em máquina do usuário: os testes de estresse existentes são finitos e determinísticos.
 
 **Recomendação de aceite:** além do CI, abrir a interface localmente; testar edição/importação de CSV, todas as políticas, Gantt/replay, FIFO/LRU, laboratório de corrida/deadlock com confirmação e comparação H24. Registrar capturas reais e declarar limitações na apresentação.
+
+## Bloco J — matriz aleatória reproduzível
+
+O teste `core_stress_seeded_py` acrescenta 72 execuções reais da CLI C (6 seeds × 6 algoritmos × 2 modos de memória), verificando preservação das entradas, estados finais, eventos ordenados, paginação, fingerprint e determinismo ao repetir execuções. Também cobre chegadas acima de 32 bits e CSVs inválidos. A execução da matriz deve ser confirmada no CI.
