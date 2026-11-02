@@ -9,6 +9,7 @@ const demo = [
 ];
 let requests = demo.map((r) => ({...r}));
 let busy = false;
+let scenarioRevision = 0;
 function node(tag, className, value) {
   const result = document.createElement(tag);
   if (className) result.className = className;
@@ -20,6 +21,7 @@ function notice(text, kind = '') {
   $('notice').textContent = text;
 }
 function invalidate() {
+  scenarioRevision += 1;
   for (const key of ['m-completed','m-wait','m-throughput','m-duration','m-count']) $(key).textContent = '—';
   $('results').hidden = true;
   $('empty-state').hidden = false;
@@ -115,6 +117,7 @@ async function run() {
   let data;
   try { data = validateForm(); } catch (error) {notice(error.message,'error'); return;}
   busy = true;
+  const thisRevision = scenarioRevision;
   $('run-btn').disabled = true;
   $('run-btn').textContent = 'Executando…';
   notice('Executando no simulador local. Os resultados serão exibidos ao concluir.');
@@ -122,6 +125,7 @@ async function run() {
     const response = await fetch('/api/run', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
     const result = await response.json();
     if (!response.ok) throw Error(result.error || 'O simulador não conseguiu executar este cenário.');
+    if (thisRevision !== scenarioRevision) {notice('O cenário foi alterado durante a execução. Resultado antigo descartado.');return;}
     display(result);
     notice(`Simulação concluída: ${result.metrics.completed} processo(s) finalizado(s).`, 'success');
   } catch (error) {

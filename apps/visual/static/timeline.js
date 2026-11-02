@@ -33,7 +33,18 @@
     }
     return {events: normalized, intervals, open: Array.from(running.values())};
   }
-  const api = {decode};
+  function maxObservedTick(events, makespan) {
+    if (!Number.isSafeInteger(makespan) || makespan < 0) throw Error('Makespan sem precisão segura');
+    let maximum = Math.max(1, makespan);
+    // Never spread an unbounded event array into Math.max(...events):
+    // large traces exceed JavaScript's maximum function argument count.
+    for (const event of events) {
+      if (!Number.isSafeInteger(event.tick) || event.tick < 0) throw Error('Tick inválido');
+      if (event.tick > maximum) maximum = event.tick;
+    }
+    return maximum;
+  }
+  const api = {decode, maxObservedTick};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.OSLLMTimeline = api;
   if (typeof document === 'undefined') return;
@@ -56,7 +67,7 @@
     if (!state) return;
     const {trace, maxTick} = state, until = state.position;
     const shown = trace.events.slice(0, until);
-    const visibleBars = trace.intervals.filter(i => shown.length && i.endSequence <= shown[shown.length-1].sequence);
+    const visibleBars = trace.intervals.filter(i => shown.length && i.endSequence <= shown[shown.length-1].sequence).slice(-400);
     const chart = byId('timeline-chart'), log = byId('timeline-log');
     chart.replaceChildren(); log.replaceChildren();
     const lanes = [...new Set(visibleBars.map(i => i.worker))].sort((a,b) => a-b);
@@ -88,8 +99,7 @@
     byId('timeline-panel').hidden = false;
     try {
       const trace = decode(result.events);
-      const maxTick = Math.max(1, Number(result.metrics && result.metrics.makespan_ticks) || 0,
-                               ...trace.events.map(e => e.tick));
+      const maxTick = maxObservedTick(trace.events, result.metrics && result.metrics.makespan_ticks);
       state = {trace, position: trace.events.length, maxTick};
       byId('timeline-scrub').max = String(trace.events.length);
       paint();
