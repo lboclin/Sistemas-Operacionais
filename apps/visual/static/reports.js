@@ -11,16 +11,20 @@ function normalize(run){
  for(const key of METRIC)if(!finite(run.metrics[key]))throw Error('Métrica ausente ou inválida: '+key);
  const ids=new Set();
  const input=run.input.map(r=>{
-  if(!r||!Number.isSafeInteger(r.id)||r.id<=0||ids.has(r.id)||
-     !Number.isSafeInteger(r.arrival_tick)||r.arrival_tick<0||
-     !Number.isSafeInteger(r.total_tokens)||r.total_tokens<=0||
+  if(!r||!Number.isSafeInteger(r.id)||r.id<=0||ids.has(r.id)||!Number.isSafeInteger(r.arrival_tick)||
+     r.arrival_tick<0||!Number.isSafeInteger(r.total_tokens)||r.total_tokens<=0||
      !Number.isSafeInteger(r.predicted_tokens)||r.predicted_tokens<=0||
      !Number.isSafeInteger(r.priority))throw Error('Input inválido ou inseguro para comparação');
   ids.add(r.id);
   return [r.id,r.arrival_tick,r.total_tokens,r.predicted_tokens,r.priority];
  }).sort((a,b)=>a[0]-b[0]);
+ const fields=['worker_count','memory_enabled','frame_capacity','tokens_per_page',
+               'page_policy','page_fault_latency_ticks','starvation_threshold_ticks'];
+ const comparableConfig=Object.fromEntries(fields.map(k=>[k,run.config[k]??null]));
+ // Do not include scheduling policy, RR quantum, or EMA parameters: those are the
+ // treatments being compared, not characteristics of the common workload.
  return {name:run.config.policy,metrics:Object.fromEntries(METRIC.map(k=>[k,run.metrics[k]])),
-         fingerprint:JSON.stringify(input)};
+         fingerprint:JSON.stringify({input,comparableConfig})};
 }
 function parseH24(report){
  if(!report||report.schema!=='os-llm-report/v1'||!Array.isArray(report.scheduling)||!Array.isArray(report.memory))throw Error('Arquivo não é relatório H24');
