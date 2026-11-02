@@ -370,6 +370,12 @@ if(BUILD_TESTING)
             ${Python3_EXECUTABLE} -m unittest discover
             -s ${CMAKE_CURRENT_SOURCE_DIR}/tests/visual -p test_server.py -v)
         set_tests_properties(visual_api_py PROPERTIES TIMEOUT 120)
+        # J30: real C-engine acceptance, deterministic workloads and API hardening.
+        add_test(NAME final_acceptance_py COMMAND ${CMAKE_COMMAND} -E env
+            "OSLLM_CLI=$<TARGET_FILE:os_llm_cli>"
+            ${Python3_EXECUTABLE} -m unittest discover
+            -s ${CMAKE_CURRENT_SOURCE_DIR}/tests/visual -p test_acceptance.py -v)
+        set_tests_properties(final_acceptance_py PROPERTIES TIMEOUT 180)
         # G22: optional offline workload capture tests with a loopback HTTP mock.
         add_test(NAME workload_capture_py COMMAND ${CMAKE_COMMAND} -E env
             "OSLLM_CLI=$<TARGET_FILE:os_llm_cli>"
