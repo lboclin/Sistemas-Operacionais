@@ -79,7 +79,9 @@ export.write_text(json.dumps(result))
 
     def test_rejects_mock_export_with_wrong_request_id(self):
         old = self.bin.read_text(encoding='utf-8')
-        self.bin.write_text(old.replace("dict(id=r['id'],state=", "dict(id=999,state="), encoding='utf-8')
+        corrupted = old.replace("dict(id=r['id'],arrival_tick=", "dict(id=999,arrival_tick=")
+        self.assertNotEqual(corrupted, old)
+        self.bin.write_text(corrupted, encoding='utf-8')
         with self.assertRaisesRegex(server.InputError, 'divergentes'):
             server.simulate(self.bin, self.payload)
 
