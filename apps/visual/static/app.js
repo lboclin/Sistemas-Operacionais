@@ -209,4 +209,16 @@ $('file').addEventListener('change', async () => {
   $('file').value = '';
 });
 $('run-btn').addEventListener('click', run);
+const navLinks = [...document.querySelectorAll('.side-nav a')];
+function syncNavigation() {
+  const current = window.location.hash || '#overview';
+  for (const link of navLinks) {
+    const active = link.hash === current;
+    link.classList.toggle('active', active);
+    if (active) link.setAttribute('aria-current', 'location');
+    else link.removeAttribute('aria-current');
+  }
+}
+window.addEventListener('hashchange', syncNavigation);
+syncNavigation();
 renderRows();

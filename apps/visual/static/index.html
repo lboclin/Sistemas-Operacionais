@@ -13,16 +13,18 @@
 </head>
 <body>
 <div class="shell">
-  <aside class="sidebar" aria-label="Navegação do laboratório">
-    <div class="brand"><span class="brand-mark" aria-hidden="true">◈</span><span>OS<span class="accent">.</span>LLM <small>STUDIO</small></span></div>
-    <div class="nav-label">AMBIENTE</div>
-    <div class="nav-item active"><span aria-hidden="true">▤</span> Visão geral <span class="nav-state">ATIVO</span></div>
-    <div class="nav-item"><span aria-hidden="true">◫</span> Escalonamento <small>ATIVO</small></div>
-    <div class="nav-item"><span aria-hidden="true">▦</span> Memória <small>I27</small></div>
-    <div class="nav-item"><span aria-hidden="true">◉</span> Experimentos <small>ATIVO</small></div>
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 2 29 16 16 30 3 16 16 2Z"/><path d="m16 8 7 8-7 8-7-8 7-8Z"/></svg></span><span>OS<span class="accent">.</span>LLM <small>STUDIO</small></span></div>
+    <div class="nav-label" id="nav-label">AMBIENTE</div>
+    <nav class="side-nav" aria-labelledby="nav-label">
+      <a class="nav-item active" href="#overview" aria-current="location" aria-label="Visão geral" title="Visão geral"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg><span class="nav-copy">Visão geral</span></a>
+      <a class="nav-item" href="#result-heading" aria-label="Escalonamento" title="Escalonamento"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 5h7v4H4zM13 5h7M4 12h4v4H4zM10 12h10M4 19h12"/></svg><span class="nav-copy">Escalonamento</span></a>
+      <a class="nav-item" href="#mem-title" aria-label="Memória" title="Memória"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7c0-1.1 3.6-2 8-2s8 .9 8 2-3.6 2-8 2-8-.9-8-2Z"/><path d="M4 7v5c0 1.1 3.6 2 8 2s8-.9 8-2V7M4 12v5c0 1.1 3.6 2 8 2s8-.9 8-2v-5"/></svg><span class="nav-copy">Memória</span></a>
+      <a class="nav-item" href="#reports-title" aria-label="Experimentos e resultados" title="Experimentos e resultados"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M7 15l4-4 3 2 5-7"/></svg><span class="nav-copy">Experimentos</span></a>
+    </nav>
     <div class="sidebar-bottom"><span class="live-dot"></span> MOTOR VIRTUAL <p>Simulação determinística · 1 tick por token</p></div>
   </aside>
-  <main class="main">
+  <main class="main" id="overview">
     <header class="topbar"><div><span class="eyebrow">LABORATÓRIO / DASHBOARD</span><h1>Controle de processos<span class="accent">.</span></h1><p>Configure requisições e acompanhe a execução do escalonador em tempo virtual.</p></div><div class="top-tag"><span class="live-dot"></span> AMBIENTE LOCAL</div></header>
     <div class="notice" id="notice" role="status" aria-live="polite">Pronto para configurar um cenário. Os indicadores aparecerão após a execução.</div>
     <section class="metric-grid" aria-label="Indicadores da simulação">
