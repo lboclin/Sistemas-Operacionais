@@ -41,3 +41,25 @@ test('rejects invalid scenario fields, not just unsafe precision',()=>{
   assert.throws(()=>normalize(r),/Input inválido/,field);
  }
 });
+
+test('different worker and memory settings cannot be paired as identical runs',()=>{
+ const a=fixture(),b=fixture();
+ a.config.worker_count=1;b.config.worker_count=2;
+ assert.notEqual(normalize(a).fingerprint,normalize(b).fingerprint);
+ b.config.worker_count=1;
+ a.config.memory_enabled=false;b.config.memory_enabled=true;
+ assert.notEqual(normalize(a).fingerprint,normalize(b).fingerprint);
+ b.config.memory_enabled=false;
+ a.config.frame_capacity=2;b.config.frame_capacity=4;
+ assert.notEqual(normalize(a).fingerprint,normalize(b).fingerprint);
+});
+test('algorithm-specific quantum is a comparison dimension, not a workload difference',()=>{
+ const a=fixture(),b=fixture();
+ a.config.worker_count=1;b.config.worker_count=1;
+ b.config.policy='Round-Robin';b.config.quantum_tokens=3;
+ assert.equal(normalize(a).fingerprint,normalize(b).fingerprint);
+});
+test('missing predicted tokens must never silently compare as equal',()=>{
+ const a=fixture();delete a.input[0].predicted_tokens;
+ assert.throws(()=>normalize(a),/Input inválido/);
+});
