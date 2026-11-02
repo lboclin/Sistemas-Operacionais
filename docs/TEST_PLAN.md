@@ -27,3 +27,7 @@ Nenhum PCB em dois workers simultaneamente; nunca alocar além dos frames config
 Ver [especificação funcional](FUNCTIONAL_SPEC.md).
 
 Commit 15: testes pipe_channel e ipc_demo (45 configurados, 43 anteriormente aprovados no CI). Os novos testes passaram isoladamente em GCC/Clang/ASan; o [CI 40427656618](https://github.com/fragaeduardo/OS-llm-project/actions/runs/40427656618) também concluiu com sucesso nas três configurações, com 45 testes CTest configurados.
+
+## Bloco J — testes randômicos determinísticos (02/11/2026)
+
+O CTest `core_stress_seeded_py` usa 6 seeds fixas × 6 políticas (FCFS/SJF/EMA/Oracle/RR/prioridade) × 2 configurações de paginação = 72 execuções reais da CLI C, além de repetições determinísticas e casos malformados. Verifica estado TERMINATED, tokens produzidos, ordenação de eventos e sequence, page faults/evictions, limite de frames, identidade da carga, fingerprint, igualdade das métricas após replay. A aleatoriedade está inteiramente parametrizada por seeds reprodutíveis; cada subprocesso tem timeout. Este teste complementa, não substitui, os testes unitários, ASan/UBSan e análises de concorrência.

@@ -365,6 +365,11 @@ if(BUILD_TESTING)
         set_tests_properties(analysis_report_py PROPERTIES TIMEOUT 120)
         add_test(NAME visual_memory_lab_py COMMAND ${Python3_EXECUTABLE} -m unittest discover -s ${CMAKE_CURRENT_SOURCE_DIR}/tests/visual -p test_memory_lab.py -v)
         set_tests_properties(visual_memory_lab_py PROPERTIES TIMEOUT 45)
+        add_test(NAME core_stress_seeded_py COMMAND ${CMAKE_COMMAND} -E env
+            "OSLLM_CLI=$<TARGET_FILE:os_llm_cli>"
+            ${Python3_EXECUTABLE} -m unittest discover
+            -s ${CMAKE_CURRENT_SOURCE_DIR}/tests/system -p test_randomized_cli.py -v)
+        set_tests_properties(core_stress_seeded_py PROPERTIES TIMEOUT 120)
         add_test(NAME visual_api_py COMMAND ${CMAKE_COMMAND} -E env
             "OSLLM_CLI=$<TARGET_FILE:os_llm_cli>"
             ${Python3_EXECUTABLE} -m unittest discover
