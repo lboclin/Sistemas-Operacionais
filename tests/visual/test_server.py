@@ -137,6 +137,42 @@ export.write_text(json.dumps(result))
             server.EXECUTION_SLOTS.release()
             server.EXECUTION_SLOTS.release()
 
+    def test_http_busy_and_duplicate_json_are_rejected_end_to_end(self):
+        server.Handler.cli = self.bin
+        httpd = server.ThreadingHTTPServer(('127.0.0.1', 0), server.Handler)
+        worker = Thread(target=httpd.serve_forever, daemon=True)
+        worker.start()
+        try:
+            def post(body):
+                conn = http.client.HTTPConnection('127.0.0.1', httpd.server_port, timeout=4)
+                conn.request('POST', '/api/run', body=body,
+                             headers={'Content-Type':'application/json',
+                                      'Host':f'127.0.0.1:{httpd.server_port}'})
+                response = conn.getresponse()
+                status, payload = response.status, response.read()
+                conn.close()
+                return status, payload
+            body = json.dumps(self.payload).encode()
+            self.assertTrue(server.EXECUTION_SLOTS.acquire(blocking=False))
+            self.assertTrue(server.EXECUTION_SLOTS.acquire(blocking=False))
+            try:
+                status, _ = post(body)
+                self.assertEqual(status, 429)
+            finally:
+                server.EXECUTION_SLOTS.release()
+                server.EXECUTION_SLOTS.release()
+            duplicate = body.replace(b'"policy": "fcfs"', b'"policy": "fcfs", "policy": "rr"')
+            self.assertNotEqual(duplicate, body)
+            status, payload = post(duplicate)
+            self.assertEqual(status, 400, payload)
+            self.assertIn(b'duplicada', payload)
+            status, payload = post(body)
+            self.assertEqual(status, 200, payload)
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
+            worker.join(timeout=4)
+
     def test_extremely_large_content_length_rejected(self):
         server.Handler.cli = self.bin
         httpd = server.ThreadingHTTPServer(('127.0.0.1', 0), server.Handler)
