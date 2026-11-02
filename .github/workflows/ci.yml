@@ -6,9 +6,27 @@ on:
 
 jobs:
   test:
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: gcc-debug
+            compiler: gcc
+            flags: ""
+          - name: clang-debug
+            compiler: clang
+            flags: ""
+          - name: gcc-asan-ubsan
+            compiler: gcc
+            flags: "-fsanitize=address,undefined -fno-omit-frame-pointer"
+    env:
+      CC: ${{ matrix.compiler }}
+      CFLAGS: ${{ matrix.flags }}
+      LDFLAGS: ${{ matrix.flags }}
     steps:
       - uses: actions/checkout@v4
       - name: Configure
