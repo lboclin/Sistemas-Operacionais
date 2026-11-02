@@ -118,6 +118,45 @@ export.write_text(json.dumps(result))
         self.assertEqual(call('POST','/api/run',b'{}',{**good})[0],400)
         self.assertEqual(call('POST','/api/other',raw,good)[0],404)
 
+    def test_duplicate_json_properties_rejected(self):
+        with self.assertRaisesRegex(server.InputError, 'duplicada'):
+            json.loads('{"policy":"fcfs","policy":"rr"}', object_pairs_hook=server.strict_object)
+
+    def test_nonfinite_json_constants_rejected(self):
+        for bad in ('NaN', 'Infinity', '-Infinity'):
+            with self.assertRaises(server.InputError):
+                json.loads('{"value":'+bad+'}', parse_constant=server.reject_nonfinite)
+
+    def test_execution_concurrency_limited(self):
+        self.assertEqual(server.MAX_ACTIVE_PROCESSES, 2)
+        self.assertTrue(server.EXECUTION_SLOTS.acquire(blocking=False))
+        self.assertTrue(server.EXECUTION_SLOTS.acquire(blocking=False))
+        try:
+            self.assertFalse(server.EXECUTION_SLOTS.acquire(blocking=False))
+        finally:
+            server.EXECUTION_SLOTS.release()
+            server.EXECUTION_SLOTS.release()
+
+    def test_extremely_large_content_length_rejected(self):
+        server.Handler.cli = self.bin
+        httpd = server.ThreadingHTTPServer(('127.0.0.1', 0), server.Handler)
+        worker = Thread(target=httpd.serve_forever, daemon=True)
+        worker.start()
+        try:
+            conn = http.client.HTTPConnection('127.0.0.1', httpd.server_port, timeout=3)
+            conn.putrequest('POST', '/api/run')
+            conn.putheader('Content-Type', 'application/json')
+            conn.putheader('Content-Length', '9'*10000)
+            conn.endheaders()
+            response = conn.getresponse()
+            self.assertEqual(response.status, 413)
+            response.read()
+            conn.close()
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
+            worker.join(timeout=3)
+
     @unittest.skipUnless(os.environ.get('OSLLM_CLI'), 'requires actual compiled C binary')
     def test_real_compiled_simulator(self):
         actual=Path(os.environ['OSLLM_CLI'])
