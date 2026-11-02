@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>OS-LLM Studio · Laboratório de Sistemas Operacionais</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/reports.js" defer></script>
+  <script src="/memory.js" defer></script>
+  <script src="/timeline.js" defer></script>
+  <script src="/app.js" defer></script>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" aria-label="Navegação do laboratório">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">◈</span><span>OS<span class="accent">.</span>LLM <small>STUDIO</small></span></div>
+    <div class="nav-label">AMBIENTE</div>
+    <div class="nav-item active"><span aria-hidden="true">▤</span> Visão geral <span class="nav-state">ATIVO</span></div>
+    <div class="nav-item"><span aria-hidden="true">◫</span> Escalonamento <small>ATIVO</small></div>
+    <div class="nav-item"><span aria-hidden="true">▦</span> Memória <small>I27</small></div>
+    <div class="nav-item"><span aria-hidden="true">◉</span> Experimentos <small>ATIVO</small></div>
+    <div class="sidebar-bottom"><span class="live-dot"></span> MOTOR VIRTUAL <p>Simulação determinística · 1 tick por token</p></div>
+  </aside>
+  <main class="main">
+    <header class="topbar"><div><span class="eyebrow">LABORATÓRIO / DASHBOARD</span><h1>Controle de processos<span class="accent">.</span></h1><p>Configure requisições e acompanhe a execução do escalonador em tempo virtual.</p></div><div class="top-tag"><span class="live-dot"></span> AMBIENTE LOCAL</div></header>
+    <div class="notice" id="notice" role="status" aria-live="polite">Pronto para configurar um cenário. Os indicadores aparecerão após a execução.</div>
+    <section class="metric-grid" aria-label="Indicadores da simulação">
+      <article class="metric"><span>REQUISIÇÕES CONCLUÍDAS</span><strong id="m-completed">—</strong><small>de <span id="m-count">—</span> requisições</small></article>
+      <article class="metric"><span>ESPERA MÉDIA</span><strong id="m-wait">—</strong><small>ticks virtuais</small></article>
+      <article class="metric"><span>THROUGHPUT</span><strong id="m-throughput">—</strong><small>requisições / tick</small></article>
+      <article class="metric"><span>TEMPO TOTAL</span><strong id="m-duration">—</strong><small>ticks virtuais</small></article>
+    </section>
+    <div class="content-grid">
+      <section class="panel" aria-labelledby="scenario-heading">
+        <div class="panel-heading"><div><span class="eyebrow">01 / CONFIGURAÇÃO</span><h2 id="scenario-heading">Cenário de entrada</h2></div><button class="button text-button" type="button" id="preset-btn">Restaurar exemplo</button></div>
+        <div class="form-row">
+          <label>Política<select id="policy"><option value="fcfs">FCFS · Chegada</option><option value="sjf">SJF · Estimado</option><option value="ema">SJF · Média exponencial</option><option value="oracle">SJF · Oráculo experimental</option><option value="rr">Round Robin</option><option value="priority">Prioridade com aging</option></select></label>
+          <label>Workers<input id="workers" type="number" min="1" max="16" value="1" required></label>
+          <label>Quantum <span class="hint">(RR)</span><input id="quantum" type="number" min="1" value="2" disabled></label>
+        </div>
+        <div class="table-title"><h3>Fila de requisições</h3><div class="actions"><button id="import-btn" class="button secondary" type="button">Importar CSV</button><input type="file" id="file" accept=".csv,text/csv,text/plain" hidden><button id="add-btn" class="button secondary" type="button">+ Requisição</button></div></div>
+        <div class="table-scroll"><table class="request-table"><thead><tr><th>ID</th><th>Chegada</th><th>Tokens saída</th><th>Previstos</th><th>Prioridade</th><th><span class="sr-only">Excluir</span></th></tr></thead><tbody id="requests"></tbody></table></div>
+        <div class="panel-footer"><span id="entry-count">0 / 256 requisições</span><button id="run-btn" class="button primary" type="button">▶ Executar simulação</button></div>
+      </section>
+      <section class="panel result-panel" aria-labelledby="result-heading">
+        <div class="panel-heading"><div><span class="eyebrow">02 / EXECUÇÃO</span><h2 id="result-heading">Estado dos processos</h2></div><span class="pill" id="run-state">AGUARDANDO</span></div>
+        <div id="empty-state" class="empty"><div class="empty-icon">▥</div><h3>Uma visão clara de cada processo</h3><p>Execute um cenário para consultar PCBs, esperas, tempos de resposta e resultados calculados pelo motor C.</p></div>
+        <div id="results" hidden><div class="result-summary"><div><span>POLÍTICA</span><strong id="r-policy">—</strong></div><div><span>EVENTOS REGISTRADOS</span><strong id="r-events">—</strong></div></div><div class="table-scroll"><table class="result-table"><thead><tr><th>PCB</th><th>Estado</th><th>Primeira execução</th><th>Conclusão</th><th>Espera</th></tr></thead><tbody id="result-rows"></tbody></table></div><p class="caption">Fonte: exportação JSON do simulador. Não são tempos reais de inferência de LLM.</p></div>
+      </section>
+    </div>
+    <section class="panel timeline-panel" id="timeline-panel" aria-label="Gantt e replay visual" hidden>
+<div class="panel-heading"><div><span class="eyebrow">03 / ESCALONAMENTO</span><h2>Gantt e replay de eventos</h2></div><span class="pill">TICKS VIRTUAIS</span></div>
+<p class="caption" id="timeline-status" role="status">Aguardando exportação do motor C.</p>
+<div class="timeline-controls"><button class="button secondary" type="button" id="timeline-start">↤ Início</button><button class="button secondary" type="button" id="timeline-step">Passo</button><button class="button secondary" type="button" id="timeline-play">▶ Reproduzir</button><button class="button secondary" type="button" id="timeline-pause">Pausar replay</button><label for="timeline-scrub" class="sr-only">Posição do replay</label><input id="timeline-scrub" type="range" min="0" max="0" value="0"><span id="timeline-position">0 eventos</span></div>
+<div id="timeline-chart" class="timeline-chart" role="img" aria-label="Intervalos observados por worker"></div>
+<h3>Eventos (últimos 150 até a posição selecionada)</h3><ol id="timeline-log" class="timeline-log" aria-label="Eventos do motor"></ol>
+<p class="caption">Os intervalos são reconstruídos exclusivamente entre dispatched e completed/preempted/blocked. Não são tempos reais de inferência. O replay não altera a execução.</p>
+</section>
+<section class="panel memory-panel" aria-labelledby="mem-title"><div class="panel-heading"><div><span class="eyebrow">04 / CACHE KV</span><h2 id="mem-title">Memória virtual</h2></div><span class="pill">FIFO / LRU</span></div>
+<div class="form-row memory-fields"><label class="memory-toggle"><input id="mem-on" type="checkbox"> Ativar memória</label><label>Frames<input id="mem-frames" type="number" min="1" max="4096" value="2" disabled></label><label>Tokens / página<input id="mem-tokens" type="number" min="1" value="2" disabled></label><label>Política<select id="mem-policy" disabled><option value="fifo">FIFO</option><option value="lru">LRU</option></select></label><label>Latência (ticks)<input id="mem-latency" type="number" min="0" value="1" disabled></label></div>
+<p class="caption">A política OPT é exclusiva do replay offline, não pode ser usada nesta CLI online. Execute novamente para aplicar mudanças.</p>
+<p class="caption" id="mem-empty">Execute um cenário para ver os eventos e as métricas reais.</p><div id="mem-result" hidden><div class="memory-numbers"><div>Hits<strong id="mem-hits">—</strong></div><div>Faults<strong id="mem-faults">—</strong></div><div>Evicções<strong id="mem-evicts">—</strong></div><div>Frames pico<strong id="mem-peak">—</strong></div></div><p id="mem-info" class="caption"></p><h3>Eventos</h3><ol class="memory-log" id="mem-log"></ol></div></section>
+<section class="panel memory-panel" aria-labelledby="labs-title"><div class="panel-heading"><div><span class="eyebrow">05 / POSIX</span><h2 id="labs-title">Laboratórios controlados</h2></div><span class="pill">SUBPROCESSO</span></div>
+<p class="caption">Os laboratórios de corrida e deadlock não integram a simulação de LLMs. Modos demonstrativos exigem confirmação e usam watchdog.</p>
+<div class="lab-actions"><button class="button secondary" data-lab="race" data-mode="safe">Corrida segura</button><button class="button secondary" data-lab="race" data-mode="unsafe">Perda controlada</button><button class="button secondary" data-lab="deadlock" data-mode="ordered">Ordem global</button><button class="button secondary" data-lab="deadlock" data-mode="deadlock">Deadlock isolado</button></div>
+<p class="caption" role="status" id="lab-status">Nenhum laboratório foi executado.</p></section>
+<section class="panel report-panel" id="report-panel" aria-labelledby="reports-title"><div class="panel-heading"><div><span class="eyebrow">06 / RESULTADOS</span><h2 id="reports-title">Comparar e exportar</h2></div><span class="pill">TICKS VIRTUAIS</span></div>
+<div class="report-actions"><label>Métrica<select id="report-metric"><option value="average_wait_ticks">Espera média</option><option value="average_response_ticks">Resposta média</option><option value="average_turnaround_ticks">Retorno médio</option><option value="throughput_per_tick">Throughput</option><option value="page_faults">Page faults</option></select></label><button id="report-export" class="button secondary" type="button" disabled>Exportar JSON bruto</button><button id="report-import-btn" class="button secondary" type="button">Importar relatório H24</button><input type="file" id="report-file" accept=".json,application/json" hidden></div>
+<p id="report-status" class="caption" role="status">Execute uma simulação. As comparações exigem o mesmo conjunto de requisições.</p>
+<div class="table-scroll"><table class="result-table"><thead><tr><th>Política</th><th>Espera</th><th>Resposta</th><th>Vazão</th><th>Faults</th></tr></thead><tbody id="report-runs"></tbody></table></div><div id="report-chart" class="report-chart" role="img" aria-label="Métrica das execuções comparáveis"></div>
+<div id="report-h24" hidden><h3>Relatório H24 importado</h3><p class="caption" id="report-h24-source"></p><div id="report-h24-bars" class="report-chart"></div></div>
+<p class="caption">Dados derivados de exportações do motor C ou de report.json do H24. A origem declarada não é prova de coleta real.</p></section>
+    <footer>OS-LLM Studio · Projeto acadêmico · A execução utiliza um relógio virtual determinístico.</footer>
+  </main>
+</div>
+</body>
+</html>

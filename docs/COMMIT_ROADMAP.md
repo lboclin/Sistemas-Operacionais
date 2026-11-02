@@ -1,4 +1,6 @@
-# Roadmap de implementação por commits — OS-llm-project
+# Roadmap histórico de implementação por commits — OS-llm-project
+
+> **Nota de 02/11/2026:** este é o plano histórico dos commits 01–28. Os blocos H e I foram posteriormente integrados à `main`; o Bloco J é acompanhado em [FINAL_DELIVERY.md](FINAL_DELIVERY.md). As pendências relatadas nas entradas antigas representam o momento da redação, não o estado atual.
 
 > Planejamento revisável de 25/10/2026, baseado na `main` a partir do commit `140ff8a` e na especificação [FUNCTIONAL_SPEC.md](FUNCTIONAL_SPEC.md).
 > **Regra:** cada commit contém uma mudança coesa, testes relevantes e documentação do comportamento real. Não usar timestamps retroativos, commits vazios, force push ou publicar integrações quebradas.
@@ -42,4 +44,11 @@ Os commits 11–14 adicionaram o adaptador POSIX e os laboratórios de corrida e
 
 **Commit 15 (F12 parcial, feito: `46736ae`):** transporte POSIX por pipe com framing e demo gateway/worker em processos reais. Os testes cobrem framing e round-trip. A integração IPC com o runtime principal permanece pendente.
 
-Próximos: integração IPC, SIGUSR1, SJF-EMA, treino e integração do preditor, coleta com LLM, experimentos, relatórios, decisão da GUI e telas de escalonamento/memória/concorrência, testes E2E e entrega final. Linguagem e interface ainda são decisões abertas.
+### Bloco G — Previsão e cargas (30/10/2026)
+
+- **G19** `5411946`: SJF-EMA online com histórico por prioridade, atualização após conclusão, testes.
+- **G20** `eaad60d`: preditor ridge offline com avaliação por split, modelo versionado e testes.
+- **G21** `09f815b`: adaptador de comparação FCFS/EMA/IA/oráculo via CSV v1, sem dependência Python no core C.
+- **G22** (este commit): coleta opcional de metadados de saída por endpoint OpenAI-compatible, fixture sintética rotulada, geração de workloads determinísticos com CSV v1 + features G21 + proveniência, testes com mock local (7/7). **Nenhum LLM real foi consultado.** A suíte CTest completa e o CI do bloco G ainda não foram validados; manter essa limitação explícita.
+
+**Próximos:** bloco H de experimentos e relatórios comparativos, depois GUI, testes E2E e entrega final. Linguagem e interface ainda são decisões abertas.

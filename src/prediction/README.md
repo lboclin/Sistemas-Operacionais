@@ -1,12 +1,7 @@
-# integração de previsões
+# Integração de previsões — G21
 
-**Estado:** módulo planejado, ainda sem implementação.
+O adaptador externo [`tools/predictor/compare_sjf.py`](../../tools/predictor/compare_sjf.py) aplica estimativas produzidas pelo modelo offline G20 ao campo `predicted_tokens` do cenário CSV v1, antes de executar o motor virtual C11 com `--policy sjf`. A CLI e o core C não importam Python e não acessam o modelo.
 
-## Responsabilidade
-Usar predições validadas sem obrigar o motor básico a carregar Python/LLM.
+O adaptador compara FCFS, SJF-EMA, SJF com previsões do modelo (rotulado **AI** no relatório) e SJF-oráculo sobre a mesma carga. A inferência recebe **apenas** `prompt_tokens`, `max_new_tokens` e `task_category` de um CSV de metadados pré-geração; `total_tokens` é lido depois e serve somente para a simulação e avaliação. Os resultados exportados são verificáveis e determinísticos para entradas fixas.
 
-## Integração
-Interfaces apenas pelos contratos públicos com os módulos relacionados: scheduling, workload. Não acessar estado interno de outro módulo.
-
-## Antes de codificar
-Aprovar contratos em [CONTRACTS.md](../../docs/CONTRACTS.md), especificar testes observáveis e registrar escolhas técnicas com ADR quando necessário.
+Consulte [instruções e contratos](../../tools/predictor/README.md#comparação-sjf-ia-com-o-simulador-g21). Não há inferência de LLM nem previsão online dentro do processo C. Sem modelo válido, a comparação falha explicitamente; FCFS e EMA continuam disponíveis diretamente na CLI.

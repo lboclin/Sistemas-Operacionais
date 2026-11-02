@@ -23,6 +23,9 @@ typedef struct {
     OsPagePolicy page_policy; /* FIFO/LRU only for online execution */
     uint64_t page_fault_latency_ticks; /* 0 preserves legacy zero-cost faults */
     uint64_t starvation_threshold_ticks; /* 0 disables threshold detection */
+    /* Used only by OS_SJF_EMA; alpha in [0,1], initial_tokens >= 1. */
+    double ema_alpha;
+    uint32_t ema_initial_tokens;
 } OsVirtualConfig;
 
 typedef enum {

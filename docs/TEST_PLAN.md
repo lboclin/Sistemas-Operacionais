@@ -1,13 +1,6 @@
-# Estratégia de testes
+# Plano de testes
 
-O CTest organiza os testes por unidade, integração, CLI e concorrência. O conjunto atual contém 47 testes.
-
-| Área | Cobertura |
-|---|---|
-| Unidade | PCB, gateway, escalonamento, memória, geração de cenários e métricas |
-| Integração | sessões, snapshots, page faults, traces, replay e exportação |
-| CLI | cenários CSV, argumentos, execução passo a passo e exportação de resultados |
-| Concorrência e IPC | pool pthread, fila POSIX, adaptador paralelo, race lab, grafo de deadlock e pipes |
+O CTest cobre módulos C, integração do runtime, argumentos e saídas da CLI, exportação, memória, scheduler, concorrência e IPC. Testes auxiliares cobrem workloads, análise de resultados e componentes do painel web.
 
 ## Executar
 
@@ -17,10 +10,11 @@ cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
 
-O [GitHub Actions](https://github.com/lboclin/Sistemas-Operacionais/actions) executa a suíte com GCC Debug, Clang Debug e GCC com AddressSanitizer e UndefinedBehaviorSanitizer.
+Os testes de aceitação do painel podem ser executados com:
 
-## Limites da cobertura
+```bash
+OSLLM_CLI="$PWD/build/os_llm_cli" python3 -m unittest discover -s tests/visual -p 'test_acceptance.py' -v
+node --test tests/visual/test_timeline.cjs tests/visual/test_reports.cjs
+```
 
-- O laboratório de deadlock verifica ciclos em um grafo didático; não provoca deadlock real entre mutexes pthread.
-- O transporte por pipes é testado isoladamente e ainda não integra o runtime principal.
-- A interface gráfica, os experimentos completos e o ThreadSanitizer não fazem parte da suíte atual.
+A suíte verifica resultados simulados e determinismo; não mede inferência real de modelos nem substitui a inspeção manual da interface.

@@ -20,11 +20,14 @@
 #define MAX_REQUESTS 256
 
 static void usage(const char *app) {
-    printf("Usage: %s [--policy fcfs|sjf|oracle|rr|priority] [--workers N] [--quantum N]\n"
+    printf("Usage: %s [--policy fcfs|sjf|ema|oracle|rr|priority] [--workers N] [--quantum N]\n"
            "       [--scenario FILE] [--frames N --page-tokens N --page-policy fifo|lru] [--page-fault-latency N] [--starvation-threshold N] [--trace]\n"
-           "       [--export-json FILE] [--export-csv FILE]\n", app);
+           "       [--ema-alpha A --ema-initial N] [--export-json FILE] [--export-csv FILE]\n", app);
     puts("Input CSV (without header): id,arrival_tick,total_tokens,predicted_tokens,priority");
     puts("Virtual simulator only. Each token costs one virtual tick.");
+    puts("--policy sjf uses supplied predicted_tokens; ema learns from completed");
+    puts("requests per priority class; oracle uses true total_tokens (baseline only).");
+    puts("EMA defaults: --ema-alpha 0.5 --ema-initial 6; flags require --policy ema.");
     puts("       [--steps N] [--snapshots]");
     puts("--steps N limits session advances; --snapshots shows the initial state and each step.");
     puts("An idle step may jump to the next arrival tick.");
@@ -51,6 +54,16 @@ static bool parse_u64(const char *s, uint64_t *out) {
     const uintmax_t value = strtoumax(s, &end, 10);
     if (errno || end == s || *end || value > UINT64_MAX) return false;
     *out = (uint64_t)value;
+    return true;
+}
+
+static bool parse_ema_alpha(const char *s, double *out) {
+    if (s == NULL || *s == '\0') return false;
+    char *end = NULL;
+    errno = 0;
+    const double value = strtod(s, &end);
+    if (errno || end == s || *end || !(value >= 0.0 && value <= 1.0)) return false;
+    *out = value;
     return true;
 }
 
@@ -278,12 +291,14 @@ static void format_tick(uint64_t tick, char *buffer, size_t capacity) {
 
 int main(int argc, char **argv) {
     OsVirtualConfig cfg = {.policy = OS_FCFS, .worker_count = 1,
-                           .quantum_tokens = 2, .aging_interval = 2};
+                           .quantum_tokens = 2, .aging_interval = 2,
+                           .ema_alpha = 0.5, .ema_initial_tokens = 6};
     const char *scenario = NULL;
     const char *export_json = NULL;
     const char *export_csv = NULL;
     bool trace = false;
     bool page_option = false;
+    bool ema_option = false;
     bool snapshots = false;
     bool has_step_limit = false;
     uint64_t step_limit = 0;
@@ -295,10 +310,18 @@ int main(int argc, char **argv) {
             const char *value = argv[++i];
             if (!strcmp(value, "fcfs")) cfg.policy = OS_FCFS;
             else if (!strcmp(value, "sjf")) cfg.policy = OS_SJF_ESTIMATED;
+            else if (!strcmp(value, "ema")) cfg.policy = OS_SJF_EMA;
             else if (!strcmp(value, "oracle")) cfg.policy = OS_SJF_ORACLE;
             else if (!strcmp(value, "rr")) cfg.policy = OS_ROUND_ROBIN;
             else if (!strcmp(value, "priority")) cfg.policy = OS_PRIORITY_AGING;
             else { fprintf(stderr, "Unknown policy: %s\n", value); return 2; }
+        } else if (!strcmp(argv[i], "--ema-alpha") && i + 1 < argc) {
+            if (!parse_ema_alpha(argv[++i], &cfg.ema_alpha)) return 2;
+            ema_option = true;
+        } else if (!strcmp(argv[i], "--ema-initial") && i + 1 < argc) {
+            if (!parse_uint(argv[++i], &cfg.ema_initial_tokens) ||
+                cfg.ema_initial_tokens == 0) return 2;
+            ema_option = true;
         } else if (!strcmp(argv[i], "--workers") && i + 1 < argc) {
             uint32_t workers;
             if (!parse_uint(argv[++i], &workers) || workers == 0 || workers > 4096) return 2;
@@ -343,6 +366,10 @@ int main(int argc, char **argv) {
             }
             has_step_limit = true;
         } else { fprintf(stderr, "Invalid argument: %s\n", argv[i]); usage(argv[0]); return 2; }
+    }
+    if (ema_option && cfg.policy != OS_SJF_EMA) {
+        fputs("--ema-alpha and --ema-initial require --policy ema\n", stderr);
+        return 2;
     }
     if (page_option && !cfg.memory_enabled) {
         fputs("--page-tokens, --page-policy and --page-fault-latency require --frames\n", stderr);

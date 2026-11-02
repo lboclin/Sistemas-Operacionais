@@ -1,0 +1,6 @@
+request_id,prompt_tokens,max_new_tokens,task_category
+101,12,64,qa
+102,10,32,qa
+103,100,128,summary
+104,20,64,code
+105,55,96,summary

@@ -1,0 +1,5 @@
+# EMA demonstration: priority acts as a provisional workload class.
+1,0,12,1,1
+2,1,2,99,2
+3,1,3,99,1
+4,1,7,1,2
