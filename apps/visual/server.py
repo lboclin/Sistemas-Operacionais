@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import subprocess
 import tempfile
+from threading import BoundedSemaphore
 
 ROOT = Path(__file__).resolve().parent
 ASSETS = {'/': ('index.html', 'text/html; charset=utf-8'),
@@ -19,6 +20,8 @@ ASSETS = {'/': ('index.html', 'text/html; charset=utf-8'),
 MAX_BODY = 64 * 1024
 MAX_OUTPUT = 16 * 1024 * 1024
 MAX_REQUESTS = 256
+MAX_ACTIVE_PROCESSES = 2
+EXECUTION_SLOTS = BoundedSemaphore(MAX_ACTIVE_PROCESSES)
 POLICIES = {'fcfs', 'sjf', 'ema', 'oracle', 'rr', 'priority'}
 LAB_CHOICES = {'race':('safe','unsafe'),'deadlock':('ordered','deadlock')}
 DECIMAL = re.compile(r'(0|[1-9][0-9]*)\Z')
@@ -27,6 +30,19 @@ SIGNED = re.compile(r'(0|-?[1-9][0-9]*)\Z')
 
 class InputError(ValueError):
     pass
+
+
+def strict_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise InputError('Propriedade JSON duplicada: ' + key)
+        result[key] = value
+    return result
+
+
+def reject_nonfinite(value):
+    raise InputError('JSON não permite valor não finito: ' + value)
 
 
 def integer(value, name, low, high, signed=False):
@@ -229,26 +245,37 @@ class Handler(BaseHTTPRequestHandler):
             self.send_data(415, b'JSON only', 'text/plain; charset=utf-8')
             return
         length = self.headers.get('Content-Length', '')
-        if not length.isdecimal() or not 0 < int(length) <= MAX_BODY:
+        if len(length) > 5 or not length.isascii() or not length.isdecimal() or not 0 < int(length) <= MAX_BODY:
             self.send_data(413, b'Invalid body length', 'text/plain; charset=utf-8')
             return
         try:
-            request = json.loads(self.rfile.read(int(length)).decode('utf-8'))
-            if self.path == '/api/lab':
-                lab, mode=validate_lab(request)
-                executable=self.race_lab if lab=='race' else self.deadlock_lab
-                result=execute_lab(executable,mode)
-            else:
-                result=simulate(self.cli,request,timeout=self.timeout_seconds)
-            output = json.dumps(result, ensure_ascii=False, allow_nan=False).encode('utf-8')
-            if len(output) > MAX_OUTPUT:
-                raise InputError('Resposta grande demais para o painel')
-            self.send_data(200, output, 'application/json; charset=utf-8')
+            request = json.loads(self.rfile.read(int(length)).decode('utf-8'),
+                                 object_pairs_hook=strict_object, parse_constant=reject_nonfinite)
+            if not EXECUTION_SLOTS.acquire(blocking=False):
+                self.send_data(429, b'{"error":"Servidor ocupado: tente novamente"}',
+                               'application/json; charset=utf-8')
+                return
+            try:
+                self._execute_and_respond(request)
+            finally:
+                EXECUTION_SLOTS.release()
         except (InputError, ValueError, UnicodeError, TypeError) as exc:
             output = json.dumps({'error': str(exc)}, ensure_ascii=False).encode('utf-8')
             self.send_data(400, output, 'application/json; charset=utf-8')
         except (OSError, BrokenPipeError):
             self.send_data(500, b'{"error":"Falha local do simulador"}', 'application/json; charset=utf-8')
+
+    def _execute_and_respond(self, request):
+        if self.path == '/api/lab':
+            lab, mode = validate_lab(request)
+            executable = self.race_lab if lab == 'race' else self.deadlock_lab
+            result = execute_lab(executable, mode)
+        else:
+            result = simulate(self.cli, request, timeout=self.timeout_seconds)
+        output = json.dumps(result, ensure_ascii=False, allow_nan=False).encode('utf-8')
+        if len(output) > MAX_OUTPUT:
+            raise InputError('Resposta grande demais para o painel')
+        self.send_data(200, output, 'application/json; charset=utf-8')
 
     def log_message(self, fmt, *args):
         # Avoid logging request bodies or private scenario data.
