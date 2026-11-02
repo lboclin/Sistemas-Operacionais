@@ -2,7 +2,7 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {normalize,parseH24}=require('../../apps/visual/static/reports.js');
 function fixture(){return {schema:'os-llm-run',finished:true,config:{policy:'FCFS'},
-  input:[{id:1,arrival_tick:0,total_tokens:4,priority:1}],
+  input:[{id:1,arrival_tick:0,total_tokens:4,predicted_tokens:3,priority:1}],
   metrics:{average_wait_ticks:1,average_response_ticks:1,average_turnaround_ticks:5,
   throughput_per_tick:.2,page_faults:0}}}
 test('normalizes metrics without inventing numbers',()=>{
@@ -28,4 +28,16 @@ test('H24 report contract preserves provenance and measured numbers',()=>{
 });
 test('no fake data when H24 has no runs',()=>{
  const out=parseH24({schema:'os-llm-report/v1',scheduling:[],memory:[]});assert.deepEqual(out.rows,[]);
+});
+
+test('scenario comparison considers predicted tokens, a scheduler input',()=>{
+ const a=fixture(),b=fixture(); b.input[0].predicted_tokens=7;
+ assert.notEqual(normalize(a).fingerprint,normalize(b).fingerprint);
+});
+test('rejects invalid scenario fields, not just unsafe precision',()=>{
+ for(const [field,value] of [['id',0],['arrival_tick',-1],['total_tokens',0],
+   ['predicted_tokens',0],['predicted_tokens',1.5],['predicted_tokens',Number.MAX_SAFE_INTEGER+1]]){
+  const r=fixture();r.input[0][field]=value;
+  assert.throws(()=>normalize(r),/Input inválido/,field);
+ }
 });
