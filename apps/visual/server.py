@@ -121,6 +121,38 @@ def simulate(cli, payload, timeout=25):
             len(result['requests']) != len(expected) or
             not isinstance(result.get('events'), list)):
             raise InputError('Resultado incompleto ou incompatível com o cenário')
+        # Audited J: do not present an internally contradictory C export as a
+        # completed simulation, even if the summary claims it has finished.
+        if type(result['metrics'].get('completed')) is not int:
+            raise InputError('Contagem de conclusões inválida')
+        by_id = {row['id']: row for row in data['requests']}
+        returned = set()
+        for row in result['requests']:
+            if not isinstance(row, dict) or type(row.get('id')) is not int:
+                raise InputError('PCB exportado inválido')
+            rid = row['id']
+            if rid not in by_id or rid in returned:
+                raise InputError('PCBs exportados divergentes')
+            returned.add(rid)
+            expected_row = by_id[rid]
+            if (row.get('state') != 'TERMINATED' or
+                type(row.get('generated_tokens')) is not int or
+                row['generated_tokens'] != expected_row['total_tokens'] or
+                type(row.get('arrival_tick')) is not int or
+                row['arrival_tick'] != expected_row['arrival_tick'] or
+                type(row.get('first_run_tick')) is not int or
+                type(row.get('finished_tick')) is not int or
+                not row['arrival_tick'] <= row['first_run_tick'] <= row['finished_tick']):
+                raise InputError('Resultado de PCB inconsistente com entrada')
+        if returned != set(by_id):
+            raise InputError('PCBs ausentes da exportação')
+        last_tick = -1
+        for index, event in enumerate(result['events']):
+            if (not isinstance(event, dict) or
+                type(event.get('sequence')) is not int or event['sequence'] != index or
+                type(event.get('tick')) is not int or event['tick'] < last_tick):
+                raise InputError('Trace exportado inválido ou fora de ordem')
+            last_tick = event['tick']
         return result
 
 
