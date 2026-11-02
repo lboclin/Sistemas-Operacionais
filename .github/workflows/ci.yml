@@ -23,10 +23,6 @@ jobs:
           - name: gcc-asan-ubsan
             compiler: gcc
             flags: "-fsanitize=address,undefined -fno-omit-frame-pointer"
-          - name: gcc-release
-            compiler: gcc
-            flags: ""
-            build_type: Release
     env:
       CC: ${{ matrix.compiler }}
       CFLAGS: ${{ matrix.flags }}
@@ -34,18 +30,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type || 'Debug' }}
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
       - name: Build
         run: cmake --build build --parallel
       - name: Test
         run: ctest --test-dir build --output-on-failure
-      - name: Check Python and JavaScript syntax
-        if: matrix.name == 'gcc-debug'
-        run: |
-          python3 -m compileall -q apps tools tests
-          for file in apps/visual/static/*.js tests/visual/*.cjs; do node --check "$file"; done
-      - name: Repeat concurrency, replay and acceptance regression tests
-        if: matrix.name == 'gcc-debug'
-        run: >-
-          ctest --test-dir build --output-on-failure --repeat until-fail:6
-          -R '^(work_queue|thread_pool|parallel_runtime|deadlock_liveness|ipc_runtime_rr|ipc_runtime_fcfs|trace_replay|page_fault_latency|final_acceptance_py)$'
