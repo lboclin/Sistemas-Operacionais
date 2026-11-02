@@ -32,7 +32,7 @@ for line in scenario.read_text().splitlines():
 name={'fcfs':'FCFS','rr':'Round-Robin','ema':'SJF-EMA','sjf':'SJF-estimated','oracle':'SJF-oracle','priority':'Priority-aging'}[policy]
 result={'schema':'os-llm-run','version':1,'finished':True,'input':rows,
  'config':{'policy':name,'worker_count':int(args[args.index('--workers')+1])},
- 'requests':[dict(id=r['id'],state='TERMINATED',generated_tokens=r['total_tokens'],first_run_tick=r['arrival_tick'],finished_tick=r['arrival_tick']+r['total_tokens'],waiting_ticks=0) for r in rows],
+ 'requests':[dict(id=r['id'],arrival_tick=r['arrival_tick'],state='TERMINATED',generated_tokens=r['total_tokens'],first_run_tick=r['arrival_tick'],finished_tick=r['arrival_tick']+r['total_tokens'],waiting_ticks=0) for r in rows],
  'metrics':{'completed':len(rows),'average_wait_ticks':0,'makespan_ticks':sum(r['total_tokens'] for r in rows),'throughput_per_tick':0.3}, 'events':[]}
 export.write_text(json.dumps(result))
 ''',encoding='utf-8')
