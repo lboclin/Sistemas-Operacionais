@@ -11,10 +11,13 @@ function normalize(run){
  for(const key of METRIC)if(!finite(run.metrics[key]))throw Error('Métrica ausente ou inválida: '+key);
  const ids=new Set();
  const input=run.input.map(r=>{
-  if(!r||!Number.isSafeInteger(r.id)||ids.has(r.id)||!Number.isSafeInteger(r.arrival_tick)||
-     !Number.isSafeInteger(r.total_tokens)||!Number.isSafeInteger(r.priority))throw Error('Input inválido ou inseguro para comparação');
+  if(!r||!Number.isSafeInteger(r.id)||r.id<=0||ids.has(r.id)||
+     !Number.isSafeInteger(r.arrival_tick)||r.arrival_tick<0||
+     !Number.isSafeInteger(r.total_tokens)||r.total_tokens<=0||
+     !Number.isSafeInteger(r.predicted_tokens)||r.predicted_tokens<=0||
+     !Number.isSafeInteger(r.priority))throw Error('Input inválido ou inseguro para comparação');
   ids.add(r.id);
-  return [r.id,r.arrival_tick,r.total_tokens,r.priority];
+  return [r.id,r.arrival_tick,r.total_tokens,r.predicted_tokens,r.priority];
  }).sort((a,b)=>a[0]-b[0]);
  return {name:run.config.policy,metrics:Object.fromEntries(METRIC.map(k=>[k,run.metrics[k]])),
          fingerprint:JSON.stringify(input)};
