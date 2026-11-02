@@ -156,7 +156,7 @@ async function run() {
   } finally {
     busy = false;
     $('run-btn').disabled = false;
-    $('run-btn').textContent = '▶ Executar simulação';
+    $('run-btn').textContent = 'Executar simulação';
     $('add-btn').disabled = requests.length >= 256;
   }
 }

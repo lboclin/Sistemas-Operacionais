@@ -16,6 +16,42 @@
 
 .report-panel{margin-top:18px}.report-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:16px}.report-actions label{font-size:12px;color:#acc1d6}.report-actions select{display:block;margin-top:5px;background:#0b1424;color:#dbeafb;border:1px solid #33425a;border-radius:8px;padding:9px}.report-chart{display:grid;gap:10px;padding:12px 0;min-height:55px}.report-bar-row{display:grid;grid-template-columns:145px minmax(100px,1fr) 85px;gap:12px;align-items:center;font-size:12px}.report-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.report-track{height:19px;background:#0b1424;border-radius:5px;overflow:hidden}.report-fill{height:100%;background:linear-gradient(90deg,#245ba3,#33d7a5);border-radius:5px}.report-bar-row strong{font-size:12px;text-align:right;color:#c7e7f5}
 
+:root{color-scheme:dark;--surface:#111b2c;--surface-raised:#142137;--line:#2b3b52;--muted:#9aadc4;--accent:#45dfb7;accent-color:var(--accent)}
+html{scroll-behavior:smooth;overflow-x:clip}
+body{background:#0b111d;overflow-x:clip}
+::selection{background:#176752;color:#f2fffb}
+*{scrollbar-color:#40536d #0c1524;scrollbar-width:thin}
+.main{max-width:1580px;padding:clamp(25px,3.2vw,48px) clamp(22px,3.8vw,58px)}
+.topbar{margin-bottom:23px}
+.topbar h1{font-size:clamp(30px,2.8vw,39px);letter-spacing:-.03em}
+.topbar p{max-width:70ch;color:#a0b2c9}
+.metric-grid{gap:12px}
+.metric{min-height:128px;padding:18px 20px;border-color:var(--line);border-radius:12px;background:#121d2f}
+.metric strong{font-size:32px}
+.panel{padding:clamp(18px,2vw,26px);border-color:var(--line);border-radius:14px;background:var(--surface)}
+.panel-heading{margin-bottom:18px}
+.panel h2{font-size:20px;letter-spacing:-.02em}
+.form-row label,.report-actions label{font-size:13px}
+.form-row input,.form-row select,.request-table input,.report-actions select{min-height:42px;border-color:#3a4d66;border-radius:9px;background:#0c1524}
+.request-table input{height:40px}
+.button{min-height:42px;border-radius:9px;font-size:13px;transition:background-color .15s ease,border-color .15s ease,color .15s ease}
+.button.secondary{border-color:#3a4d66;background:#19283d}
+.button.secondary:hover{border-color:#60748e;background:#22354d}
+.button.primary{min-height:46px;background:#45dfb7;box-shadow:0 7px 18px #0a5b4933}
+.button.primary:hover{background:#70edcb}
+.remove{width:38px;height:38px;border-radius:9px}
+.caption{font-size:12px;color:#9aadc4;line-height:1.65}
+.empty-icon svg{width:34px;height:34px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.state-pill{padding:6px 9px}
+.table-scroll{min-width:0;overscroll-behavior-x:contain}
+.report-chart{min-width:0}
+.report-bar-row{min-width:0}
+.sidebar-bottom{border-color:var(--line);background:#121d2f}
+footer{max-width:70ch;color:#8195af;line-height:1.6}
+@media(min-width:701px) and (max-width:1130px){.shell{grid-template-columns:218px minmax(0,1fr)}.sidebar{width:218px;padding:24px 13px}.sidebar .brand{justify-content:flex-start;margin-left:0}.sidebar .brand>span:nth-child(2){font-size:18px}.side-nav .nav-item{justify-content:flex-start;width:auto;height:auto;min-height:44px;margin:0;padding:11px 10px;font-size:12px}.side-nav .nav-copy{width:auto;overflow:visible;font-size:12px}.nav-label{font-size:10px}.sidebar-bottom{display:block;font-size:10px}}
+@media(max-width:980px){.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.main{padding:24px 15px}.topbar{margin-bottom:19px}.metric-grid{gap:10px}.metric{min-height:112px;padding:15px}.metric strong{font-size:28px}.panel{padding:16px}.panel h2{font-size:18px}.form-row{gap:10px}.form-row input,.form-row select{min-height:44px}.panel-footer{justify-content:flex-start}.panel-footer .button{width:100%}.report-bar-row{grid-template-columns:minmax(70px,95px) minmax(45px,1fr) 62px;gap:8px}.report-bar-row strong{font-size:11px}.table-title{gap:12px}.actions .button{min-height:42px}}
+
 .sidebar{position:sticky;top:0;height:100vh;align-self:start;overflow-y:auto}
 .brand-mark svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round}
 .side-nav{display:grid;gap:6px}
