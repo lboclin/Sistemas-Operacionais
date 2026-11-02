@@ -80,7 +80,29 @@ function validateForm() {
   for (const [name, str, min, max] of [['Workers',workers,1,16],['Quantum',quantum,1,4294967295]]) {
     if (!/^[1-9][0-9]*$/.test(str) || !Number.isSafeInteger(Number(str)) || Number(str)<min || Number(str)>max) throw Error(`${name}: valor inválido.`);
   }
-  return {requests:requests.map((r) => ({...r})),policy:$('policy').value,workers,quantum,memory:window.OSLLMMemory?window.OSLLMMemory.config():null};
+  const memory = window.OSLLMMemory ? window.OSLLMMemory.config() : null;
+  let latency = 0n;
+  if (memory) {
+    for (const [name, value, min, max] of [
+      ['Frames', memory.frames, 1n, 4096n],
+      ['Tokens por página', memory.page_tokens, 1n, 4294967295n],
+      ['Latência de falta', memory.fault_latency, 0n, 18446744073709551614n]]) {
+      if (!/^(0|[1-9][0-9]*)$/.test(value) || BigInt(value) < min || BigInt(value) > max)
+        throw Error(name + ': valor inválido.');
+    }
+    latency = BigInt(memory.fault_latency);
+  }
+  // JSON.parse in browsers converts integers into IEEE-754 doubles. The C CLI
+  // handles full uint64_t, but the UI must not show rounded ticks as exact.
+  const maxArrival = requests.reduce((max, r) => {
+    const tick = BigInt(r.arrival_tick);
+    return tick > max ? tick : max;
+  }, 0n);
+  const tokens = requests.reduce((sum, r) => sum + BigInt(r.total_tokens), 0n);
+  const conservativeEnd = maxArrival + tokens * (1n + latency);
+  if (conservativeEnd > BigInt(Number.MAX_SAFE_INTEGER))
+    throw Error('O cenário ultrapassa a precisão de ticks do navegador. Use a CLI C para tempos uint64 completos.');
+  return {requests:requests.map((r) => ({...r})),policy:$('policy').value,workers,quantum,memory};
 }
 function display(result) {
   const m = result.metrics;
