@@ -1,4 +1,6 @@
-# Roadmap de implementação por commits — OS-llm-project
+# Roadmap histórico de implementação por commits — OS-llm-project
+
+> **Nota de 02/11/2026:** este é o plano histórico dos commits 01–28. Os blocos H e I foram posteriormente integrados à `main`; o Bloco J é acompanhado em [FINAL_DELIVERY.md](FINAL_DELIVERY.md). As pendências relatadas nas entradas antigas representam o momento da redação, não o estado atual.
 
 > Planejamento revisável de 25/10/2026, baseado na `main` a partir do commit `140ff8a` e na especificação [FUNCTIONAL_SPEC.md](FUNCTIONAL_SPEC.md). Este documento **não cria commits futuros automaticamente**; tarefas agendadas somente tentam executar o próximo trabalho quando houver acesso e testes.  
 > **Regra:** cada commit contém uma mudança coesa, testes relevantes e documentação do comportamento real. Não usar timestamps retroativos, commits vazios, force push ou publicar integrações quebradas.
