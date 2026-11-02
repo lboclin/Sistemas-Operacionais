@@ -30,3 +30,14 @@ test('rejects unsafe tick precision and event vocabulary',() => {
   assert.throws(()=>decode([{sequence:0,tick:Number.MAX_SAFE_INTEGER+1,type:'arrived',request_id:1}]),/inválido/);
   assert.throws(()=>decode([{sequence:0,tick:0,type:'evil',request_id:1}]),/inválido/);
 });
+
+test('large trace computes max tick without spreading into call arguments',()=>{
+ const events=Array.from({length:150000},(_,i)=>({tick:i}));
+ assert.equal(require('../../apps/visual/static/timeline.js').maxObservedTick(events,10),149999);
+});
+test('max tick rejects precision loss and malformed ticks',()=>{
+ const helper=require('../../apps/visual/static/timeline.js').maxObservedTick;
+ assert.throws(()=>helper([{tick:Number.MAX_SAFE_INTEGER+1}],0),/inválido/);
+ assert.throws(()=>helper([],Number.MAX_SAFE_INTEGER+1),/precisão/);
+ assert.equal(helper([],0),1);
+});
