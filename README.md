@@ -1,16 +1,27 @@
 # OS-llm-project
 
-Simulador acadêmico de Sistemas Operacionais aplicado a requisições de LLM. Repositório privado, em desenvolvimento incremental.
+Simulador acadêmico de Sistemas Operacionais aplicado ao escalonamento de requisições de LLM. O núcleo é escrito em **C11** e executa **ticks e tokens virtuais**; não realiza inferência de modelos reais.
 
-## Interface gráfica local (Bloco I25)
+## Estado do projeto — Bloco J (02/11/2026)
 
-Dashboard web com Python stdlib e HTML/CSS/JS em [apps/visual](apps/visual/README.md). Após compilar o motor C11, execute `python3 apps/visual/server.py --cli ./build/os_llm_cli --port 8765` e abra http://127.0.0.1:8765 no próprio computador. O I25 oferece cenários, políticas, execuções e indicadores reais da exportação do simulador; Gantt, memória e relatórios visuais ficam para I26–I28. A aplicação não executa inferência de LLM.
+Os blocos A–I estão integrados na `main`. O **Bloco I** inclui dashboard web local, Gantt com replay *visual*, memória FIFO/LRU, laboratórios de concorrência isolados e comparação/importação de resultados H24. O Bloco J realiza auditoria final, correções, testes adicionais e documentação; mudanças de J permanecem na branch/PR até o CI validar.
 
-## Estado atual
+**Validação de J:** [GitHub Actions — quatro configurações](https://github.com/fragaeduardo/OS-llm-project/actions/runs/41399236743): **67/67 testes CTest** em GCC Debug, Clang Debug, GCC com ASan/UBSan e GCC Release. O GCC Debug repetiu **9 testes críticos seis vezes**. Isso é evidência automatizada, não substitui a inspeção manual da interface no navegador.
 
-**Protótipo funcional (C11, provisório):** PCB e estados, gateway de admissão, FCFS, SJF estimado/oráculo, RR, prioridade com aging, workers virtuais, relógio de 1 tick/token, p50/p95 e métricas de utilização, traces determinísticos com replay verificável, gerador de cargas com seed, paginação FIFO/LRU online integrada e replay offline FIFO/LRU/Ótimo. A CLI aceita cenários CSV, eventos, execução limitada por passos e snapshots intermediários. Os testes incluem agora casos específicos de SJF-EMA; a suíte completa desta branch ainda não foi validada por CI. Os 45 testes do baseline anterior foram aprovados com GCC, Clang e GCC ASan/UBSan. Exportação JSON/CSV versionada, adaptador POSIX com pthreads/fila, race lab isolado, grafo didático de deadlock e laboratório pthread com deadlock real em subprocesso estão disponíveis.
+**Limitações que permanecem:** não existe inferência real do LLM nem métricas de throughput de tokens reais; o detector de deadlock do runtime é didático, o laboratório de deadlock pthread é isolado; IPC POSIX não é um serviço persistente; o tratamento de SIGUSR1 é um laboratório separado; o botão de replay da UI não pausa o motor C. A linguagem C11 ainda pode ser revista pelo grupo.
 
-**Ainda não implementado:** inferência real nos workers, detecção de deadlock de mutexes integrada ao runtime, IPC persistente, tratamento de sinais no runtime principal, experimentos completos e interface gráfica. O preditor offline e sua integração por adaptador (G20/G21) já existem; o G22 acrescenta coleta opcional de metadados e workloads reproduzíveis, sem executar LLM no motor C. O IPC por pipes inclui demos isoladas e uma conexão didática com o runtime POSIX em subprocesso. A CLI é apenas uma ferramenta técnica para testar o núcleo; não substitui a GUI planejada.
+## Comece por aqui
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+python3 apps/visual/server.py --cli ./build/os_llm_cli --port 8765
+```
+
+Abra **http://127.0.0.1:8765** na mesma máquina. O servidor escuta apenas em loopback, sem serviços pagos ou dependências npm. Para usar apenas a CLI, experimente `./build/os_llm_cli --policy rr --quantum 2 --frames 2 --page-tokens 2 --trace`.
+
+**Documentação para a entrega:** [guia de reprodução e limitações](docs/FINAL_DELIVERY.md), [plano de testes atualizado](docs/TEST_PLAN.md), [interface](apps/visual/README.md) e [especificação funcional](docs/FUNCTIONAL_SPEC.md).
 
 ## Demonstração com SIGUSR1 (laboratório isolado)
 
@@ -124,8 +135,8 @@ A estrutura prevê também os módulos futuros em `apps/visual/`, `src/ipc/`, `s
 - [Especificação funcional completa](docs/FUNCTIONAL_SPEC.md)
 - [Contratos planejados](docs/CONTRACTS.md)
 - [Estado da implementação](docs/IMPLEMENTATION_STATUS.md)
-- [Roadmap por commits (14 concluídos, etapas futuras pendentes)](docs/COMMIT_ROADMAP.md)
-- [Interface gráfica planejada](docs/UI_SPEC.md)
+- [Roadmap histórico por commits](docs/COMMIT_ROADMAP.md)
+- [Especificação da interface implementada](docs/UI_SPEC.md)
 - [Decisões pendentes](docs/DECISIONS.md)
 - [Contribuição](CONTRIBUTING.md)
 

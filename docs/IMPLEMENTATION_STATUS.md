@@ -1,6 +1,10 @@
 # Estado da implementação
 
-> Atualizado em 30/10/2026. Inclui o bloco F e os commits G19–G22. O projeto acadêmico ainda não está completo.
+> **Estado consolidado em 02/11/2026:** Blocos A–I implementados e integrados à `main`; auditoria J em PR. O painel I25–I28 e o H23/H24 foram incorporados. A execução automatizada [41399236743](https://github.com/fragaeduardo/OS-llm-project/actions/runs/41399236743) aprovou 67/67 testes em GCC Debug, Clang Debug, GCC ASan/UBSan e GCC Release, além de seis repetições de nove casos críticos. Para reproduzir, consulte [FINAL_DELIVERY.md](FINAL_DELIVERY.md).
+>
+> **Restrições:** inferência LLM real, serviço IPC persistente, detecção de deadlock integrada ao runtime, snapshots SIGUSR1 no controlador principal e pausa persistente da UI não estão implementados. O painel faz replay visual com eventos autênticos.
+>
+> **Registro histórico:** as seções abaixo foram produzidas em 30/10/2026 (Blocos F/G) e preservam dados e pendências da época. Não devem ser interpretadas como o estado mais recente do Bloco H/I/J.
 
 ## Entregue e limitações
 
