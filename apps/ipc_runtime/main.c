@@ -12,15 +12,15 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-/* Wire format v1: big-endian integers, no native structs or pointers.
- * Request: "OLI1", count, workers, policy(0=FCFS,1=RR), quantum,
- *          then count * (id:u32, arrival:u64, total:u32, predicted:u32, priority:u32).
- * Reply:   "OLR1", status, count, completed, makespan:u64,
- *          then count * (id:u32, state:u32, generated:u32, finished:u64).
+/* Wire format v2: big-endian integers, no native structs or pointers.
+ * Request: "OLI2", count, workers, policy(0=FCFS,1=RR), quantum,
+ *          then count * (id:u32, arrival:u64, input_tokens:u32, priority:u32).
+ * Reply:   "OLR2", status, count, completed, makespan:u64,
+ *          then count * (id:u32, state:u32, processed:u32, finished:u64).
  * This demo deliberately supports at most 8 nonnegative-priority PCBs. */
 #define MAX_REQUESTS 8u
 #define REQUEST_HEADER 20u
-#define REQUEST_RECORD 24u
+#define REQUEST_RECORD 20u
 #define REPLY_HEADER 24u
 #define REPLY_RECORD 20u
 #define BUFFER_SIZE 256u
@@ -44,14 +44,14 @@ static uint64_t get64(const unsigned char *buffer, size_t *at) {
     return value;
 }
 static bool create_requests(OsRequest *requests) {
-    return os_request_init(&requests[0], 1, 0, 4, 3, 1) &&
-           os_request_init(&requests[1], 2, 1, 3, 4, 0) &&
-           os_request_init(&requests[2], 3, 2, 2, 2, 2);
+    return os_request_init(&requests[0], 1, 0, 4, 1) &&
+           os_request_init(&requests[1], 2, 1, 3, 0) &&
+           os_request_init(&requests[2], 3, 2, 2, 2);
 }
 static size_t encode_request(unsigned char *buffer, const OsRequest *requests,
                              size_t count, bool round_robin) {
     size_t at = 0;
-    memcpy(buffer, "OLI1", 4);
+    memcpy(buffer, "OLI2", 4);
     at = 4;
     put32(buffer, &at, (uint32_t)count);
     put32(buffer, &at, 2);
@@ -61,7 +61,6 @@ static size_t encode_request(unsigned char *buffer, const OsRequest *requests,
         put32(buffer, &at, requests[i].id);
         put64(buffer, &at, requests[i].arrival_tick);
         put32(buffer, &at, requests[i].total_tokens);
-        put32(buffer, &at, requests[i].predicted_tokens);
         put32(buffer, &at, (uint32_t)requests[i].priority);
     }
     return at;
@@ -69,7 +68,7 @@ static size_t encode_request(unsigned char *buffer, const OsRequest *requests,
 static bool decode_request(const unsigned char *buffer, size_t length,
                            OsRequest *requests, size_t *count,
                            OsVirtualConfig *config) {
-    if (length < REQUEST_HEADER || memcmp(buffer, "OLI1", 4) != 0) return false;
+    if (length < REQUEST_HEADER || memcmp(buffer, "OLI2", 4) != 0) return false;
     size_t at = 4;
     const uint32_t n = get32(buffer, &at);
     const uint32_t workers = get32(buffer, &at);
@@ -84,10 +83,9 @@ static bool decode_request(const unsigned char *buffer, size_t length,
         const uint32_t id = get32(buffer, &at);
         const uint64_t arrival = get64(buffer, &at);
         const uint32_t total = get32(buffer, &at);
-        const uint32_t predicted = get32(buffer, &at);
         const uint32_t priority = get32(buffer, &at);
         if (priority > INT32_MAX ||
-            !os_request_init(&requests[i], id, arrival, total, predicted, (int)priority))
+            !os_request_init(&requests[i], id, arrival, total, (int)priority))
             return false;
         for (uint32_t j = 0; j < i; ++j)
             if (requests[j].id == id) return false;
@@ -98,7 +96,7 @@ static bool decode_request(const unsigned char *buffer, size_t length,
 static size_t encode_reply(unsigned char *buffer, const OsRequest *requests,
                            size_t count, const OsRunSummary *summary) {
     size_t at = 4;
-    memcpy(buffer, "OLR1", 4);
+    memcpy(buffer, "OLR2", 4);
     put32(buffer, &at, (uint32_t)OS_RUN_OK);
     put32(buffer, &at, (uint32_t)count);
     put32(buffer, &at, (uint32_t)summary->completed);
@@ -106,7 +104,7 @@ static size_t encode_reply(unsigned char *buffer, const OsRequest *requests,
     for (size_t i = 0; i < count; ++i) {
         put32(buffer, &at, requests[i].id);
         put32(buffer, &at, (uint32_t)requests[i].state);
-        put32(buffer, &at, requests[i].generated_tokens);
+        put32(buffer, &at, requests[i].processed_tokens);
         put64(buffer, &at, requests[i].finished_tick);
     }
     return at;
@@ -115,7 +113,7 @@ static bool verify_reply(const unsigned char *buffer, size_t length,
                          const OsRequest *expected, size_t count,
                          const OsRunSummary *summary) {
     if (length != REPLY_HEADER + count * REPLY_RECORD ||
-        memcmp(buffer, "OLR1", 4) != 0) return false;
+        memcmp(buffer, "OLR2", 4) != 0) return false;
     size_t at = 4;
     if (get32(buffer, &at) != OS_RUN_OK || get32(buffer, &at) != count ||
         get32(buffer, &at) != summary->completed ||
@@ -123,7 +121,7 @@ static bool verify_reply(const unsigned char *buffer, size_t length,
     for (size_t i = 0; i < count; ++i) {
         if (get32(buffer, &at) != expected[i].id ||
             get32(buffer, &at) != (uint32_t)expected[i].state ||
-            get32(buffer, &at) != expected[i].generated_tokens ||
+            get32(buffer, &at) != expected[i].processed_tokens ||
             get64(buffer, &at) != expected[i].finished_tick) return false;
     }
     return true;

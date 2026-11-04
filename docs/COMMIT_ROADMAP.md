@@ -51,4 +51,8 @@ Os commits 11–14 adicionaram o adaptador POSIX e os laboratórios de corrida e
 - **G21** `09f815b`: adaptador de comparação FCFS/EMA/IA/oráculo via CSV v1, sem dependência Python no core C.
 - **G22** (este commit): coleta opcional de metadados de saída por endpoint OpenAI-compatible, fixture sintética rotulada, geração de workloads determinísticos com CSV v1 + features G21 + proveniência, testes com mock local (7/7). **Nenhum LLM real foi consultado.** A suíte CTest completa e o CI do bloco G ainda não foram validados; manter essa limitação explícita.
 
-**Próximos:** bloco H de experimentos e relatórios comparativos, depois GUI, testes E2E e entrega final. Linguagem e interface ainda são decisões abertas.
+### Mudança de foco: servidor do Jev (04/11/2026)
+
+O bloco G foi **revertido** pela [ADR 0002](adr/0002-foco-typesafe-jev.md). O simulador passou a modelar um servidor do Jev (TypeSafe AI): 1 tick = 1 token de entrada, e o tamanho do job é conhecido na chegada. Saíram o SJF-EMA (G19), o preditor (G20), o adaptador SJF-IA (G21) e a coluna `predicted_tokens`. A coleta do G22 continua, mas agora gera cenários CSV v2 com os tokens de **entrada**. O SJF passou a ordenar pelo tamanho real da entrada.
+
+**Próximos (histórico):** bloco H de experimentos e relatórios comparativos, depois GUI, testes E2E e entrega final. Linguagem e interface ainda são decisões abertas.

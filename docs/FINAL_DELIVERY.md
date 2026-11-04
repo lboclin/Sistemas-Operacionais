@@ -1,6 +1,6 @@
 # Guia de execução
 
-O projeto demonstra escalonamento, memória, concorrência e IPC com um simulador C11. Os tempos são ticks virtuais; não há inferência de modelos de linguagem.
+O projeto demonstra escalonamento, memória, concorrência e IPC com um simulador C11 de um servidor do Jev (TypeSafe AI). Os tempos são ticks virtuais: 1 tick = 1 token de entrada. O simulador não chama o Jev.
 
 ## Requisitos
 
@@ -22,7 +22,8 @@ ctest --test-dir build --output-on-failure
 ```bash
 ./build/os_llm_cli --policy fcfs --scenario scenarios/sample.csv --trace
 ./build/os_llm_cli --policy rr --quantum 1 --workers 2 --scenario scenarios/sample.csv
-./build/os_llm_cli --policy ema --ema-alpha 0.5 --ema-initial 6 --scenario scenarios/ema-demo.csv
+./build/os_llm_cli --policy sjf --scenario scenarios/seed42-v2.csv
+./build/os_llm_ipc_runtime --fcfs   # gateway e motor em processos separados, ligados por pipes (Linux)
 python3 apps/visual/server.py --cli ./build/os_llm_cli --port 8765
 ```
 
@@ -30,4 +31,4 @@ Com o servidor ativo, abra `http://127.0.0.1:8765`. Consulte [a documentação d
 
 ## Limites
 
-Os resultados não representam latência ou throughput de inferência real. Os laboratórios POSIX são demonstrações isoladas; não há serviço IPC persistente nem detector de deadlock integrado ao runtime principal.
+Os resultados não representam latência ou throughput reais do Jev. Os laboratórios POSIX são demonstrações isoladas; não há serviço IPC persistente nem detector de deadlock integrado ao runtime principal.

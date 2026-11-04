@@ -3,7 +3,7 @@
 > O produto terá uma interface visual, web ou desktop a definir. Uma TUI não foi escolhida como interface principal.
 
 ## Objetivo
-Permitir configurar requisições de um LLM simulado, visualizar fila, políticas, workers, memória, eventos e métricas. A interface é um adaptador externo ao motor.
+Permitir configurar requisições simuladas ao Jev, visualizar fila, políticas, workers, memória, eventos e métricas. A interface é um adaptador externo ao motor.
 
 | Tela | Interações e informações |
 |---|---|

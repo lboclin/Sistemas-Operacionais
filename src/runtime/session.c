@@ -22,7 +22,6 @@ struct OsVirtualSession {
     size_t count;
     OsVirtualConfig config;
     OsFrameCache cache;
-    OsEmaEstimator ema;
     uint64_t tick;
     uint64_t ready_order;
     uint64_t event_sequence;
@@ -85,10 +84,8 @@ static bool dispatch(OsVirtualSession *s) {
     for (size_t i = 0; i < s->config.worker_count; ++i) {
         OsWorker *w = &s->workers[i];
         if (w->request_index != SIZE_MAX) { busy = true; continue; }
-        const size_t selected = s->config.policy == OS_SJF_EMA ?
-            os_scheduler_select_ema(s->requests, s->count, &s->ema) :
-            os_scheduler_select(s->requests, s->count,
-                                s->config.policy, s->tick, s->config.aging_interval);
+        const size_t selected = os_scheduler_select(s->requests, s->count,
+            s->config.policy, s->tick, s->config.aging_interval);
         if (selected == SIZE_MAX) continue;
         OsRequest *r = &s->requests[selected];
         if (!os_request_transition(r, OS_RUNNING) || s->tick < r->ready_tick ||
@@ -114,7 +111,7 @@ static bool access_pages(OsVirtualSession *s) {
         const size_t index = w->request_index;
         OsRequest *r = &s->requests[index];
         const OsPageReference page = {.request_id = r->id,
-                         .page_id = r->generated_tokens / s->config.tokens_per_page};
+                         .page_id = r->processed_tokens / s->config.tokens_per_page};
         OsFrameAccess access;
         if (!os_frames_access(&s->cache, page, &access)) return false;
         if (access.evicted)
@@ -150,10 +147,7 @@ OsRunStatus os_session_create(const OsRequest *requests, size_t count,
     *out = NULL;
     if (config == NULL || !os_gateway_validate(requests, count) ||
         config->worker_count == 0 || config->worker_count > 4096 ||
-        config->policy < OS_FCFS || config->policy > OS_SJF_EMA ||
-        (config->policy == OS_SJF_EMA &&
-         (config->ema_initial_tokens == 0 ||
-          !(config->ema_alpha >= 0.0 && config->ema_alpha <= 1.0))) ||
+        config->policy < OS_FCFS || config->policy > OS_PRIORITY_AGING ||
         (config->policy == OS_ROUND_ROBIN && config->quantum_tokens == 0) ||
         (config->page_fault_latency_ticks != 0 && !config->memory_enabled) ||
         (config->memory_enabled && (config->frame_capacity == 0 ||
@@ -196,12 +190,6 @@ OsRunStatus os_session_create(const OsRequest *requests, size_t count,
     s->context = context;
     if (config->memory_enabled &&
         !os_frames_init(&s->cache, config->frame_capacity, config->page_policy)) {
-        os_session_destroy(s);
-        return OS_RUN_ALLOC_FAILURE;
-    }
-    if (config->policy == OS_SJF_EMA &&
-        !os_ema_init(&s->ema, requests, count,
-                     config->ema_alpha, config->ema_initial_tokens)) {
         os_session_destroy(s);
         return OS_RUN_ALLOC_FAILURE;
     }
@@ -249,13 +237,11 @@ OsRunStatus os_session_step_with_executor(OsVirtualSession *s,
         if (w->request_index == SIZE_MAX || !w->can_generate) continue;
         OsRequest *r = &s->requests[w->request_index];
         if (r->first_run_tick == OS_REQUEST_NEVER) r->first_run_tick = token_start;
-        ++r->generated_tokens;
+        ++r->processed_tokens;
         ++w->quantum_used;
-        if (r->generated_tokens == r->total_tokens) {
+        if (r->processed_tokens == r->total_tokens) {
             if (!os_request_transition(r, OS_TERMINATED)) return OS_RUN_INVALID;
             r->finished_tick = s->tick;
-            if (s->config.policy == OS_SJF_EMA &&
-                !os_ema_observe(&s->ema, r)) return OS_RUN_INVALID;
             if (s->config.memory_enabled) (void)os_frames_release(&s->cache, r->id);
             w->request_index = SIZE_MAX;
             ++s->completed;
@@ -316,10 +302,10 @@ bool os_session_snapshot(const OsVirtualSession *s,
     }
     result.metrics = os_metrics_summarize(s->requests, s->count, s->tick);
     result.metrics.preemptions = s->preemptions;
-    double generated = 0.0;
+    double processed = 0.0;
     for (size_t i = 0; i < s->count; ++i) {
         const OsRequest *r = &s->requests[i];
-        generated += (double)r->generated_tokens;
+        processed += (double)r->processed_tokens;
         uint64_t blocked = s->blocked_total[i];
         if (r->state == OS_BLOCKED) {
             const uint64_t elapsed = s->tick - s->blocked_since[i];
@@ -348,7 +334,7 @@ bool os_session_snapshot(const OsVirtualSession *s,
     }
     if (s->tick != 0)
         result.metrics.worker_utilization =
-            generated / ((double)s->tick * (double)s->config.worker_count);
+            processed / ((double)s->tick * (double)s->config.worker_count);
     result.metrics.page_hits = s->cache.stats.hits;
     result.metrics.page_faults = s->cache.stats.faults;
     result.metrics.page_evictions = s->cache.stats.evictions;
@@ -357,7 +343,7 @@ bool os_session_snapshot(const OsVirtualSession *s,
     if (s->config.memory_enabled) {
         result.free_frames = s->cache.capacity - s->cache.used;
         /* Fixed-size pages have no external fragmentation. Only resident
-         * page slots not yet filled by generated tokens count as waste. */
+         * page slots not yet filled by processed tokens count as waste. */
         for (size_t i = 0; i < s->cache.used; ++i) {
             OsPageReference page;
             if (!os_frames_page_at(&s->cache, i, &page)) return false;
@@ -371,8 +357,8 @@ bool os_session_snapshot(const OsVirtualSession *s,
             if (owner == NULL) return false;
             const uint64_t start = (uint64_t)page.page_id *
                                    (uint64_t)s->config.tokens_per_page;
-            uint64_t filled = owner->generated_tokens > start ?
-                              (uint64_t)owner->generated_tokens - start : 0;
+            uint64_t filled = owner->processed_tokens > start ?
+                              (uint64_t)owner->processed_tokens - start : 0;
             if (filled > s->config.tokens_per_page)
                 filled = s->config.tokens_per_page;
             const uint64_t unused = (uint64_t)s->config.tokens_per_page - filled;
@@ -411,7 +397,6 @@ bool os_session_request_wakeup(const OsVirtualSession *s,
 void os_session_destroy(OsVirtualSession *s) {
     if (s == NULL) return;
     os_frames_destroy(&s->cache);
-    os_ema_destroy(&s->ema);
     free(s->workers);
     free(s->jobs);
     free(s->wake_ticks);

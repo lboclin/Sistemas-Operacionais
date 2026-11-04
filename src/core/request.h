@@ -18,9 +18,8 @@ typedef struct {
     uint32_t id;
     uint64_t arrival_tick;
     uint32_t total_tokens;
-    uint32_t predicted_tokens;
     int priority;
-    uint32_t generated_tokens;
+    uint32_t processed_tokens;
     uint64_t ready_tick;
     uint64_t ready_order;
     uint64_t first_run_tick;
@@ -30,7 +29,7 @@ typedef struct {
 } OsRequest;
 
 bool os_request_init(OsRequest *request, uint32_t id, uint64_t arrival_tick,
-                     uint32_t total_tokens, uint32_t predicted_tokens, int priority);
+                     uint32_t total_tokens, int priority);
 /* A freshly initialized PCB is the only kind accepted at the gateway boundary.
  * Keep this invariant in core, rather than duplicating field checks in adapters. */
 bool os_request_is_fresh(const OsRequest *request);

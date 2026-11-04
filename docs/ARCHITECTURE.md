@@ -3,6 +3,7 @@
 > **Estado:** documento de planejamento inicial; a implementação evoluiu e está registrada em `IMPLEMENTATION_STATUS.md`.
 > **Data:** 23/10/2026  
 > **Origem do escopo:** *LLM-Sched: um mini sistema operacional para servir requisições de LLM*, proposta da disciplina de Sistemas Operacionais.  
+> **Atualização 04/11/2026:** o foco é um servidor do Jev (TypeSafe AI); `prediction` e `tools/predictor` foram removidos. Ver [ADR 0002](adr/0002-foco-typesafe-jev.md).  
 > **Repositório:** `Sistemas-Operacionais` (público, mantido por `lboclin`).
 > **Decisões deliberadamente pendentes:** C11 ou C++20; interface web ou desktop e seu framework; bibliotecas de teste; protocolo definitivo de comunicação entre interface e motor; pipe ou memória compartilhada POSIX para IPC; política exata para simulação versus concorrência real.
 
@@ -33,7 +34,6 @@ flowchart TB
   ENG --> CON[Sincronização, IPC e sinais]
   ENG --> OBS[Eventos / métricas / snapshots]
   OBS --> ADAPTER
-  AI[Experimentos e preditor offline] -. previsões validadas .-> ENG
   OBS --> RES[Resultados reprodutíveis]
 ```
 
@@ -44,7 +44,7 @@ flowchart TB
 - **Domínio:** o que é uma requisição, seus estados, quando uma política é escolhida, como funciona uma falta de página, quais métricas são calculadas.
 - **Mecanismo de execução:** como o trabalho progride — tempo virtual ou threads reais. A opção não deve redefinir o formato de uma requisição nem o conjunto básico de métricas.
 - **Adaptação de entrada/saída:** interface, CLI, arquivo de cenário, exportação, sinais e IPC. Esses elementos não tomam decisões de escalonamento.
-- **Ferramentas auxiliares:** coleta de tamanhos de prompt/resposta com LLM, treinamento de preditor, gráficos e análises. Não são dependência para abrir o simulador básico.
+- **Ferramentas auxiliares:** coleta de tamanhos de entrada, gráficos e análises. Não são dependência para abrir o simulador básico.
 
 ## 3. Estrutura-alvo do GitHub
 
@@ -83,7 +83,6 @@ llm-os-lab/
 │   ├── memory/                 # blocos KV, tabelas e substituição FIFO/LRU/OPT
 │   ├── concurrency/            # mutex, semáforos, condições de corrida, deadlock
 │   ├── ipc/                    # canais entre processos e sinalização
-│   ├── prediction/             # consulta a estimativas de duração do burst
 │   ├── workload/               # cenários, gerador, importação e validação
 │   ├── metrics/                # eventos, métricas, snapshots e exportação
 │   └── experiments/            # controle de execução de matrizes comparativas
@@ -107,7 +106,6 @@ llm-os-lab/
 │
 ├── tools/
 │   ├── workload_capture/      # coleta opcional com llama.cpp / Ollama
-│   ├── predictor/             # treino e avaliação do modelo de previsão
 │   └── analysis/              # gráficos e relatórios de experimentos
 │
 ├── configs/                    # parâmetros-exemplo não secretos
@@ -132,7 +130,6 @@ llm-os-lab/
 | `memory` | reservar/liberar blocos, page table e substituição | mapa de frames/blocos KV | decidir prioridade das requisições |
 | `concurrency` | sincronizar recursos e laboratórios de race/deadlock | locks e recursos controlados | expor mutex diretamente à GUI |
 | `ipc` | comunicação entre entidades/processos | buffers e canais de transporte | aplicar políticas de CPU |
-| `prediction` | fornecer tamanho estimado de burst por contrato | estimativas/versão usada | treinar modelos dentro do loop do escalonador |
 | `workload` | criar e carregar cargas rastreáveis | definições de cenários e seeds | alterar resultados de execução |
 | `metrics` | coletar e agregar fatos da simulação | log de eventos, snapshots e métricas | mudar decisões do escalonador |
 | `experiments` | repetir/cotejar runs controladas | plano e metadados de runs | reimplementar algoritmos |
@@ -157,7 +154,6 @@ apps/cli ────┤
                                    │
                         eventos ───┴──────► metrics
 
- tools/predictor ──(artefato de previsão)──► prediction
 ```
 
 O diagrama é conceitual: não indica que `core` importa `memory`. **Dependências concretas devem apontar para contratos pequenos, não para estruturas privadas.** O mecanismo de composição na camada `app` conecta os módulos; o domínio não importa interface, exportadores ou scripts.
@@ -178,7 +174,7 @@ As assinaturas dependem da linguagem; aqui ficam somente **operações e semânt
 
 ### 5.1. Modelo de requisição (`Request` / PCB lógico)
 
-Campos mínimos: `request_id`, `arrival_time`, `prompt_tokens`, `target_output_tokens` (verdade do cenário), `generated_tokens`, `priority`, `estimated_output_tokens` (quando aplicável), `state`, `assigned_worker`, `allocated_blocks`, `timestamps` e `block_reason`.
+Campos mínimos: `request_id`, `arrival_time`, `total_tokens` (tokens de entrada do Jev, conhecidos na chegada), `processed_tokens`, `priority`, `state`, `assigned_worker`, `allocated_blocks`, `timestamps` e `block_reason`.
 
 Estados exigidos pela proposta: `NEW`, `READY`, `RUNNING`, `BLOCKED`, `TERMINATED`. Mudanças de estado precisam de evento e timestamp; `CANCELLED` e `ERROR` são extensões opcionais a formalizar, não substituem os cinco básicos.
 
@@ -230,7 +226,7 @@ A tabela apresenta **frentes de trabalho sugeridas**, não proprietários defini
 | Frente | Módulos principais | Primeira entrega independente | Integração crítica |
 |---|---|---|---|
 | A — Domínio | `core`, `gateway`, `app` | estados/PCB/admissão | contrato de snapshots/IDs |
-| B — Escalonamento | `scheduling`, `prediction` (interface) | FCFS, SJF, RR, aging testados com fake runtime | visão imutável de fila + progresso |
+| B — Escalonamento | `scheduling` | FCFS, SJF, RR, aging testados com fake runtime | visão imutável de fila + progresso |
 | C — Memória | `memory` | alocador de blocos + FIFO/LRU/OPT testados | reserva e desbloqueio |
 | D — Execução e SO | `runtime`, `concurrency`, `ipc` | workers/tempos + labs de sincronização | assinatura dos comandos/eventos |
 | E — Produto e validação | `apps/visual`, `apps/cli`, `metrics`, `experiments` | wireframes, cliente falso e fixtures experimentais | schema de eventos e resultados |
@@ -270,7 +266,7 @@ Recomenda-se PR curto, ao menos uma revisão cruzada nas alterações de contrat
 | M2 — Escalonamento + memória | FCFS/SJF/RR/aging, paging e substituição | testes comparativos independentes passam |
 | M3 — SO concorrente | pthreads, sincronização, IPC, sinais, labs deadlock/race | demos isoladas, com recuperação/timeout |
 | M4 — Interface visual | experiência mínima e visualizações | jornada completa sem depender de terminal |
-| M5 — IA + avaliação | preditor e experimentos originais | reproduzir tabelas com cargas idênticas |
+| M5 — Avaliação | experimentos originais | reproduzir tabelas com cargas idênticas |
 | M6 — Consolidação | regressão, documentação e apresentação | build/teste reproduzíveis e demonstração estável |
 
 A ordem é **de integração**, não de início dos trabalhos: UI, documentação e testes podem começar em M0 usando contratos falsos.

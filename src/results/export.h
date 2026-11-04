@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#define OS_RUN_EXPORT_VERSION 1u
+#define OS_RUN_EXPORT_VERSION 2u
 
 /* Input and result PCBs must refer to the same ordered requests. The caller
  * owns all memory. Source is recorded as a category, not a machine-specific

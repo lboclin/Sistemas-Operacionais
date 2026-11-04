@@ -107,21 +107,17 @@ class CaptureTests(unittest.TestCase):
         self.assertEqual(capture.main(["generate", "--capture", str(path), "--count", "3", "--seed", "8", "--output-dir", str(out)]), 0)
         scenario = out / "scenario.csv"
         lines = scenario.read_text().splitlines()
-        self.assertEqual(lines[0], "# os-llm-scenario v1 seed=8 distribution=uniform count=3")
+        self.assertEqual(lines[0], "# os-llm-scenario v2 seed=8 distribution=uniform count=3")
         self.assertEqual(len(lines), 4)
         for line in lines[1:]:
             fields = line.split(",")
-            self.assertEqual(len(fields), 5)
-            self.assertEqual(int(fields[2]), 7)
-            self.assertEqual(int(fields[3]), 32)  # pre-generation cap, NOT oracle target
-        with (out / "features.csv").open(newline="") as f:
-            rows = list(csv.DictReader(f))
-        self.assertEqual(len(rows), 3)
-        self.assertEqual(set(rows[0]), {"request_id", "prompt_tokens", "max_new_tokens", "task_category"})
+            self.assertEqual(len(fields), 4)
+            self.assertEqual(int(fields[2]), 17)  # observed input (prompt) tokens
+        self.assertFalse((out / "features.csv").exists())
         self.assertEqual(json.loads((out / "scenario.meta.json").read_text())["source"], "observed_llm")
         cli = os.environ.get("OSLLM_CLI")
         if cli:
-            for policy in ("fcfs", "ema", "sjf", "oracle"):
+            for policy in ("fcfs", "sjf", "rr", "priority"):
                 command = [cli, "--scenario", str(scenario), "--policy", policy]
                 result = subprocess.run(command, capture_output=True, text=True, timeout=15)
                 self.assertEqual(result.returncode, 0, (policy, result.stderr))
@@ -132,12 +128,12 @@ class CaptureTests(unittest.TestCase):
         self.assertEqual(capture.main(common + ["--output-dir", str(a)]), 0)
         self.assertEqual(capture.main(common + ["--output-dir", str(b)]), 0)
         self.assertEqual(capture.main(["generate", "--count", "12", "--seed", "2027", "--distribution", "burst", "--profile", "memory-pressure", "--output-dir", str(c)]), 0)
-        for name in ("scenario.csv", "features.csv", "scenario.meta.json"):
+        for name in ("scenario.csv", "scenario.meta.json"):
             self.assertEqual((a / name).read_bytes(), (b / name).read_bytes())
         self.assertNotEqual((a / "scenario.csv").read_bytes(), (c / "scenario.csv").read_bytes())
         meta = json.loads((a / "scenario.meta.json").read_text())
         self.assertEqual(meta["source"], "synthetic_fixture")
-        self.assertEqual(meta["output_tokens_origin"], "synthetic_fixture_values")
+        self.assertEqual(meta["input_tokens_origin"], "synthetic_fixture_values")
         self.assertEqual(meta["config"]["arrival_span_effective"], 2)
         self.assertEqual(capture.main(common + ["--output-dir", str(a)]), 2)  # never overwrite
 
@@ -212,7 +208,7 @@ class CaptureTests(unittest.TestCase):
                                        "--distribution", "staggered", "--profile", "priority", "--output-dir", str(output)]), 0)
         lines = (output / "scenario.csv").read_text().splitlines()[1:]
         self.assertEqual([int(line.split(",")[1]) for line in lines], [0, 3, 6, 9])
-        self.assertTrue(all(0 <= int(line.split(",")[4]) <= 5 for line in lines))
+        self.assertTrue(all(0 <= int(line.split(",")[3]) <= 5 for line in lines))
 
 
 if __name__ == "__main__":

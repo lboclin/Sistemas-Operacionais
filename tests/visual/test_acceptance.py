@@ -21,7 +21,7 @@ def scenario(count=3):
     return {
         "requests": [
             {"id": str(i + 1), "arrival_tick": str(i % 3),
-             "total_tokens": str(2 + i % 5), "predicted_tokens": str(3 + i % 4),
+             "total_tokens": str(2 + i % 5),
              "priority": str((i % 3) - 1)}
             for i in range(count)
         ],
@@ -39,7 +39,7 @@ class RealEngineAcceptance(unittest.TestCase):
 
     def check_artifact(self, result, payload):
         self.assertEqual(result["schema"], "os-llm-run")
-        self.assertEqual(result["version"], 1)
+        self.assertEqual(result["version"], 2)
         self.assertIs(result["finished"], True)
         self.assertEqual(result["metrics"]["completed"], len(payload["requests"]))
         self.assertEqual(len(result["requests"]), len(payload["requests"]))
@@ -47,7 +47,7 @@ class RealEngineAcceptance(unittest.TestCase):
         self.assertEqual({r["id"] for r in result["requests"]}, set(expected))
         for r in result["requests"]:
             self.assertEqual(r["state"], "TERMINATED")
-            self.assertEqual(r["generated_tokens"], expected[r["id"]])
+            self.assertEqual(r["processed_tokens"], expected[r["id"]])
             self.assertGreaterEqual(r["first_run_tick"], r["arrival_tick"])
             self.assertGreaterEqual(r["finished_tick"], r["first_run_tick"])
         events = result["events"]
@@ -59,7 +59,7 @@ class RealEngineAcceptance(unittest.TestCase):
                 self.assertLess(e["worker_index"], int(payload["workers"]))
 
     def test_all_scheduling_policies_with_one_and_two_workers(self):
-        for policy in ("fcfs", "sjf", "ema", "oracle", "rr", "priority"):
+        for policy in ("fcfs", "sjf", "rr", "priority"):
             for workers in ("1", "2"):
                 with self.subTest(policy=policy, workers=workers):
                     payload = scenario(5)
@@ -87,7 +87,7 @@ class RealEngineAcceptance(unittest.TestCase):
 
     def test_deterministic_seeded_workloads_across_policies(self):
         rng = random.Random(29026)
-        choices = ("fcfs", "sjf", "ema", "rr", "priority")
+        choices = ("fcfs", "sjf", "rr", "priority")
         for iteration in range(18):
             payload = scenario(rng.randint(1, 8))
             payload["policy"] = choices[iteration % len(choices)]
@@ -95,7 +95,6 @@ class RealEngineAcceptance(unittest.TestCase):
             for row in payload["requests"]:
                 row["arrival_tick"] = str(rng.randrange(10))
                 row["total_tokens"] = str(rng.randint(1, 8))
-                row["predicted_tokens"] = str(rng.randint(1, 8))
                 row["priority"] = str(rng.randint(-3, 3))
             if iteration % 3 == 0:
                 payload["memory"] = {
@@ -143,7 +142,7 @@ class InputHardeningAudit(unittest.TestCase):
         edits = (
             ("id", "0"), ("id", True), ("arrival_tick", "-1"),
             ("arrival_tick", "18446744073709551615"),
-            ("total_tokens", "0"), ("predicted_tokens", "0"),
+            ("total_tokens", "0"), ("predicted_tokens", "0"),  # old field: forged
             ("priority", "2147483648"), ("priority", "-2147483649"),
             ("total_tokens", "1e5"), ("arrival_tick", " 1"),
             ("id", "01"), ("id", "1;touch /tmp/side_effect"))

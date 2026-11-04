@@ -35,7 +35,7 @@ class ReportTests(unittest.TestCase):
             "campaigns": {"E1": {"runs": []}, "E2": {"runs": []},
                           "E3": {"runs": []}, "E4": {"runs": []}}}
         self.add_run("E2", "fcfs", "FCFS")
-        self.add_run("E2", "sjf_ema", "SJF-EMA")
+        self.add_run("E2", "sjf", "SJF")
         self.add_run("E3", "memory_fifo_f2", "FCFS")
         self.save()
 
@@ -69,7 +69,7 @@ class ReportTests(unittest.TestCase):
         self.assertFalse(self.invoke().returncode == 0)
 
     def test_changed_workload_rejected(self):
-        path = self.raw / "runs" / "sjf_ema.json"
+        path = self.raw / "runs" / "sjf.json"
         value = json.loads(path.read_text())
         value["input"][0]["total_tokens"] = 99
         path.write_text(json.dumps(value))
@@ -92,7 +92,7 @@ class ReportTests(unittest.TestCase):
         self.assertNotEqual(self.invoke().returncode, 0)
 
     def test_skipped_only_has_no_fabricated_charts(self):
-        self.manifest["campaigns"]["E2"]["runs"] = [{"name": "sjf_ai", "status": "skipped", "reason": "no model"}]
+        self.manifest["campaigns"]["E2"]["runs"] = [{"name": "priority_no_aging", "status": "skipped", "reason": "not exposed"}]
         self.manifest["campaigns"]["E3"]["runs"] = []
         self.save()
         result = self.invoke()
@@ -111,7 +111,7 @@ class ReportTests(unittest.TestCase):
                          os.environ.get("OSLLM_DEADLOCK"), "compiled binaries required")
     def test_h23_to_h24_real_binary_smoke(self):
         runner = HERE.parent / "experiments" / "run.py"
-        (self.base / "scenario.csv").write_text("1,0,5,5,0\n2,1,3,4,1\n")
+        (self.base / "scenario.csv").write_text("1,0,5,0\n2,1,3,1\n")
         measured = subprocess.run([sys.executable, str(runner),
             "--cli", os.environ["OSLLM_CLI"], "--scenario", str(self.base / "scenario.csv"),
             "--output-dir", str(self.base / "measured"),
@@ -121,7 +121,7 @@ class ReportTests(unittest.TestCase):
         self.raw = self.base / "measured"
         self.assertEqual(self.invoke().returncode, 0)
         report = json.loads((self.out / "report.json").read_text())
-        self.assertEqual(len(report["scheduling"]), 7)
+        self.assertEqual(len(report["scheduling"]), 5)  # FCFS, SJF, RR q1/q3, priority
         self.assertEqual(len(report["memory"]), 4)
 
 

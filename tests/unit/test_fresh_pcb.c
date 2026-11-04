@@ -7,7 +7,7 @@
 
 static OsRequest fresh(void) {
     OsRequest r;
-    assert(os_request_init(&r, 19, 5, 8, 7, 2));
+    assert(os_request_init(&r, 19, 5, 8, 2));
     return r;
 }
 
@@ -26,14 +26,12 @@ int main(void) {
     assert(!os_request_is_fresh(NULL));
     assert(os_request_is_fresh(&r));
     assert(os_gateway_validate(&r, 1));
-    assert(!os_request_init(NULL, 1, 0, 1, 1, 0));
-    assert(!os_request_init(&r, 1, OS_REQUEST_NEVER, 1, 1, 0));
-    assert(!os_request_init(&r, 1, 0, 0, 1, 0));
-    assert(!os_request_init(&r, 1, 0, 1, 0, 0));
+    assert(!os_request_init(NULL, 1, 0, 1, 0));
+    assert(!os_request_init(&r, 1, OS_REQUEST_NEVER, 1, 0));
+    assert(!os_request_init(&r, 1, 0, 0, 0));
     REJECT_CORRUPTION(state, OS_READY);
-    REJECT_CORRUPTION(generated_tokens, 1);
+    REJECT_CORRUPTION(processed_tokens, 1);
     REJECT_CORRUPTION(total_tokens, 0);
-    REJECT_CORRUPTION(predicted_tokens, 0);
     REJECT_CORRUPTION(arrival_tick, OS_REQUEST_NEVER);
     REJECT_CORRUPTION(ready_tick, 5);
     REJECT_CORRUPTION(ready_order, 1);

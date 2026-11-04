@@ -7,7 +7,7 @@ Fixar o cenário, seeds, número de workers, capacidade e política de memória 
 
 ## Quatro blocos previstos
 1. **Condições de corrida**: modo protegido e modo inseguro isolado com carga crescente; reportar atualizações perdidas observadas, sem assumir que uma corrida sempre acontece.
-2. **Escalonamento**: FCFS, SJF média exponencial, SJF preditivo, SJF oráculo, RR com quantums distintos, prioridade com aging.
+2. **Escalonamento**: FCFS, SJF (tamanho da entrada), RR com quantums distintos, prioridade com aging.
 3. **Memória**: variar capacidade, FIFO, LRU e Ótimo; faltas de página, fragmentação e bloqueios.
 4. **Deadlock**: reproduzir um impasse, detectar e prevenir pela ordem global dos recursos.
 

@@ -1,11 +1,11 @@
 'use strict';
 const $ = (id) => document.getElementById(id);
-const fields = ['id', 'arrival_tick', 'total_tokens', 'predicted_tokens', 'priority'];
-const labels = ['ID', 'Chegada', 'Tokens de saída', 'Tokens previstos', 'Prioridade'];
+const fields = ['id', 'arrival_tick', 'total_tokens', 'priority'];
+const labels = ['ID', 'Chegada', 'Tokens de entrada', 'Prioridade'];
 const demo = [
-  {id:'1',arrival_tick:'0',total_tokens:'6',predicted_tokens:'5',priority:'1'},
-  {id:'2',arrival_tick:'0',total_tokens:'2',predicted_tokens:'2',priority:'3'},
-  {id:'3',arrival_tick:'2',total_tokens:'3',predicted_tokens:'4',priority:'2'}
+  {id:'1',arrival_tick:'0',total_tokens:'6',priority:'1'},
+  {id:'2',arrival_tick:'0',total_tokens:'2',priority:'3'},
+  {id:'3',arrival_tick:'2',total_tokens:'3',priority:'2'}
 ];
 let requests = demo.map((r) => ({...r}));
 let busy = false;
@@ -167,14 +167,14 @@ function importCSV(text) {
     const line = raw.trim();
     if (!line) continue;
     if (line.startsWith('# os-llm-scenario')) {
-      const match = /^# os-llm-scenario v1 seed=\d+ distribution=(uniform|burst|staggered) count=(\d+)$/.exec(line);
-      if (!match || declared !== null || rows.length > 0) throw Error('Cabeçalho CSV incompatível com o formato v1.');
+      const match = /^# os-llm-scenario v2 seed=\d+ distribution=(uniform|burst|staggered) count=(\d+)$/.exec(line);
+      if (!match || declared !== null || rows.length > 0) throw Error('Cabeçalho CSV incompatível com o formato v2.');
       declared = Number(match[2]);
       continue;
     }
     if (line.startsWith('#')) continue;
     const values = line.split(',').map((s) => s.trim());
-    if (values.length !== 5) throw Error('CSV inválido: cada linha deve possuir 5 campos.');
+    if (values.length !== 4) throw Error('CSV inválido: cada linha deve possuir 4 campos.');
     rows.push(Object.fromEntries(fields.map((key,index) => [key,values[index]])));
     if (rows.length > 256) throw Error('O limite é de 256 requisições.');
   }
@@ -195,7 +195,7 @@ $('add-btn').addEventListener('click', () => {
   const used = new Set(requests.map(r=>r.id));
   let id = 1;
   while (used.has(String(id))) id++;
-  requests.push({id:String(id), arrival_tick:'0',total_tokens:'5',predicted_tokens:'5',priority:'1'});
+  requests.push({id:String(id), arrival_tick:'0',total_tokens:'5',priority:'1'});
   renderRows();invalidate();
 });
 $('import-btn').addEventListener('click', () => $('file').click());

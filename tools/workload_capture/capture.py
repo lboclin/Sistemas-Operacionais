@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-"""Optional OpenAI-compatible token-length capture and seeded CSV v1 workload generation.
+"""Optional OpenAI-compatible token-length capture and seeded CSV v2 workload generation.
 
 No raw prompt, completion, or credential is persisted. Standard library only.
 """
 import argparse
-import csv
 from datetime import datetime, timezone
 import hashlib
-import io
 import json
 import math
 import os
@@ -277,23 +275,21 @@ def generate(args):
     data = load_capture(capture_path)
     source_rows = data["records"]
     if args.profile in ("short", "long", "memory-pressure"):
-        ordered = sorted(source_rows, key=lambda r: (r["output_tokens"], r["request_id"]))
+        ordered = sorted(source_rows, key=lambda r: (r["prompt_tokens"], r["request_id"]))
         half = max(1, (len(ordered) + 1) // 2)
         source_rows = ordered[:half] if args.profile == "short" else ordered[-half:]
     span = min(args.arrival_span, 2) if args.profile in ("high-concurrency", "memory-pressure") else args.arrival_span
     rng = random.Random(args.seed)
     times = arrivals(args.count, span, args.distribution, rng)
     selected = [rng.choice(source_rows) for _ in range(args.count)]
-    scenario = [f"# os-llm-scenario v1 seed={args.seed} distribution={args.distribution} count={args.count}"]
-    features = io.StringIO(newline="")
-    writer = csv.writer(features, lineterminator="\n")
-    writer.writerow(["request_id", "prompt_tokens", "max_new_tokens", "task_category"])
+    if any(sample["prompt_tokens"] < 1 for sample in selected):
+        raise CaptureError("every sampled request needs at least one input (prompt) token")
+    scenario = [f"# os-llm-scenario v2 seed={args.seed} distribution={args.distribution} count={args.count}"]
     mapping = []
     for i, (sample, arrival) in enumerate(zip(selected, times), 1):
         priority = rng.randrange(6) if args.profile == "priority" else sample["priority"]
-        # max_new_tokens is a pre-generation cap, never the observed target.
-        scenario.append(f"{i},{arrival},{sample['output_tokens']},{sample['max_new_tokens']},{priority}")
-        writer.writerow([i, sample["prompt_tokens"], sample["max_new_tokens"], sample["task_category"]])
+        # Jev server model: the cost is the input size, known on arrival.
+        scenario.append(f"{i},{arrival},{sample['prompt_tokens']},{priority}")
         mapping.append({"request_id": i, "source_request_id": sample["request_id"],
                         "prompt_tokens": sample["prompt_tokens"], "output_tokens": sample["output_tokens"],
                         "max_new_tokens": sample["max_new_tokens"], "task_category": sample["task_category"],
@@ -303,8 +299,7 @@ def generate(args):
             "config": {"seed": args.seed, "count": args.count, "distribution": args.distribution,
                        "profile": args.profile, "arrival_span_effective": span,
                        "sampling": "with_replacement"},
-            "output_tokens_origin": "observed_completion_tokens" if data["source"] == "observed_llm" else "synthetic_fixture_values",
-            "predicted_tokens_origin": "max_new_tokens_cap_not_oracle",
+            "input_tokens_origin": "observed_prompt_tokens" if data["source"] == "observed_llm" else "synthetic_fixture_values",
             "note": "Virtual simulation uses observed/synthetic token counts; recorded latency is not a virtual tick.",
             "records": mapping}
     output = Path(args.output_dir)
@@ -314,7 +309,6 @@ def generate(args):
     with tempfile.TemporaryDirectory(prefix=".osllm-workload-", dir=output.parent) as temporary:
         tmp = Path(temporary)
         (tmp / "scenario.csv").write_text("\n".join(scenario) + "\n", encoding="utf-8")
-        (tmp / "features.csv").write_text(features.getvalue(), encoding="utf-8")
         (tmp / "scenario.meta.json").write_text(json.dumps(meta, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         if output.exists():
             raise CaptureError("output directory already exists")
@@ -337,7 +331,7 @@ def main(argv=None):
     c.add_argument("--seed", type=int)
     c.add_argument("--api-key-env", help="environment variable name, never a literal key")
     c.add_argument("--allow-remote", action="store_true", help="explicitly opt in to HTTPS remote endpoint")
-    g = sub.add_parser("generate", help="seeded CSV v1 + pre-generation features + metadata")
+    g = sub.add_parser("generate", help="seeded CSV v2 (input tokens) + metadata")
     g.add_argument("--capture", help="capture JSON; omitted means explicitly synthetic fixture")
     g.add_argument("--output-dir", required=True)
     g.add_argument("--seed", type=int, default=42)

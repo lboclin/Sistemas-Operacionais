@@ -27,18 +27,18 @@ export=Path(args[args.index('--export-json')+1])
 policy=args[args.index('--policy')+1]
 rows=[]
 for line in scenario.read_text().splitlines():
-    rid,arr,total,pred,priority=map(int,line.split(','))
-    rows.append(dict(id=rid,arrival_tick=arr,total_tokens=total,predicted_tokens=pred,priority=priority))
-name={'fcfs':'FCFS','rr':'Round-Robin','ema':'SJF-EMA','sjf':'SJF-estimated','oracle':'SJF-oracle','priority':'Priority-aging'}[policy]
-result={'schema':'os-llm-run','version':1,'finished':True,'input':rows,
+    rid,arr,total,priority=map(int,line.split(','))
+    rows.append(dict(id=rid,arrival_tick=arr,total_tokens=total,priority=priority))
+name={'fcfs':'FCFS','rr':'Round-Robin','sjf':'SJF','priority':'Priority-aging'}[policy]
+result={'schema':'os-llm-run','version':2,'finished':True,'input':rows,
  'config':{'policy':name,'worker_count':int(args[args.index('--workers')+1])},
- 'requests':[dict(id=r['id'],arrival_tick=r['arrival_tick'],state='TERMINATED',generated_tokens=r['total_tokens'],first_run_tick=r['arrival_tick'],finished_tick=r['arrival_tick']+r['total_tokens'],waiting_ticks=0) for r in rows],
+ 'requests':[dict(id=r['id'],arrival_tick=r['arrival_tick'],state='TERMINATED',processed_tokens=r['total_tokens'],first_run_tick=r['arrival_tick'],finished_tick=r['arrival_tick']+r['total_tokens'],waiting_ticks=0) for r in rows],
  'metrics':{'completed':len(rows),'average_wait_ticks':0,'makespan_ticks':sum(r['total_tokens'] for r in rows),'throughput_per_tick':0.3}, 'events':[]}
 export.write_text(json.dumps(result))
 ''',encoding='utf-8')
         self.bin.chmod(0o755)
-        self.payload = {'requests':[{'id':'1','arrival_tick':'0','total_tokens':'6','predicted_tokens':'5','priority':'1'},
-                                   {'id':'2','arrival_tick':'2','total_tokens':'2','predicted_tokens':'2','priority':'3'}],
+        self.payload = {'requests':[{'id':'1','arrival_tick':'0','total_tokens':'6','priority':'1'},
+                                   {'id':'2','arrival_tick':'2','total_tokens':'2','priority':'3'}],
                         'policy':'fcfs','workers':'1','quantum':'2'}
 
     def test_validation_bounds_and_boolean_rejection(self):
@@ -73,7 +73,7 @@ export.write_text(json.dumps(result))
 
     def test_rejects_mock_export_with_corrupted_token_count(self):
         old = self.bin.read_text(encoding='utf-8')
-        self.bin.write_text(old.replace("generated_tokens=r['total_tokens']", "generated_tokens=0"), encoding='utf-8')
+        self.bin.write_text(old.replace("processed_tokens=r['total_tokens']", "processed_tokens=0"), encoding='utf-8')
         with self.assertRaisesRegex(server.InputError, 'inconsistente'):
             server.simulate(self.bin, self.payload)
 

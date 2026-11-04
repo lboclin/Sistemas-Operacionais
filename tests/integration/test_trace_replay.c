@@ -6,7 +6,7 @@
 
 static void golden_trace(void) {
     OsRequest req;
-    assert(os_request_init(&req, 9, 0, 2, 2, 0));
+    assert(os_request_init(&req, 9, 0, 2, 0));
     OsVirtualConfig cfg = {.policy = OS_FCFS, .worker_count = 1};
     OsEventTrace trace;
     os_trace_init(&trace);
@@ -34,8 +34,8 @@ static void golden_trace(void) {
 
 static void replay_with_faults(void) {
     OsRequest req[2];
-    assert(os_request_init(&req[0], 11, 0, 3, 3, 0));
-    assert(os_request_init(&req[1], 22, 1, 2, 2, 0));
+    assert(os_request_init(&req[0], 11, 0, 3, 0));
+    assert(os_request_init(&req[1], 22, 1, 2, 0));
     OsVirtualConfig cfg = {.policy = OS_ROUND_ROBIN, .worker_count = 2,
         .quantum_tokens = 1, .memory_enabled = true, .frame_capacity = 1,
         .tokens_per_page = 2, .page_policy = OS_PAGE_LRU,

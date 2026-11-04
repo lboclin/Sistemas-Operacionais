@@ -91,7 +91,7 @@ class BrowserE2E(unittest.TestCase):
     def test_csv_input_bounds_and_no_silent_uint64_rounding(self):
         self.page.locator("#file").set_input_files({
             "name": "scenario.csv", "mimeType": "text/csv",
-            "buffer": b"1,0,4,5,1\n2,1,3,4,2\n"})
+            "buffer": b"1,0,4,1\n2,1,3,2\n"})
         expect(self.page.locator("#entry-count")).to_have_text("2 / 256 requisições")
         row = self.page.locator("#requests tr").first
         row.locator("input").first.fill("0")

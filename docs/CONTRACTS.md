@@ -55,6 +55,6 @@ As definições acima são contratos de **planejamento** para futuras interfaces
 
 Cada `OsEvent` contém tipo, tick **virtual**, request ID, worker e página quando aplicável. `SIZE_MAX` sinaliza evento sem worker. Os eventos de página são `page_hit`, `page_fault` e `page_evicted`. O callback recebe um ponteiro temporário; não deve alterar os PCBs nem chamar novamente o simulador.
 
-A paginação online é **opcional**: `memory_enabled=false` mantém a execução CPU-only. Quando ativada, `frame_capacity>0` e `tokens_per_page>0`; cada token acessa a página `generated_tokens/tokens_per_page`. A capacidade é compartilhada pelos workers e páginas residentes são liberadas na conclusão do PCB.
+A paginação online é **opcional**: `memory_enabled=false` mantém a execução CPU-only. Quando ativada, `frame_capacity>0` e `tokens_per_page>0`; cada token acessa a página `processed_tokens/tokens_per_page`. A capacidade é compartilhada pelos workers e páginas residentes são liberadas na conclusão do PCB.
 
 **Ainda não suportado:** espera/bloqueio e custo adicional em faltas de página, execução POSIX real, persistência/reinício de sessão, streaming de rede e política OPT online. O `step` avança até um token por worker e pode saltar ticks ociosos; o snapshot exige buffers suficientes e só é consistente entre passos. O modelo de KV cache é didático e não representa blocos KV reais de um modelo.

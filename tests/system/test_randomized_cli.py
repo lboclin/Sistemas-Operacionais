@@ -9,7 +9,7 @@ import tempfile
 import unittest
 
 CLI = os.environ.get("OSLLM_CLI")
-POLICIES = ("fcfs", "sjf", "ema", "oracle", "rr", "priority")
+POLICIES = ("fcfs", "sjf", "rr", "priority")
 
 
 @unittest.skipUnless(CLI, "compiled os_llm_cli is required")
@@ -40,11 +40,11 @@ class RandomizedCoreTests(unittest.TestCase):
         for row in data["input"]:
             rid = row["id"]
             self.assertEqual(tuple(row[k] for k in ("id","arrival_tick","total_tokens",
-                "predicted_tokens","priority")), expected[rid])
+                "priority")), expected[rid])
         for row in data["requests"]:
             original = expected[row["id"]]
             self.assertEqual(row["state"], "TERMINATED")
-            self.assertEqual(row["generated_tokens"], original[2])
+            self.assertEqual(row["processed_tokens"], original[2])
             self.assertGreaterEqual(row["first_run_tick"], original[1])
             self.assertGreaterEqual(row["finished_tick"], row["first_run_tick"])
             self.assertGreaterEqual(row["waiting_ticks"], 0)
@@ -65,14 +65,14 @@ class RandomizedCoreTests(unittest.TestCase):
         return data
 
     def test_seeded_policy_paging_and_replay_matrix(self):
-        # 6 seeds × 6 policies × 2 memory modes = 72 full C engine runs,
-        # plus 12 exact reruns testing trace and metric determinism.
+        # 6 seeds × 4 policies × 2 memory modes = 48 full C engine runs,
+        # plus 16 exact reruns testing trace and metric determinism.
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             for seed in range(6):
                 rng = random.Random(seed + 4101)
                 entries = [(1000+i, rng.randrange(0, 8), rng.randrange(1, 9),
-                            rng.randrange(1, 10), rng.randrange(0, 4))
+                            rng.randrange(0, 4))
                            for i in range(1 + seed % 7)]
                 for policy in POLICIES:
                     for paging in (False, True):
@@ -87,10 +87,12 @@ class RandomizedCoreTests(unittest.TestCase):
     def test_large_valid_arrival_and_negative_cases(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
-            data = self.run_case(root, [(73, 4294967311, 2, 3, 1)], "fcfs", 1)
+            data = self.run_case(root, [(73, 4294967311, 2, 1)], "fcfs", 1)
             self.assertEqual(data["input"][0]["arrival_tick"], 4294967311)
-            for value in ("1,0,0,1,0", "1,-1,1,1,0", "1,18446744073709551616,1,1,0",
-                          "1,0,2,0,0", "1,0,1,1,0\n1,1,1,1,0"):
+            # Zero tokens, negative/overflowing arrival, the old five-column
+            # format (with a prediction) and duplicate IDs are all rejected.
+            for value in ("1,0,0,0", "1,-1,1,0", "1,18446744073709551616,1,0",
+                          "1,0,2,2,0", "1,0,1,0\n1,1,1,0"):
                 (root / "bad.csv").write_text(value + "\n", encoding="utf-8")
                 proc = subprocess.run([CLI, "--scenario", str(root / "bad.csv")],
                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE,

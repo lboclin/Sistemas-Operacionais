@@ -49,14 +49,8 @@ bool os_workload_generate(const OsWorkloadConfig *config,
         const uint32_t tokens = config->min_tokens +
                                 (uint32_t)(next_random(&state) % token_range);
         const int priority = (int)(next_random(&state) % 6);
-        const uint32_t error = (uint32_t)(next_random(&state) %
-                                         ((uint64_t)tokens / 5 + 1));
-        const bool plus = (next_random(&state) & 1u) != 0;
-        uint64_t predicted = plus ? (uint64_t)tokens + error :
-                            (tokens > error ? (uint64_t)tokens - error : 1);
-        if (predicted > UINT32_MAX) predicted = UINT32_MAX;
         if (!os_request_init(&requests[i], (uint32_t)(i + 1), arrival, tokens,
-                             (uint32_t)predicted, priority)) return false;
+                             priority)) return false;
     }
     return true;
 }
@@ -75,9 +69,8 @@ bool os_workload_write_csv(FILE *output, const OsWorkloadConfig *config,
         return false;
     for (size_t i = 0; i < count; ++i) {
         const OsRequest *r = &requests[i];
-        if (fprintf(output, "%" PRIu32 ",%" PRIu64 ",%" PRIu32
-                    ",%" PRIu32 ",%d\n", r->id, r->arrival_tick,
-                    r->total_tokens, r->predicted_tokens, r->priority) < 0)
+        if (fprintf(output, "%" PRIu32 ",%" PRIu64 ",%" PRIu32 ",%d\n",
+                    r->id, r->arrival_tick, r->total_tokens, r->priority) < 0)
             return false;
     }
     return !ferror(output);

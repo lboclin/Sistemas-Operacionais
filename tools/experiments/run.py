@@ -26,10 +26,10 @@ def workload(scenario):
         if not line.strip() or line.startswith("#"):
             continue
         fields = [field.strip() for field in line.split(",")]
-        if len(fields) != 5:
-            raise ValueError("scenario row requires 5 fields")
-        request_id, arrival, total, predicted, priority = map(int, fields)
-        if not 1 <= request_id <= 2**32 - 1 or not 0 <= arrival <= 2**64 - 1 or not 1 <= total <= 2**32 - 1 or not 1 <= predicted <= 2**32 - 1:
+        if len(fields) != 4:
+            raise ValueError("scenario row requires 4 fields: id,arrival_tick,input_tokens,priority")
+        request_id, arrival, total, priority = map(int, fields)
+        if not 1 <= request_id <= 2**32 - 1 or not 0 <= arrival <= 2**64 - 1 or not 1 <= total <= 2**32 - 1:
             raise ValueError("scenario field out of range")
         items.append((request_id, arrival, total, priority))
     if not 1 <= len(items) <= 256 or len({item[0] for item in items}) != len(items):
@@ -81,16 +81,12 @@ def collect(args, work):
         lab(args.race_lab, "safe", r"mode=safe expected=2 observed=2 lost=0", args.timeout),
         lab(args.race_lab, "unsafe", r"mode=unsafe expected=2 observed=1 lost=1", args.timeout)]}
     scheduling = [
-        ("fcfs", ["--policy", "fcfs"]), ("sjf_estimated", ["--policy", "sjf"]),
-        ("sjf_ema", ["--policy", "ema", "--ema-alpha", "0.5", "--ema-initial", "6"]),
-        ("sjf_oracle", ["--policy", "oracle"]),
+        ("fcfs", ["--policy", "fcfs"]), ("sjf", ["--policy", "sjf"]),
         ("rr_q1", ["--policy", "rr", "--quantum", "1"]),
         ("rr_q3", ["--policy", "rr", "--quantum", "3"]),
         ("priority_aging", ["--policy", "priority"])]
     e2 = [run_cli(args, work, expected, name, flags) for name, flags in scheduling]
-    e2 += [{"name": "sjf_ai", "status": "skipped",
-            "reason": "requires independently trained model; see tools/predictor/compare_sjf.py"},
-           {"name": "priority_no_aging", "status": "skipped",
+    e2 += [{"name": "priority_no_aging", "status": "skipped",
             "reason": "CLI does not yet expose aging_interval"}]
     data["campaigns"]["E2"] = {"name": "virtual scheduling", "runs": e2}
     e3 = []

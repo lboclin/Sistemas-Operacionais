@@ -17,10 +17,10 @@ static void capture(const OsEvent *event, void *ctx) {
 }
 
 static void prepare(OsRequest *r) {
-    assert(os_request_init(&r[0], 11, 0, 5, 6, 0));
-    assert(os_request_init(&r[1], 22, 0, 3, 1, 4));
-    assert(os_request_init(&r[2], 33, 2, 4, 3, 2));
-    assert(os_request_init(&r[3], 44, 12, 1, 1, 1));
+    assert(os_request_init(&r[0], 11, 0, 5, 0));
+    assert(os_request_init(&r[1], 22, 0, 3, 4));
+    assert(os_request_init(&r[2], 33, 2, 4, 2));
+    assert(os_request_init(&r[3], 44, 12, 1, 1));
 }
 
 static void exercise(OsSchedulingPolicy policy, bool use_memory) {
@@ -84,14 +84,14 @@ static void exercise(OsSchedulingPolicy policy, bool use_memory) {
         assert(viewed[i].first_run_tick == batch[i].first_run_tick);
         assert(viewed[i].finished_tick == batch[i].finished_tick);
         assert(viewed[i].waiting_ticks == batch[i].waiting_ticks);
-        assert(viewed[i].generated_tokens == batch[i].generated_tokens);
+        assert(viewed[i].processed_tokens == batch[i].processed_tokens);
     }
     os_session_destroy(session);
 }
 
 static void snapshot_mid_run(void) {
     OsRequest req;
-    assert(os_request_init(&req, 77, 0, 3, 3, 0));
+    assert(os_request_init(&req, 77, 0, 3, 0));
     OsVirtualConfig cfg = {.policy = OS_FCFS, .worker_count = 1,
         .memory_enabled = true, .frame_capacity = 1, .tokens_per_page = 2,
         .page_policy = OS_PAGE_FIFO};
@@ -102,11 +102,11 @@ static void snapshot_mid_run(void) {
     assert(os_session_step(session) == OS_RUN_OK);
     assert(os_session_snapshot(session, &snap, &current, 1, &worker, 1));
     assert(snap.tick == 1 && snap.running == 1 && !snap.finished);
-    assert(worker.occupied && worker.request_id == 77 && current.generated_tokens == 1);
+    assert(worker.occupied && worker.request_id == 77 && current.processed_tokens == 1);
     assert(snap.resident_frames == 1 && snap.metrics.page_faults == 1);
     assert(os_session_step(session) == OS_RUN_OK);
     assert(os_session_snapshot(session, &snap, &current, 1, &worker, 1));
-    assert(snap.tick == 2 && snap.metrics.page_hits == 1 && current.generated_tokens == 2);
+    assert(snap.tick == 2 && snap.metrics.page_hits == 1 && current.processed_tokens == 2);
     assert(os_session_step(session) == OS_RUN_OK);
     assert(os_session_snapshot(session, &snap, &current, 1, &worker, 1));
     assert(snap.tick == 3 && snap.completed == 1 && snap.finished);
@@ -119,8 +119,8 @@ static void snapshot_mid_run(void) {
 int main(void) {
     snapshot_mid_run();
     exercise(OS_FCFS, false);
-    exercise(OS_SJF_ESTIMATED, true);
-    exercise(OS_SJF_ORACLE, false);
+    exercise(OS_SJF, true);
+    exercise(OS_SJF, false);
     exercise(OS_ROUND_ROBIN, true);
     exercise(OS_PRIORITY_AGING, true);
     OsRequest invalid[4];

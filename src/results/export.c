@@ -57,10 +57,6 @@ static void write_config(Writer *w, const OsVirtualConfig *c) {
     W_SIZE(w, "worker_count", c->worker_count);
     W_U64(w, "quantum_tokens", c->quantum_tokens);
     W_U64(w, "aging_interval", c->aging_interval);
-    if (c->policy == OS_SJF_EMA) {
-        W_DOUBLE(w, "ema_alpha", c->ema_alpha);
-        W_U64(w, "ema_initial_tokens", c->ema_initial_tokens);
-    }
     field(w, "memory_enabled", c->memory_enabled ? "true" : "false", false);
     W_SIZE(w, "frame_capacity", c->frame_capacity);
     W_U64(w, "tokens_per_page", c->tokens_per_page);
@@ -74,10 +70,9 @@ static void write_request(Writer *w, const OsRequest *r, bool result) {
     W_U64(w, "id", r->id);
     W_U64(w, "arrival_tick", r->arrival_tick);
     W_U64(w, "total_tokens", r->total_tokens);
-    W_U64(w, "predicted_tokens", r->predicted_tokens);
     W_INT(w, "priority", r->priority);
     if (!result) return;
-    W_U64(w, "generated_tokens", r->generated_tokens);
+    W_U64(w, "processed_tokens", r->processed_tokens);
     field(w, "state", os_request_state_name(r->state), true);
     if (r->first_run_tick == OS_REQUEST_NEVER)
         field(w, "first_run_tick", w->csv ? "" : "null", false);

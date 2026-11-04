@@ -16,7 +16,7 @@ class ExperimentRunnerTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.home = Path(self.temp.name)
         self.scenario = self.home / "scenario.csv"
-        self.scenario.write_text("1,0,5,5,0\n2,1,3,4,1\n", encoding="utf-8")
+        self.scenario.write_text("1,0,5,0\n2,1,3,1\n", encoding="utf-8")
         self.cli = self.home / "mock.py"
         self.cli.write_text('''#!/usr/bin/env python3
 import json,sys
@@ -27,8 +27,8 @@ items=[]
 for l in Path(arg("--scenario")).read_text().splitlines():
  if not l or l.startswith("#"): continue
  x=list(map(int,l.split(",")))
- items.append(dict(zip(("id","arrival_tick","total_tokens","predicted_tokens","priority"),x)))
-policy={"fcfs":"FCFS","sjf":"SJF-estimated","ema":"SJF-EMA","oracle":"SJF-oracle","rr":"Round-Robin","priority":"Priority-aging"}[arg("--policy")]
+ items.append(dict(zip(("id","arrival_tick","total_tokens","priority"),x)))
+policy={"fcfs":"FCFS","sjf":"SJF","rr":"Round-Robin","priority":"Priority-aging"}[arg("--policy")]
 Path(arg("--export-json")).write_text(json.dumps({"schema":"os-llm-run","finished":True,"input":items,"config":{"policy":policy},"metrics":{"completed":len(items),"average_wait_ticks":0.0,"page_faults":0},"trace_fingerprint":"abc"}))
 ''', encoding="utf-8")
         self.cli.chmod(0o755)
@@ -50,7 +50,7 @@ Path(arg("--export-json")).write_text(json.dumps({"schema":"os-llm-run","finishe
         self.assertFalse(self.run_script().returncode == 0)
 
     def test_duplicate_ids_fail_without_output(self):
-        self.scenario.write_text("1,0,5,5,0\n1,1,3,4,1\n")
+        self.scenario.write_text("1,0,5,0\n1,1,3,1\n")
         self.assertNotEqual(self.run_script().returncode, 0)
         self.assertFalse((self.home / "out").exists())
 

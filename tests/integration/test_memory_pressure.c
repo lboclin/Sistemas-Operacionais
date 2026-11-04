@@ -24,7 +24,7 @@ static void physical_slot_contract(void) {
 
 static void internal_fragmentation_golden(void) {
     OsRequest r;
-    assert(os_request_init(&r, 5, 0, 4, 4, 0));
+    assert(os_request_init(&r, 5, 0, 4, 0));
     OsVirtualConfig cfg = {.policy = OS_FCFS, .worker_count = 1,
         .memory_enabled = true, .frame_capacity = 2, .tokens_per_page = 2,
         .page_policy = OS_PAGE_FIFO};
@@ -45,8 +45,8 @@ static void internal_fragmentation_golden(void) {
 
 static void eviction_under_pressure(void) {
     OsRequest r[2];
-    assert(os_request_init(&r[0], 1, 0, 2, 2, 0));
-    assert(os_request_init(&r[1], 2, 0, 2, 2, 0));
+    assert(os_request_init(&r[0], 1, 0, 2, 0));
+    assert(os_request_init(&r[1], 2, 0, 2, 0));
     OsVirtualConfig cfg = {.policy = OS_FCFS, .worker_count = 2,
         .memory_enabled = true, .frame_capacity = 1, .tokens_per_page = 2,
         .page_policy = OS_PAGE_FIFO};
@@ -67,7 +67,7 @@ static void eviction_under_pressure(void) {
 
 static void reserved_page_during_io(void) {
     OsRequest r;
-    assert(os_request_init(&r, 9, 0, 1, 1, 0));
+    assert(os_request_init(&r, 9, 0, 1, 0));
     OsVirtualConfig cfg = {.policy = OS_FCFS, .worker_count = 1,
         .memory_enabled = true, .frame_capacity = 1, .tokens_per_page = 3,
         .page_policy = OS_PAGE_LRU, .page_fault_latency_ticks = 2};

@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#define OS_WORKLOAD_FORMAT_VERSION 1u
+#define OS_WORKLOAD_FORMAT_VERSION 2u
 #define OS_WORKLOAD_MAX_REQUESTS 256u
 
 typedef enum {

@@ -23,8 +23,8 @@ static char *read_stream(FILE *f) {
 
 static void test_export(void) {
     OsRequest input[2], output[2];
-    assert(os_request_init(&input[0], 10, 0, 3, 3, 2));
-    assert(os_request_init(&input[1], 20, 1, 2, 2, 1));
+    assert(os_request_init(&input[0], 10, 0, 3, 2));
+    assert(os_request_init(&input[1], 20, 1, 2, 1));
     memcpy(output, input, sizeof input);
     const OsVirtualConfig cfg = {.policy = OS_ROUND_ROBIN, .worker_count = 1,
         .quantum_tokens = 1, .memory_enabled = true, .frame_capacity = 2,
@@ -47,7 +47,7 @@ static void test_export(void) {
     char *j = read_stream(json);
     char *c = read_stream(csv);
     assert(strstr(j, "\"schema\":\"os-llm-run\"") != NULL);
-    assert(strstr(j, "\"version\":1") != NULL);
+    assert(strstr(j, "\"version\":2") != NULL);
     assert(strstr(j, "\"seed\":42") != NULL);
     assert(strstr(j, "\"page_fault_latency_ticks\":1") != NULL);
     assert(strstr(j, "\"trace_fingerprint\":\"") != NULL);

@@ -1,9 +1,9 @@
 # H23 — Experimentos automatizados
 
-Runner: python3 tools/experiments/run.py --cli ./build/os_llm_cli --scenario scenarios/seed42-v1.csv --race-lab ./build/os_llm_race_lab --deadlock-lab ./build/os_llm_deadlock_lab --source synthetic_fixture --output-dir results/h23-example
+Runner: python3 tools/experiments/run.py --cli ./build/os_llm_cli --scenario scenarios/seed42-v2.csv --race-lab ./build/os_llm_race_lab --deadlock-lab ./build/os_llm_deadlock_lab --source synthetic_fixture --output-dir results/h23-example
 
 E1: corrida lógica safe/unsafe (não é data race C indefinida).
-E2: FCFS, SJF estimado, SJF-EMA, oráculo, Round Robin (q1/q3), prioridade com aging padrão. SJF-IA requer modelo treinado e é marcado skipped aqui; também não há CLI para desativar aging.
+E2: FCFS, SJF (pelo tamanho da entrada, conhecido na chegada), Round Robin (q1/q3) e prioridade com aging padrão. Não há CLI para desativar aging, então essa execução fica skipped.
 E3: FIFO/LRU online variando frames; OPT offline não é executável como política online, então fica skipped.
 E4: laboratório real de mutexes pthread em subprocesso protegido por watchdog; não representa detecção de deadlock no runtime principal.
 

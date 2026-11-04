@@ -10,8 +10,7 @@
 static void make_requests(OsRequest *requests) {
     for (size_t i = 0; i < REQUESTS; ++i)
         assert(os_request_init(&requests[i], (uint32_t)(i + 1),
-            (uint64_t)(i % 4), (uint32_t)(2 + i % 7),
-            (uint32_t)(2 + i % 7), (int)(i % 3)));
+            (uint64_t)(i % 4), (uint32_t)(2 + i % 7), (int)(i % 3)));
 }
 
 static void compare_runs(size_t workers, OsSchedulingPolicy policy,
@@ -53,7 +52,7 @@ static void compare_runs(size_t workers, OsSchedulingPolicy policy,
     for (size_t i = 0; i < REQUESTS; ++i) {
         assert(posix_requests[i].state == OS_TERMINATED);
         assert(posix_requests[i].id == virtual_requests[i].id);
-        assert(posix_requests[i].generated_tokens == virtual_requests[i].generated_tokens);
+        assert(posix_requests[i].processed_tokens == virtual_requests[i].processed_tokens);
         assert(posix_requests[i].first_run_tick == virtual_requests[i].first_run_tick);
         assert(posix_requests[i].finished_tick == virtual_requests[i].finished_tick);
         assert(posix_requests[i].waiting_ticks == virtual_requests[i].waiting_ticks);

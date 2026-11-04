@@ -4,6 +4,7 @@
 > **Data:** 23/10/2026  
 > **Documento complementar:** [`ARCHITECTURE.md`](ARCHITECTURE.md).  
 > **Objetivo:** converter o enunciado acadêmico em funcionalidades isoladas, verificáveis e possíveis de dividir entre cinco pessoas.  
+> **Atualização 04/11/2026:** o foco passou a ser um servidor do Jev (TypeSafe AI) e o tick virtual mede tokens de **entrada**; o preditor (F14) saiu do escopo. Ver [ADR 0002](adr/0002-foco-typesafe-jev.md). Trechos abaixo sobre geração de texto descrevem o plano original.  
 > **Escolhas em aberto:** C ou C++; GUI web ou desktop e stack; prioridade/combinação dos dois mecanismos de execução; pipe ou memória compartilhada para IPC.
 
 ## 1. Princípios funcionais
@@ -132,7 +133,7 @@ Os identificadores (`F01`, `F02`, ...) servem para criar issues e rastrear requi
 | F11 | Memory | substituição FIFO, LRU e Ótimo | original |
 | F12 | IPC | pipe ou memória compartilhada POSIX | original |
 | F13 | Signals | SIGUSR1 e dump seguro | original |
-| F14 | Prediction | estimador de comprimento de resposta | original |
+| F14 | Prediction | ~~estimador de comprimento de resposta~~ removido (ADR 0002) | original |
 | F15 | Workload | coleta com LLM pequeno + geração de cargas | original |
 | F16 | Metrics | latências, throughput, waiting, faults etc. | original |
 | F17 | Experiments | quatro conjuntos de experimentos | original |
@@ -165,21 +166,17 @@ Os identificadores (`F01`, `F02`, ...) servem para criar issues e rastrear requi
 
 **Aceite:** com um worker e A(4), B(2), C(3) chegando juntos, Gantt esperado `A[0,4)`, `B[4,6)`, `C[6,9)` em custo unitário por token; tempos de espera calculados corretamente.
 
-### F04 — SJF e três variantes comparativas
+### F04 — SJF
 
-**Responsabilidade:** `src/scheduling` + interface `src/prediction`.
+**Responsabilidade:** `src/scheduling`.
 
-**Variantes exigidas na proposta:**
-
-1. **SJF + média exponencial** de bursts passados (`tau_next = α·last_burst + (1−α)·tau_previous`), com inicialização e escopo de histórico documentados;
-2. **SJF + preditor de IA** com tamanho previsto por características de entrada;
-3. **SJF + oráculo** com duração verdadeira fornecida pelo cenário (somente baseline experimental).
+**Decisão (ADR 0002):** o Jev devolve uma decisão de tamanho praticamente fixo, então o custo de uma requisição é o seu número de tokens de entrada, conhecido na chegada. O SJF ordena por esse valor, sem previsão. A proposta original pedia três variantes (média exponencial, preditor de IA e oráculo); elas eram necessárias apenas porque o tamanho de uma resposta generativa é desconhecido.
 
 **Baseline adicional:** FCFS. Quando o relatório disser "SJF ideal", esclarecer o âmbito em que é ótimo: minimiza espera média em um conjunto de tarefas todas disponíveis e bursts conhecidos, sem assumir que seja ótimo globalmente para chegadas arbitrárias e múltiplos workers.
 
-**Escolhas em aberto:** SJF estritamente não preemptivo vs. decisão por quantum; se versão preemptiva for adicionada, identificá-la como **SRTF** e compará-la separadamente. Não usar o tamanho verdadeiro fora do oráculo (evitar vazamento).
+**Escolhas em aberto:** SJF estritamente não preemptivo vs. decisão por quantum; se versão preemptiva for adicionada, identificá-la como **SRTF** e compará-la separadamente.
 
-**Aceite:** cenário de burst curto após longo discrimina políticas; preditor ausente gera fallback documentado; estimativas negativas e dados faltantes são rejeitados ou tratados por regra explícita.
+**Aceite:** cenário de burst curto após longo discrimina políticas; tamanhos de entrada nulos ou faltantes são rejeitados.
 
 ### F05 — Round Robin
 
@@ -288,7 +285,9 @@ A proposta: ao apertar uma tecla, o programa envia `SIGUSR1` para si e imprime e
 
 **Aceite:** envio de SIGUSR1 não encerra processo, não provoca deadlock e produz dump consistente fora do contexto de sinal.
 
-### F14 — Preditor de tamanho da resposta
+### F14 — Preditor de tamanho da resposta (removido)
+
+> **Fora do escopo desde a ADR 0002.** Com o Jev, o tamanho do job é conhecido na chegada. O texto abaixo fica como registro do plano original.
 
 **Responsabilidade:** `src/prediction` (uso) e `tools/predictor` (treino).
 
@@ -342,7 +341,7 @@ Cada run precisa guardar **modo**, relógio, custo por token, política, tamanho
 
 **E1 — Corrida:** variar número de requisições/threads; executar com e sem sincronização **somente no laboratório isolado**; comparar valor esperado com valor observado e ocorrências de erro, repetindo várias vezes.
 
-**E2 — Escalonamento:** mesma carga e parâmetros para FCFS, SJF média exponencial, SJF preditor, SJF oráculo, RR com múltiplos `K`, prioridade com/sem aging. Medir espera/retorno/resposta p50/p95, throughput e starvation. Separar custos virtuais do modo POSIX.
+**E2 — Escalonamento:** mesma carga e parâmetros para FCFS, SJF, RR com múltiplos `K`, prioridade com/sem aging. Medir espera/retorno/resposta p50/p95, throughput e starvation. Separar custos virtuais do modo POSIX.
 
 **E3 — Memória:** variar frames/tamanho de bloco e FIFO/LRU/OPT no **mesmo trace de referências**. Contar faults, substituições, bloqueios e fragmentação. Ótimo somente quando há trace completo.
 
@@ -437,11 +436,10 @@ A interface será uma aplicação **visual gráfica**, não TUI. O usuário esco
 
 ### Fluxo D — Comparação do SJF
 
-1. Gerador produz cenário e split independente para predição.
-2. Estimadores geram tamanhos previstos sem acessar saída verdadeira das amostras de avaliação.
-3. Runner aplica mesma carga a FCFS, SJF exponencial, SJF preditor e SJF oráculo.
-4. Cada política tem resultados separados, calculados com mesmo modelo de tempo.
-5. Relatório mostra diferença em espera, p95, throughput e erro de previsão.
+1. Gerador produz cenário com seed.
+2. Runner aplica a mesma carga a FCFS, SJF, RR e prioridade.
+3. Cada política tem resultados separados, calculados com o mesmo modelo de tempo.
+4. Relatório mostra diferença em espera, p95 e throughput.
 
 ## 5. Matriz de requisitos e testes mínimos
 
@@ -450,7 +448,7 @@ A interface será uma aplicação **visual gráfica**, não TUI. O usuário esco
 | F01 | estados válidos e PCB consistente | unidade + propriedades |
 | F02 | entradas válidas/inválidas + desempate | unidade + integração |
 | F03 | FCFS em carga pequena conhecida | fixture golden |
-| F04 | variantes SJF e isolamento do oráculo | unidade + experimento |
+| F04 | SJF pelo tamanho da entrada | unidade + experimento |
 | F05 | quantum em tokens e ordem RR | fixture golden |
 | F06 | aging reduz starvation no cenário | unidade + experimento |
 | F07 | worker exclusivo e shutdown | integração + POSIX |
@@ -477,7 +475,6 @@ A interface será uma aplicação **visual gráfica**, não TUI. O usuário esco
 | Memória | contrato de reserva e ID do PCB | testes de blocos isolados |
 | Runtime A/B | comandos do motor e eventos | execução de token com fake memory |
 | IPC e sinais | ciclo de vida da aplicação | laboratório POSIX independente |
-| Preditor de IA | schema do cenário, IDs e métricas | dados offline em CSV/JSON |
 | Experimentos | Runner + métricas + políticas | fixtures sintetizadas e expectativa golden |
 
 **Congelar primeiro:** IDs, unidade dos relógios, representação de burst e token, estados, erros, eventos, `Scenario`, `RunResult`, `snapshot` e capacidades de controle `pause/step` por modo.
@@ -492,7 +489,7 @@ A interface será uma aplicação **visual gráfica**, não TUI. O usuário esco
 | P3 | paginação, 3 políticas e integração | page faults + invariantes reproduzidos |
 | P4 | worker pool POSIX, mutex/semaforo, race, deadlock, IPC, sinal | demonstrações reais isoladas passam |
 | P5 | GUI inicial conectada a comandos/snapshots | fluxo criar→executar→visualizar |
-| P6 | coleta com LLM pequeno, preditor e 4 experimentos | matrizes + relatórios reproduzíveis |
+| P6 | 4 experimentos | matrizes + relatórios reproduzíveis |
 | P7 | observabilidade/replay refinado, regressão e apresentação | documentação e demos estáveis |
 
 **Nota:** P4 pode ser antecipada e P5 pode começar com mocks desde P0. A decisão A/B é *qual runtime priorizar e qual será núcleo principal dos experimentos*, não se threads POSIX podem ser ignoradas.
@@ -542,7 +539,7 @@ A proposta **original prevê C**. Usar C++ exige confirmar permissão do profess
 - [ ] deadlock reproduzido/detectado/prevenido de forma segura;
 - [ ] KV cache paginado, tabela de páginas, FIFO/LRU/OPT e fragmentação calculados;
 - [ ] IPC didático e SIGUSR1 funcionando conforme proposta;
-- [ ] workload realista e preditor comparado a baselines de SJF;
+- [ ] workload realista com tamanhos de entrada e comparação das políticas;
 - [ ] quatro experimentos com métricas, gráficos e relato de ambiente;
 - [ ] interface gráfica permite operar e observar cenário sem terminal;
 - [ ] testes e documentação tornam a demonstração reproduzível.

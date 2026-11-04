@@ -18,7 +18,7 @@ static void capture(const OsEvent *e, void *ctx) {
 
 static void delayed_fault_and_wakeup(void) {
     OsRequest input;
-    assert(os_request_init(&input, 7, 0, 1, 1, 0));
+    assert(os_request_init(&input, 7, 0, 1, 0));
     OsVirtualConfig cfg = {.policy = OS_FCFS, .worker_count = 1,
         .memory_enabled = true, .frame_capacity = 1, .tokens_per_page = 1,
         .page_policy = OS_PAGE_FIFO, .page_fault_latency_ticks = 2};
@@ -31,7 +31,7 @@ static void delayed_fault_and_wakeup(void) {
     OsWorkerSnapshot worker;
     assert(os_session_snapshot(s, &snap, &current, 1, &worker, 1));
     assert(snap.tick == 1 && snap.blocked == 1 && snap.running == 0);
-    assert(!worker.occupied && current.generated_tokens == 0);
+    assert(!worker.occupied && current.processed_tokens == 0);
     assert(current.first_run_tick == OS_REQUEST_NEVER);
     assert(snap.metrics.page_faults == 1 && snap.next_wakeup_tick == 2);
     uint64_t wake = 123;
@@ -61,7 +61,7 @@ static void delayed_fault_and_wakeup(void) {
 
 static void zero_cost_and_validation(void) {
     OsRequest input;
-    assert(os_request_init(&input, 3, 0, 1, 1, 0));
+    assert(os_request_init(&input, 3, 0, 1, 0));
     OsVirtualConfig cfg = {.policy = OS_FCFS, .worker_count = 1,
         .memory_enabled = true, .frame_capacity = 1, .tokens_per_page = 1,
         .page_policy = OS_PAGE_FIFO};
@@ -80,8 +80,8 @@ static void zero_cost_and_validation(void) {
 
 static void contention_finishes(void) {
     OsRequest req[2];
-    assert(os_request_init(&req[0], 1, 0, 2, 2, 0));
-    assert(os_request_init(&req[1], 2, 0, 2, 2, 0));
+    assert(os_request_init(&req[0], 1, 0, 2, 0));
+    assert(os_request_init(&req[1], 2, 0, 2, 0));
     OsVirtualConfig cfg = {.policy = OS_FCFS, .worker_count = 2,
         .memory_enabled = true, .frame_capacity = 1, .tokens_per_page = 2,
         .page_policy = OS_PAGE_LRU, .page_fault_latency_ticks = 1};
@@ -101,7 +101,7 @@ static void contention_finishes(void) {
 
 static void overflow(void) {
     OsRequest input;
-    assert(os_request_init(&input, 1, 0, 1, 1, 0));
+    assert(os_request_init(&input, 1, 0, 1, 0));
     OsVirtualConfig cfg = {.policy = OS_FCFS, .worker_count = 1,
         .memory_enabled = true, .frame_capacity = 1, .tokens_per_page = 1,
         .page_policy = OS_PAGE_FIFO, .page_fault_latency_ticks = UINT64_MAX};

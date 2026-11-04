@@ -34,7 +34,7 @@ static bool dump_if_requested(const OsVirtualSession *session) {
     for (size_t i = 0; i < 2; ++i)
         printf("request id=%" PRIu32 " state=%s tokens=%" PRIu32 "/%" PRIu32 "\n",
                requests[i].id, os_request_state_name(requests[i].state),
-               requests[i].generated_tokens, requests[i].total_tokens);
+               requests[i].processed_tokens, requests[i].total_tokens);
     for (size_t i = 0; i < 1; ++i)
         if (workers[i].occupied)
             printf("worker %zu request=%" PRIu32 "\n", i, workers[i].request_id);
@@ -64,8 +64,8 @@ int main(int argc, char **argv) {
         .frame_capacity = 2, .tokens_per_page = 2, .page_policy = OS_PAGE_FIFO,
         .page_fault_latency_ticks = 1
     };
-    if (!os_request_init(&requests[0], 1, 0, 4, 4, 0) ||
-        !os_request_init(&requests[1], 2, 0, 3, 3, 0) ||
+    if (!os_request_init(&requests[0], 1, 0, 4, 0) ||
+        !os_request_init(&requests[1], 2, 0, 3, 0) ||
         os_session_create(requests, 2, &config, NULL, NULL, &session) != OS_RUN_OK) {
         fputs("Unable to create signal demonstration session\n", stderr);
         status = 1;

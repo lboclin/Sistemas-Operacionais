@@ -20,15 +20,15 @@ static void capture(const OsEvent *event, void *context) {
 
 int main(void) {
     OsRequest r[2];
-    assert(os_request_init(&r[0], 10, 0, 3, 3, 0));
-    assert(os_request_init(&r[1], 11, 1, 2, 2, 0));
+    assert(os_request_init(&r[0], 10, 0, 3, 0));
+    assert(os_request_init(&r[1], 11, 1, 2, 0));
     assert(os_gateway_validate(r, 2));
     assert(os_gateway_next_arrival(r, 2) == 0);
     assert(!os_gateway_admit(&r[1], 0, 1));
     assert(os_gateway_admit(&r[1], 1, 1));
     assert(os_gateway_next_arrival(r, 2) == 0);
     assert(!os_gateway_validate(r, 2));
-    assert(os_request_init(&r[1], 11, 1, 2, 2, 0));
+    assert(os_request_init(&r[1], 11, 1, 2, 0));
     OsVirtualConfig cfg = {.policy = OS_ROUND_ROBIN, .worker_count = 1, .quantum_tokens = 1};
     OsRunSummary summary;
     Captured events = {0};

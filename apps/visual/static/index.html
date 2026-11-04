@@ -37,18 +37,18 @@
       <section class="panel" aria-labelledby="scenario-heading">
         <div class="panel-heading"><h2 id="scenario-heading">Cenário de entrada</h2><button class="button text-button" type="button" id="preset-btn">Restaurar exemplo</button></div>
         <div class="form-row">
-          <label>Política<select id="policy"><option value="fcfs">FCFS · Chegada</option><option value="sjf">SJF · Estimado</option><option value="ema">SJF · Média exponencial</option><option value="oracle">SJF · Oráculo experimental</option><option value="rr">Round Robin</option><option value="priority">Prioridade com aging</option></select></label>
+          <label>Política<select id="policy"><option value="fcfs">FCFS · Chegada</option><option value="sjf">SJF · Menor entrada</option><option value="rr">Round Robin</option><option value="priority">Prioridade com aging</option></select></label>
           <label>Workers<input id="workers" type="number" min="1" max="16" value="1" required></label>
           <label>Quantum <span class="hint">(RR)</span><input id="quantum" type="number" min="1" value="2" disabled></label>
         </div>
         <div class="table-title"><h3>Fila de requisições</h3><div class="actions"><button id="import-btn" class="button secondary" type="button">Importar CSV</button><input type="file" id="file" accept=".csv,text/csv,text/plain" hidden><button id="add-btn" class="button secondary" type="button">+ Requisição</button></div></div>
-        <div class="table-scroll"><table class="request-table"><thead><tr><th>ID</th><th>Chegada</th><th>Tokens saída</th><th>Previstos</th><th>Prioridade</th><th><span class="sr-only">Excluir</span></th></tr></thead><tbody id="requests"></tbody></table></div>
+        <div class="table-scroll"><table class="request-table"><thead><tr><th>ID</th><th>Chegada</th><th>Tokens entrada</th><th>Prioridade</th><th><span class="sr-only">Excluir</span></th></tr></thead><tbody id="requests"></tbody></table></div>
         <div class="panel-footer"><span id="entry-count">0 / 256 requisições</span><button id="run-btn" class="button primary" type="button">Executar simulação</button></div>
       </section>
       <section class="panel result-panel" aria-labelledby="result-heading">
         <div class="panel-heading"><h2 id="result-heading">Estado dos processos</h2><span class="pill" id="run-state">AGUARDANDO</span></div>
         <div id="empty-state" class="empty"><div class="empty-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><rect x="5" y="5" width="22" height="22" rx="4"/><path d="M11 11h10M11 16h10M11 21h6"/></svg></div><h3>Uma visão clara de cada processo</h3><p>Execute um cenário para consultar PCBs, esperas, tempos de resposta e resultados calculados pelo motor C.</p></div>
-        <div id="results" hidden><div class="result-summary"><div><span>POLÍTICA</span><strong id="r-policy">—</strong></div><div><span>EVENTOS REGISTRADOS</span><strong id="r-events">—</strong></div></div><div class="table-scroll"><table class="result-table"><thead><tr><th>PCB</th><th>Estado</th><th>Primeira execução</th><th>Conclusão</th><th>Espera</th></tr></thead><tbody id="result-rows"></tbody></table></div><p class="caption">Fonte: exportação JSON do simulador. Não são tempos reais de inferência de LLM.</p></div>
+        <div id="results" hidden><div class="result-summary"><div><span>POLÍTICA</span><strong id="r-policy">—</strong></div><div><span>EVENTOS REGISTRADOS</span><strong id="r-events">—</strong></div></div><div class="table-scroll"><table class="result-table"><thead><tr><th>PCB</th><th>Estado</th><th>Primeira execução</th><th>Conclusão</th><th>Espera</th></tr></thead><tbody id="result-rows"></tbody></table></div><p class="caption">Fonte: exportação JSON do simulador. Ticks virtuais: 1 tick = 1 token de entrada do Jev.</p></div>
       </section>
     </div>
     <section class="panel timeline-panel" id="timeline-panel" aria-label="Gantt e replay visual" hidden>
@@ -64,7 +64,7 @@
 <p class="caption">A política OPT é exclusiva do replay offline, não pode ser usada nesta CLI online. Execute novamente para aplicar mudanças.</p>
 <p class="caption" id="mem-empty">Execute um cenário para ver os eventos e as métricas reais.</p><div id="mem-result" hidden><div class="memory-numbers"><div>Hits<strong id="mem-hits">—</strong></div><div>Faults<strong id="mem-faults">—</strong></div><div>Evicções<strong id="mem-evicts">—</strong></div><div>Frames pico<strong id="mem-peak">—</strong></div></div><p id="mem-info" class="caption"></p><h3>Eventos</h3><ol class="memory-log" id="mem-log"></ol></div></section>
 <section class="panel memory-panel" aria-labelledby="labs-title"><div class="panel-heading"><h2 id="labs-title">Laboratórios controlados</h2><span class="pill">SUBPROCESSO</span></div>
-<p class="caption">Os laboratórios de corrida e deadlock não integram a simulação de LLMs. Modos demonstrativos exigem confirmação e usam watchdog.</p>
+<p class="caption">Os laboratórios de corrida e deadlock não integram a simulação do servidor Jev. Modos demonstrativos exigem confirmação e usam watchdog.</p>
 <div class="lab-actions"><button class="button secondary" data-lab="race" data-mode="safe">Corrida segura</button><button class="button secondary" data-lab="race" data-mode="unsafe">Perda controlada</button><button class="button secondary" data-lab="deadlock" data-mode="ordered">Ordem global</button><button class="button secondary" data-lab="deadlock" data-mode="deadlock">Deadlock isolado</button></div>
 <p class="caption" role="status" id="lab-status">Nenhum laboratório foi executado.</p></section>
 <section class="panel report-panel" id="report-panel" aria-labelledby="reports-title"><div class="panel-heading"><h2 id="reports-title">Comparar e exportar</h2><span class="pill">TICKS VIRTUAIS</span></div>

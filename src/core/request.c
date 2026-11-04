@@ -3,14 +3,14 @@
 #include <stddef.h>
 
 bool os_request_init(OsRequest *request, uint32_t id, uint64_t arrival_tick,
-                     uint32_t total_tokens, uint32_t predicted_tokens, int priority) {
-    if (request == NULL || total_tokens == 0 || predicted_tokens == 0 ||
+                     uint32_t total_tokens, int priority) {
+    if (request == NULL || total_tokens == 0 ||
         arrival_tick == OS_REQUEST_NEVER) {
         return false;
     }
     *request = (OsRequest){
         .id = id, .arrival_tick = arrival_tick, .total_tokens = total_tokens,
-        .predicted_tokens = predicted_tokens, .priority = priority,
+        .priority = priority,
         .first_run_tick = OS_REQUEST_NEVER, .finished_tick = OS_REQUEST_NEVER,
         .state = OS_NEW
     };
@@ -19,9 +19,9 @@ bool os_request_init(OsRequest *request, uint32_t id, uint64_t arrival_tick,
 
 bool os_request_is_fresh(const OsRequest *request) {
     return request != NULL && request->state == OS_NEW &&
-           request->total_tokens != 0 && request->predicted_tokens != 0 &&
+           request->total_tokens != 0 &&
            request->arrival_tick != OS_REQUEST_NEVER &&
-           request->generated_tokens == 0 && request->waiting_ticks == 0 &&
+           request->processed_tokens == 0 && request->waiting_ticks == 0 &&
            request->ready_tick == 0 && request->ready_order == 0 &&
            request->first_run_tick == OS_REQUEST_NEVER &&
            request->finished_tick == OS_REQUEST_NEVER;

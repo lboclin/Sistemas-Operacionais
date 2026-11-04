@@ -5,9 +5,9 @@
 #include <string.h>
 
 static void prepare(OsRequest *r) {
-    assert(os_request_init(&r[0], 1, 0, 3, 3, 0));
-    assert(os_request_init(&r[1], 2, 0, 3, 3, 0));
-    assert(os_request_init(&r[2], 3, 5, 1, 1, 0));
+    assert(os_request_init(&r[0], 1, 0, 3, 0));
+    assert(os_request_init(&r[1], 2, 0, 3, 0));
+    assert(os_request_init(&r[2], 3, 5, 1, 0));
 }
 
 static void controls_and_snapshots(void) {
@@ -45,8 +45,8 @@ static void controls_and_snapshots(void) {
     assert(snap.metrics.page_faults == 2 && snap.resident_frames == 2);
     assert(workers[0].occupied && workers[0].request_id == 1 && workers[0].quantum_used == 1);
     assert(workers[1].occupied && workers[1].request_id == 2 && workers[1].quantum_used == 1);
-    assert(view[0].generated_tokens == 1 && view[1].generated_tokens == 1);
-    assert(input[0].generated_tokens == 0);
+    assert(view[0].processed_tokens == 1 && view[1].processed_tokens == 1);
+    assert(input[0].processed_tokens == 0);
 
     assert(os_session_step(session) == OS_RUN_OK);
     assert(os_session_snapshot(session, &snap, view, 3, workers, 2));
@@ -73,12 +73,12 @@ static void controls_and_snapshots(void) {
     assert(summary.makespan_ticks == snap.tick && summary.completed == snap.completed);
     assert(summary.page_hits == snap.metrics.page_hits && summary.page_faults == snap.metrics.page_faults);
     for (size_t i = 0; i < 3; ++i)
-        assert(batch[i].generated_tokens == view[i].generated_tokens && batch[i].finished_tick == view[i].finished_tick);
+        assert(batch[i].processed_tokens == view[i].processed_tokens && batch[i].finished_tick == view[i].finished_tick);
 }
 
 static void idle_jump_and_errors(void) {
     OsRequest late;
-    assert(os_request_init(&late, 42, 10, 1, 1, 0));
+    assert(os_request_init(&late, 42, 10, 1, 0));
     OsVirtualConfig cfg = {.policy = OS_FCFS, .worker_count = 1};
     OsVirtualSession *session = NULL;
     assert(os_session_create(&late, 1, &cfg, NULL, NULL, &session) == OS_RUN_OK);
@@ -117,7 +117,7 @@ static void idle_jump_and_errors(void) {
     OsRequest dup[2] = {late, late};
     assert(os_session_create(dup, 2, &cfg, NULL, NULL, &session) == OS_RUN_INVALID);
     OsRequest huge;
-    assert(os_request_init(&huge, 9, UINT64_MAX - 1, 2, 2, 0));
+    assert(os_request_init(&huge, 9, UINT64_MAX - 1, 2, 0));
     assert(os_session_create(&huge, 1, &cfg, NULL, NULL, &session) == OS_RUN_OVERFLOW);
     os_session_destroy(NULL);
 }

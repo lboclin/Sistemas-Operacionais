@@ -5,9 +5,9 @@
 
 static void nearest_rank_golden(void) {
     OsRequest r[3];
-    assert(os_request_init(&r[0], 1, 0, 1, 1, 0));
-    assert(os_request_init(&r[1], 2, 0, 2, 2, 0));
-    assert(os_request_init(&r[2], 3, 0, 4, 4, 0));
+    assert(os_request_init(&r[0], 1, 0, 1, 0));
+    assert(os_request_init(&r[1], 2, 0, 2, 0));
+    assert(os_request_init(&r[2], 3, 0, 4, 0));
     OsVirtualConfig cfg = {.policy = OS_FCFS, .worker_count = 1,
         .starvation_threshold_ticks = 2};
     OsVirtualSession *s = NULL;
@@ -27,8 +27,8 @@ static void nearest_rank_golden(void) {
 
 static void starvation_and_preemption(void) {
     OsRequest r[2];
-    assert(os_request_init(&r[0], 1, 0, 2, 2, 0));
-    assert(os_request_init(&r[1], 2, 0, 2, 2, 0));
+    assert(os_request_init(&r[0], 1, 0, 2, 0));
+    assert(os_request_init(&r[1], 2, 0, 2, 0));
     OsVirtualConfig cfg = {.policy = OS_ROUND_ROBIN, .worker_count = 1,
         .quantum_tokens = 1, .starvation_threshold_ticks = 1};
     OsVirtualSession *s = NULL;
@@ -49,7 +49,7 @@ static void starvation_and_preemption(void) {
 
 static void blocked_time_and_utilization(void) {
     OsRequest r;
-    assert(os_request_init(&r, 1, 0, 1, 1, 0));
+    assert(os_request_init(&r, 1, 0, 1, 0));
     OsVirtualConfig cfg = {.policy = OS_FCFS, .worker_count = 1,
         .memory_enabled = true, .frame_capacity = 1, .tokens_per_page = 1,
         .page_policy = OS_PAGE_FIFO, .page_fault_latency_ticks = 2};

@@ -132,13 +132,6 @@ if(BUILD_TESTING)
     target_link_libraries(test_virtual PRIVATE os_core)
     add_test(NAME virtual COMMAND test_virtual)
 
-    add_executable(test_sjf_ema tests/integration/test_sjf_ema.c)
-    target_link_libraries(test_sjf_ema PRIVATE os_core)
-    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-        target_compile_options(test_sjf_ema PRIVATE -UNDEBUG -Wall -Wextra -Wpedantic -Wconversion -Werror)
-    endif()
-    add_test(NAME sjf_ema COMMAND test_sjf_ema)
-
     # Keep assertion-based tests active even when the library is optimized.
     if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
         foreach(test_target IN ITEMS test_core test_pager test_virtual test_gateway_events test_frames test_memory_runtime test_session)
@@ -153,13 +146,6 @@ if(BUILD_TESTING)
         --scenario ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/large-arrival.csv --steps 0)
     set_tests_properties(cli_u64_arrival PROPERTIES PASS_REGULAR_EXPRESSION "1 +4294967296")
 
-    add_test(NAME cli_ema COMMAND os_llm_cli --policy ema --ema-alpha 0.5 --ema-initial 6
-             --scenario ${CMAKE_CURRENT_SOURCE_DIR}/scenarios/ema-demo.csv)
-    set_tests_properties(cli_ema PROPERTIES PASS_REGULAR_EXPRESSION "Policy: SJF-EMA.*Execution: completed")
-    add_test(NAME cli_ema_invalid_alpha COMMAND os_llm_cli --policy ema --ema-alpha 1.1)
-    set_tests_properties(cli_ema_invalid_alpha PROPERTIES WILL_FAIL TRUE)
-    add_test(NAME cli_ema_wrong_policy COMMAND os_llm_cli --policy sjf --ema-alpha 0.5)
-    set_tests_properties(cli_ema_wrong_policy PROPERTIES WILL_FAIL TRUE)
     add_test(NAME cli_memory_trace COMMAND os_llm_cli --frames 2 --page-tokens 2 --page-policy lru --trace)
     add_test(NAME cli_invalid_online_opt COMMAND os_llm_cli --frames 2 --page-policy opt)
     set_tests_properties(cli_invalid_online_opt PROPERTIES WILL_FAIL TRUE)
@@ -226,9 +212,9 @@ if(BUILD_TESTING)
     add_test(NAME workload COMMAND test_workload)
     add_test(NAME workload_help COMMAND os_llm_workload --help)
     add_test(NAME workload_seed42 COMMAND os_llm_workload --seed 42 --count 4 --arrival-span 10 --min-tokens 2 --max-tokens 8)
-    set_tests_properties(workload_seed42 PROPERTIES PASS_REGULAR_EXPRESSION "# os-llm-scenario v1 seed=42 distribution=uniform count=4")
-    add_test(NAME cli_seeded_fixture COMMAND os_llm_cli --scenario ${CMAKE_CURRENT_SOURCE_DIR}/scenarios/seed42-v1.csv)
-    add_test(NAME cli_unsupported_scenario_version COMMAND os_llm_cli --scenario ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/scenario-v2.csv)
+    set_tests_properties(workload_seed42 PROPERTIES PASS_REGULAR_EXPRESSION "# os-llm-scenario v2 seed=42 distribution=uniform count=4")
+    add_test(NAME cli_seeded_fixture COMMAND os_llm_cli --scenario ${CMAKE_CURRENT_SOURCE_DIR}/scenarios/seed42-v2.csv)
+    add_test(NAME cli_unsupported_scenario_version COMMAND os_llm_cli --scenario ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/scenario-v1.csv)
     set_tests_properties(cli_unsupported_scenario_version PROPERTIES WILL_FAIL TRUE)
 
     add_executable(test_metrics_golden tests/integration/test_metrics_golden.c)
@@ -269,7 +255,7 @@ if(BUILD_TESTING)
     add_test(NAME export COMMAND test_export)
     add_test(NAME cli_export_files COMMAND ${CMAKE_COMMAND}
         "-DCLI=$<TARGET_FILE:os_llm_cli>"
-        "-DSCENARIO=${CMAKE_CURRENT_SOURCE_DIR}/scenarios/seed42-v1.csv"
+        "-DSCENARIO=${CMAKE_CURRENT_SOURCE_DIR}/scenarios/seed42-v2.csv"
         "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}"
         -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/system/verify_export.cmake)
 
@@ -338,7 +324,7 @@ if(BUILD_TESTING)
 
     add_test(NAME cli_starvation COMMAND os_llm_cli --policy rr --quantum 1 --starvation-threshold 1 --steps 1 --snapshots)
     set_tests_properties(cli_starvation PROPERTIES PASS_REGULAR_EXPRESSION "snapshot step=1 tick=1.*starving=1")
-    # G21: offline model predictions -> unchanged C11 CLI; Python is optional.
+    # Optional Node/Python checks.
     find_package(Python3 COMPONENTS Interpreter QUIET)
     find_program(OSLLM_NODE_EXECUTABLE node)
     if(OSLLM_NODE_EXECUTABLE)
@@ -348,11 +334,6 @@ if(BUILD_TESTING)
         set_tests_properties(visual_timeline_js PROPERTIES TIMEOUT 30)
     endif()
     if(Python3_Interpreter_FOUND)
-        add_test(NAME sjf_ai_comparison COMMAND ${CMAKE_COMMAND} -E env
-            "OSLLM_CLI=$<TARGET_FILE:os_llm_cli>"
-            ${Python3_EXECUTABLE} -m unittest discover
-            -s ${CMAKE_CURRENT_SOURCE_DIR}/tools/predictor -p test_compare_sjf.py -v)
-        set_tests_properties(sjf_ai_comparison PROPERTIES TIMEOUT 120)
         add_test(NAME experiments_runner_py COMMAND ${CMAKE_COMMAND} -E env
             "OSLLM_CLI=$<TARGET_FILE:os_llm_cli>"
             "OSLLM_RACE=$<TARGET_FILE:os_llm_race_lab>"

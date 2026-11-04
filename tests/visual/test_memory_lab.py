@@ -9,7 +9,7 @@ import server
 
 class MemoryLabTests(unittest.TestCase):
     def payload(self):
-        return dict(requests=[dict(id='1',arrival_tick='0',total_tokens='3',predicted_tokens='2',priority='0')],policy='fcfs',workers='1',quantum='2')
+        return dict(requests=[dict(id='1',arrival_tick='0',total_tokens='3',priority='0')],policy='fcfs',workers='1',quantum='2')
     def test_legacy_compatible(self):
         self.assertIsNone(server.validate(self.payload())['memory'])
     def test_memory_allowlist(self):

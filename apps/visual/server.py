@@ -22,7 +22,7 @@ MAX_OUTPUT = 16 * 1024 * 1024
 MAX_REQUESTS = 256
 MAX_ACTIVE_PROCESSES = 2
 EXECUTION_SLOTS = BoundedSemaphore(MAX_ACTIVE_PROCESSES)
-POLICIES = {'fcfs', 'sjf', 'ema', 'oracle', 'rr', 'priority'}
+POLICIES = {'fcfs', 'sjf', 'rr', 'priority'}
 LAB_CHOICES = {'race':('safe','unsafe'),'deadlock':('ordered','deadlock')}
 DECIMAL = re.compile(r'(0|[1-9][0-9]*)\Z')
 SIGNED = re.compile(r'(0|-?[1-9][0-9]*)\Z')
@@ -70,7 +70,7 @@ def validate(payload):
         raise InputError('Informe de 1 a 256 requisições')
     requests, seen = [], set()
     for position, row in enumerate(raw, 1):
-        if not isinstance(row, dict) or set(row) != {'id', 'arrival_tick', 'total_tokens', 'predicted_tokens', 'priority'}:
+        if not isinstance(row, dict) or set(row) != {'id', 'arrival_tick', 'total_tokens', 'priority'}:
             raise InputError(f'Requisição {position}: campos inválidos')
         rid = integer(row['id'], 'id', 1, 4294967295)
         if rid in seen:
@@ -80,7 +80,6 @@ def validate(payload):
             'id': rid,
             'arrival_tick': integer(row['arrival_tick'], 'arrival_tick', 0, 18446744073709551614),
             'total_tokens': integer(row['total_tokens'], 'total_tokens', 1, 4294967295),
-            'predicted_tokens': integer(row['predicted_tokens'], 'predicted_tokens', 1, 4294967295),
             'priority': integer(row['priority'], 'priority', -2147483648, 2147483647, signed=True)
         })
     memory = payload.get('memory')
@@ -101,7 +100,7 @@ def simulate(cli, payload, timeout=25):
     with tempfile.TemporaryDirectory(prefix='osllm-ui-') as directory:
         scenario, export = Path(directory) / 'scenario.csv', Path(directory) / 'run.json'
         scenario.write_text(''.join(f"{r['id']},{r['arrival_tick']},{r['total_tokens']},"
-                                    f"{r['predicted_tokens']},{r['priority']}\n" for r in data['requests']), encoding='ascii')
+                                    f"{r['priority']}\n" for r in data['requests']), encoding='ascii')
         args = [str(cli), '--scenario', str(scenario), '--policy', data['policy'],
                 '--workers', str(data['workers']), '--export-json', str(export)]
         if data['memory'] is not None:
@@ -110,8 +109,6 @@ def simulate(cli, payload, timeout=25):
                      '--page-policy',mem['policy'],'--page-fault-latency',str(mem['fault_latency'])]
         if data['policy'] == 'rr':
             args += ['--quantum', str(data['quantum'])]
-        if data['policy'] == 'ema':
-            args += ['--ema-alpha', '0.5', '--ema-initial', '6']
         try:
             run = subprocess.run(args, capture_output=True, timeout=timeout, check=False)
         except subprocess.TimeoutExpired as exc:
@@ -126,9 +123,9 @@ def simulate(cli, payload, timeout=25):
             raise InputError('O simulador gerou uma exportação inválida') from exc
         source = result.get('input') if isinstance(result, dict) else None
         expected = sorted(tuple(r[k] for k in ('id', 'arrival_tick', 'total_tokens',
-                      'predicted_tokens', 'priority')) for r in data['requests'])
+                      'priority')) for r in data['requests'])
         got = sorted(tuple(r.get(k) for k in ('id', 'arrival_tick', 'total_tokens',
-                    'predicted_tokens', 'priority')) for r in source) if isinstance(source, list) and all(isinstance(r, dict) for r in source) else None
+                    'priority')) for r in source) if isinstance(source, list) and all(isinstance(r, dict) for r in source) else None
         if (not isinstance(result, dict) or result.get('schema') != 'os-llm-run' or
             result.get('finished') is not True or got != expected or
             not isinstance(result.get('metrics'), dict) or
@@ -152,8 +149,8 @@ def simulate(cli, payload, timeout=25):
             returned.add(rid)
             expected_row = by_id[rid]
             if (row.get('state') != 'TERMINATED' or
-                type(row.get('generated_tokens')) is not int or
-                row['generated_tokens'] != expected_row['total_tokens'] or
+                type(row.get('processed_tokens')) is not int or
+                row['processed_tokens'] != expected_row['total_tokens'] or
                 type(row.get('arrival_tick')) is not int or
                 row['arrival_tick'] != expected_row['arrival_tick'] or
                 type(row.get('first_run_tick')) is not int or

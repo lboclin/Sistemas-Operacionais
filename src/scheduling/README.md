@@ -1,14 +1,11 @@
 # Escalonamento
 
-O scheduler seleciona PCBs READY por FCFS, SJF estimado (campo `predicted_tokens`),
-SJF oráculo (comprimento real; somente referência), SJF-EMA, RR e prioridade com aging.
+O scheduler seleciona PCBs READY por FCFS, SJF, Round Robin (RR) e prioridade com aging.
 
-SJF-EMA é não preemptivo: `tau_next = alpha * last_burst + (1-alpha) * tau_previous`,
-com `alpha` em [0,1] e `initial_tokens` positivo. Cada prioridade é usada
-provisoriamente como classe de histórico (o cenário CSV v1 não tem classe).
-Todas começam com a mesma estimativa; somente requisições concluídas
-atualizam a classe com `generated_tokens`. Empates usam `ready_order` e ID.
-O histórico é por sessão, determinístico e não consulta o comprimento
-real de requisições ainda não concluídas. O preditor offline G20 é aplicado pelo adaptador externo G21, sem alterações no núcleo C.
+O simulador modela um servidor do Jev (TypeSafe AI). O Jev devolve uma resposta curta e de tamanho fixo, então o custo de uma requisição é o tamanho da entrada (`total_tokens`, em tokens de entrada), conhecido na chegada. Por isso o **SJF ordena pelo tamanho real da entrada**, sem previsão. Empates usam `ready_order` e ID.
 
-Exemplo: `./build/os_llm_cli --policy ema --ema-alpha 0.5 --ema-initial 6 --scenario scenarios/ema-demo.csv`.
+FCFS, SJF e prioridade são não preemptivos; RR preempta ao fim do quantum. A prioridade com aging soma um bônus a cada `aging_interval` ticks de espera.
+
+As variantes antigas (SJF estimado por `predicted_tokens`, SJF-oráculo, SJF por média exponencial e o preditor offline) foram removidas pela [ADR 0002](../../docs/adr/0002-foco-typesafe-jev.md).
+
+Exemplo: `./build/os_llm_cli --policy sjf --scenario scenarios/sample.csv`.

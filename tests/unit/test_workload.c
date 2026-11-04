@@ -8,7 +8,6 @@
 static bool same_request(const OsRequest *a, const OsRequest *b) {
     return a->id == b->id && a->arrival_tick == b->arrival_tick &&
            a->total_tokens == b->total_tokens &&
-           a->predicted_tokens == b->predicted_tokens &&
            a->priority == b->priority && a->state == b->state;
 }
 
@@ -19,14 +18,13 @@ static void golden_seed(void) {
     assert(os_workload_generate(&cfg, a, 4));
     assert(os_workload_generate(&cfg, b, 4));
     for (size_t i = 0; i < 4; ++i) assert(same_request(&a[i], &b[i]));
-    const uint64_t arrival[] = {9, 9, 2, 5};
-    const uint32_t tokens[] = {7, 4, 8, 5};
-    const uint32_t predicted[] = {7, 4, 7, 4};
-    const int priority[] = {0, 2, 2, 3};
+    const uint64_t arrival[] = {9, 1, 7, 10};
+    const uint32_t tokens[] = {7, 8, 8, 7};
+    const int priority[] = {0, 0, 1, 4};
     for (size_t i = 0; i < 4; ++i) {
         assert(a[i].id == i + 1 && a[i].arrival_tick == arrival[i]);
         assert(a[i].total_tokens == tokens[i]);
-        assert(a[i].predicted_tokens == predicted[i] && a[i].priority == priority[i]);
+        assert(a[i].priority == priority[i]);
     }
     cfg.seed = 43;
     assert(os_workload_generate(&cfg, b, 4));
@@ -41,9 +39,9 @@ static void golden_seed(void) {
     rewind(file);
     char line[160];
     assert(fgets(line, sizeof line, file));
-    assert(strcmp(line, "# os-llm-scenario v1 seed=42 distribution=uniform count=4\n") == 0);
+    assert(strcmp(line, "# os-llm-scenario v2 seed=42 distribution=uniform count=4\n") == 0);
     assert(fgets(line, sizeof line, file));
-    assert(strcmp(line, "1,9,7,7,0\n") == 0);
+    assert(strcmp(line, "1,9,7,0\n") == 0);
     fclose(file);
 }
 
@@ -58,7 +56,6 @@ static void distributions_and_bounds(void) {
         for (size_t i = 0; i < 16; ++i) {
             assert(req[i].id == i + 1 && req[i].arrival_tick <= 80);
             assert(req[i].total_tokens >= 1 && req[i].total_tokens <= 10);
-            assert(req[i].predicted_tokens >= 1);
             assert(os_request_is_fresh(&req[i]));
             if (cfg.distribution == OS_WORKLOAD_BURST)
                 assert(req[i].arrival_tick <= 10 || req[i].arrival_tick >= 70);

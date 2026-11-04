@@ -5,8 +5,8 @@
 #include <stdint.h>
 
 static void init(OsRequest *r) {
-    assert(os_request_init(&r[0], 10, 0, 3, 3, 0));
-    assert(os_request_init(&r[1], 11, 0, 3, 3, 0));
+    assert(os_request_init(&r[0], 10, 0, 3, 0));
+    assert(os_request_init(&r[1], 11, 0, 3, 0));
 }
 
 int main(void) {

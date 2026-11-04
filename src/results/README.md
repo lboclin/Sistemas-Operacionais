@@ -5,18 +5,18 @@ PCBs originais, PCBs finais, configuração, métricas e trace capturado por
 `os_trace_capture`. Ele não reexecuta nem altera o motor de simulação.
 
 ```sh
-./build/os_llm_cli --scenario scenarios/seed42-v1.csv --policy rr --quantum 2 \
+./build/os_llm_cli --scenario scenarios/seed42-v2.csv --policy rr --quantum 2 \
   --frames 2 --page-tokens 2 --page-policy lru \
   --export-json run.json --export-csv run.csv
 ```
 
-- JSON: `schema=os-llm-run`, `version=1`, `engine=virtual`, `source`,
+- JSON: `schema=os-llm-run`, `version=2`, `engine=virtual`, `source`,
   `seed` (número ou `null`), `config`, `input`, `requests`, `events`,
   `metrics`, `trace_fingerprint` e `finished`.
 - CSV: formato longo `section,index,field,value`. Seções: `meta`,
   `config`, `input`, `request`, `event`, `metric`. Uma linha por campo;
   o índice de requisição/evento é baseado em zero. Campos opcionais vazios.
-- Seed só é conhecida quando o arquivo de cenário contém cabeçalho v1; CSV
+- Seed só é conhecida quando o arquivo de cenário contém cabeçalho v2; CSV
   legado e carga padrão são registrados com seed desconhecida. O cenário de
   entrada está integralmente no artefato, independentemente da seed.
 - Fingerprint FNV-1a64 versionado, **não criptográfico**. Tempos são ticks

@@ -20,14 +20,11 @@
 #define MAX_REQUESTS 256
 
 static void usage(const char *app) {
-    printf("Usage: %s [--policy fcfs|sjf|ema|oracle|rr|priority] [--workers N] [--quantum N]\n"
+    printf("Usage: %s [--policy fcfs|sjf|rr|priority] [--workers N] [--quantum N]\n"
            "       [--scenario FILE] [--frames N --page-tokens N --page-policy fifo|lru] [--page-fault-latency N] [--starvation-threshold N] [--trace]\n"
-           "       [--ema-alpha A --ema-initial N] [--export-json FILE] [--export-csv FILE]\n", app);
-    puts("Input CSV (without header): id,arrival_tick,total_tokens,predicted_tokens,priority");
-    puts("Virtual simulator only. Each token costs one virtual tick.");
-    puts("--policy sjf uses supplied predicted_tokens; ema learns from completed");
-    puts("requests per priority class; oracle uses true total_tokens (baseline only).");
-    puts("EMA defaults: --ema-alpha 0.5 --ema-initial 6; flags require --policy ema.");
+           "       [--export-json FILE] [--export-csv FILE]\n", app);
+    puts("Input CSV (without header): id,arrival_tick,input_tokens,priority");
+    puts("Virtual simulator of a Jev (TypeSafe) server. Each input token costs one virtual tick.");
     puts("       [--steps N] [--snapshots]");
     puts("--steps N limits session advances; --snapshots shows the initial state and each step.");
     puts("An idle step may jump to the next arrival tick.");
@@ -57,16 +54,6 @@ static bool parse_u64(const char *s, uint64_t *out) {
     return true;
 }
 
-static bool parse_ema_alpha(const char *s, double *out) {
-    if (s == NULL || *s == '\0') return false;
-    char *end = NULL;
-    errno = 0;
-    const double value = strtod(s, &end);
-    if (errno || end == s || *end || !(value >= 0.0 && value <= 1.0)) return false;
-    *out = value;
-    return true;
-}
-
 static bool load_csv(const char *path, OsRequest *requests, size_t *count,
                      bool *has_seed, uint64_t *seed_out) {
     FILE *fp = fopen(path, "r");
@@ -92,7 +79,7 @@ static bool load_csv(const char *path, OsRequest *requests, size_t *count,
                 sscanf(line, "# os-llm-scenario v%u seed=%" SCNu64
                        " distribution=%23s count=%zu %c",
                        &version, &seed, distribution, &declared, &extra) != 4 ||
-                version != 1 || declared == 0 || declared > MAX_REQUESTS ||
+                version != 2 || declared == 0 || declared > MAX_REQUESTS ||
                 (strcmp(distribution, "uniform") != 0 &&
                  strcmp(distribution, "burst") != 0 &&
                  strcmp(distribution, "staggered") != 0)) {
@@ -106,13 +93,13 @@ static bool load_csv(const char *path, OsRequest *requests, size_t *count,
             continue;
         }
         if (line[0] == '#' || line[0] == '\n' || line[0] == '\r') continue;
-        uint32_t id, total, predicted;
+        uint32_t id, total;
         uint64_t arrival;
         int priority;
         char extra;
-        if (sscanf(line, " %" SCNu32 " , %" SCNu64 " , %" SCNu32 " , %" SCNu32 " , %d %c",
-                   &id, &arrival, &total, &predicted, &priority, &extra) != 5 ||
-            n == MAX_REQUESTS || !os_request_init(&requests[n], id, arrival, total, predicted, priority)) {
+        if (sscanf(line, " %" SCNu32 " , %" SCNu64 " , %" SCNu32 " , %d %c",
+                   &id, &arrival, &total, &priority, &extra) != 4 ||
+            n == MAX_REQUESTS || !os_request_init(&requests[n], id, arrival, total, priority)) {
             valid = false; break;
         }
         ++n;
@@ -277,7 +264,7 @@ static void print_snapshot(uint64_t step, const OsSessionSnapshot *snap,
     for (size_t i = 0; i < snap->request_count; ++i) {
         const OsRequest *r = &requests[i];
         printf("  pcb=%" PRIu32 " state=%s tokens=%" PRIu32 "/%" PRIu32 " wait=%" PRIu64 "\n",
-               r->id, os_request_state_name(r->state), r->generated_tokens,
+               r->id, os_request_state_name(r->state), r->processed_tokens,
                r->total_tokens, r->waiting_ticks);
     }
 }
@@ -291,14 +278,12 @@ static void format_tick(uint64_t tick, char *buffer, size_t capacity) {
 
 int main(int argc, char **argv) {
     OsVirtualConfig cfg = {.policy = OS_FCFS, .worker_count = 1,
-                           .quantum_tokens = 2, .aging_interval = 2,
-                           .ema_alpha = 0.5, .ema_initial_tokens = 6};
+                           .quantum_tokens = 2, .aging_interval = 2};
     const char *scenario = NULL;
     const char *export_json = NULL;
     const char *export_csv = NULL;
     bool trace = false;
     bool page_option = false;
-    bool ema_option = false;
     bool snapshots = false;
     bool has_step_limit = false;
     uint64_t step_limit = 0;
@@ -309,19 +294,10 @@ int main(int argc, char **argv) {
         if (!strcmp(argv[i], "--policy") && i + 1 < argc) {
             const char *value = argv[++i];
             if (!strcmp(value, "fcfs")) cfg.policy = OS_FCFS;
-            else if (!strcmp(value, "sjf")) cfg.policy = OS_SJF_ESTIMATED;
-            else if (!strcmp(value, "ema")) cfg.policy = OS_SJF_EMA;
-            else if (!strcmp(value, "oracle")) cfg.policy = OS_SJF_ORACLE;
+            else if (!strcmp(value, "sjf")) cfg.policy = OS_SJF;
             else if (!strcmp(value, "rr")) cfg.policy = OS_ROUND_ROBIN;
             else if (!strcmp(value, "priority")) cfg.policy = OS_PRIORITY_AGING;
             else { fprintf(stderr, "Unknown policy: %s\n", value); return 2; }
-        } else if (!strcmp(argv[i], "--ema-alpha") && i + 1 < argc) {
-            if (!parse_ema_alpha(argv[++i], &cfg.ema_alpha)) return 2;
-            ema_option = true;
-        } else if (!strcmp(argv[i], "--ema-initial") && i + 1 < argc) {
-            if (!parse_uint(argv[++i], &cfg.ema_initial_tokens) ||
-                cfg.ema_initial_tokens == 0) return 2;
-            ema_option = true;
         } else if (!strcmp(argv[i], "--workers") && i + 1 < argc) {
             uint32_t workers;
             if (!parse_uint(argv[++i], &workers) || workers == 0 || workers > 4096) return 2;
@@ -367,10 +343,6 @@ int main(int argc, char **argv) {
             has_step_limit = true;
         } else { fprintf(stderr, "Invalid argument: %s\n", argv[i]); usage(argv[0]); return 2; }
     }
-    if (ema_option && cfg.policy != OS_SJF_EMA) {
-        fputs("--ema-alpha and --ema-initial require --policy ema\n", stderr);
-        return 2;
-    }
     if (page_option && !cfg.memory_enabled) {
         fputs("--page-tokens, --page-policy and --page-fault-latency require --frames\n", stderr);
         return 2;
@@ -388,9 +360,9 @@ int main(int argc, char **argv) {
     if (scenario != NULL) {
         if (!load_csv(scenario, requests, &count, &has_seed, &seed)) return 2;
     } else {
-        os_request_init(&requests[0], 1, 0, 6, 5, 1);
-        os_request_init(&requests[1], 2, 0, 2, 2, 3);
-        os_request_init(&requests[2], 3, 2, 3, 4, 2);
+        os_request_init(&requests[0], 1, 0, 6, 1);
+        os_request_init(&requests[1], 2, 0, 2, 3);
+        os_request_init(&requests[2], 3, 2, 3, 2);
     }
     OsRequest input_requests[MAX_REQUESTS];
     memcpy(input_requests, requests, count * sizeof(*requests));

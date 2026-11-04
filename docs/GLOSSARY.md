@@ -6,6 +6,8 @@
 - **Quantum:** cota de trabalho/tokens no Round Robin.
 - **FCFS/SJF/RR:** First Come First Served, Shortest Job First e Round Robin.
 - **Aging:** aumento gradual de prioridade durante a espera.
+- **Jev:** modelo de decisão da TypeSafe AI; devolve categoria, nota ou probabilidade, não texto livre. Ver ADR 0002.
+- **Token de entrada:** unidade de trabalho do simulador; cada um custa um tick virtual.
 - **KV cache:** cache de atenção de LLM; a política de memória neste projeto é simulada para fins didáticos.
 - **Frame/bloco:** unidade fixa de memória simulada.
 - **Page fault:** referência a página ausente dos frames.
