@@ -42,6 +42,9 @@ class RealEngineAcceptance(unittest.TestCase):
         self.assertEqual(result["version"], 2)
         self.assertIs(result["finished"], True)
         self.assertEqual(result["metrics"]["completed"], len(payload["requests"]))
+        utilization = result["metrics"]["worker_utilization"]
+        self.assertGreater(utilization, 0)
+        self.assertLessEqual(utilization, 1)
         self.assertEqual(len(result["requests"]), len(payload["requests"]))
         expected = {int(r["id"]): int(r["total_tokens"]) for r in payload["requests"]}
         self.assertEqual({r["id"] for r in result["requests"]}, set(expected))

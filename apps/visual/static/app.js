@@ -22,7 +22,7 @@ function notice(text, kind = '') {
 }
 function invalidate() {
   scenarioRevision += 1;
-  for (const key of ['m-completed','m-wait','m-throughput','m-duration','m-count']) $(key).textContent = '—';
+  for (const key of ['m-completed','m-wait','m-throughput','m-duration','m-utilization','m-count']) $(key).textContent = '—';
   $('results').hidden = true;
   $('empty-state').hidden = false;
   $('run-state').textContent = 'AGUARDANDO';
@@ -112,6 +112,9 @@ function display(result) {
   $('m-wait').textContent = number('average_wait_ticks');
   $('m-throughput').textContent = number('throughput_per_tick',4);
   $('m-duration').textContent = number('makespan_ticks',0);
+  const utilization = m.worker_utilization;
+  $('m-utilization').textContent = typeof utilization === 'number' && Number.isFinite(utilization) && utilization >= 0 && utilization <= 1
+    ? (utilization * 100).toLocaleString('pt-BR',{maximumFractionDigits:1}) + '%' : '—';
   $('r-policy').textContent = result.config.policy;
   $('r-events').textContent = Array.isArray(result.events) ? result.events.length : '—';
   const body = $('result-rows');

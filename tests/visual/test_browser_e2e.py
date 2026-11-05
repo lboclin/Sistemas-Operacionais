@@ -3,6 +3,7 @@
 Requires Playwright+Chromium and OSLLM_CLI/OSLLM_RACE/OSLLM_DEADLOCK.
 The CI job must fail if the dependency or a compiled binary is missing.
 """
+import re
 import json
 import os
 from pathlib import Path
@@ -61,6 +62,7 @@ class BrowserE2E(unittest.TestCase):
     def test_scheduler_gantt_replay_comparison_and_export(self):
         self.execute()
         expect(self.page.locator("#result-rows tr")).to_have_count(3)
+        expect(self.page.locator("#m-utilization")).to_have_text(re.compile(r"^\d{1,3}(,\d)?%$"))
         expect(self.page.locator("#timeline-panel")).to_be_visible()
         self.assertGreater(self.page.locator("#timeline-chart .timeline-bar").count(), 0)
         self.page.locator("#timeline-start").click()
