@@ -9,7 +9,8 @@ typedef enum {
     OS_FCFS,
     OS_SJF,
     OS_ROUND_ROBIN,
-    OS_PRIORITY_AGING
+    OS_PRIORITY_AGING,
+    OS_HRRN
 } OsSchedulingPolicy;
 
 /* Returns SIZE_MAX if no request is ready. Policies are non-preemptive except RR. */

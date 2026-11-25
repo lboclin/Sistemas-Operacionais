@@ -9,7 +9,7 @@ import tempfile
 import unittest
 
 CLI = os.environ.get("OSLLM_CLI")
-POLICIES = ("fcfs", "sjf", "rr", "priority")
+POLICIES = ("fcfs", "sjf", "rr", "priority", "hrrn")
 
 
 @unittest.skipUnless(CLI, "compiled os_llm_cli is required")
@@ -65,8 +65,8 @@ class RandomizedCoreTests(unittest.TestCase):
         return data
 
     def test_seeded_policy_paging_and_replay_matrix(self):
-        # 6 seeds × 4 policies × 2 memory modes = 48 full C engine runs,
-        # plus 16 exact reruns testing trace and metric determinism.
+        # 6 seeds × 5 policies × 2 memory modes = 60 full C engine runs,
+        # plus 20 exact reruns testing trace and metric determinism.
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             for seed in range(6):
