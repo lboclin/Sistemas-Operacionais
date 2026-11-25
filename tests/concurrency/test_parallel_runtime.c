@@ -67,6 +67,7 @@ int main(void) {
         compare_runs(workers, OS_FCFS, false, 0);
         compare_runs(workers, OS_ROUND_ROBIN, true, 0);
         compare_runs(workers, OS_PRIORITY_AGING, true, 2);
+        compare_runs(workers, OS_HRRN, true, 2);
     }
     return 0;
 }

@@ -1,0 +1,8 @@
+name,policy,completed,average_wait_ticks,p50_wait_ticks,p95_wait_ticks,average_response_ticks,p95_response_ticks,average_turnaround_ticks,p95_turnaround_ticks,throughput_per_tick,worker_utilization,max_wait_ticks,starvation_count
+fcfs,FCFS,200,50.9,52,52,50.9,52,55.08,56,0.23923444976076555,1,52,0
+sjf,SJF,200,15.8,12,12,15.8,12,19.98,16,0.23923444976076555,1,796,1
+hrrn,HRRN,200,46.22,52,52,46.22,52,50.4,56,0.23923444976076555,1,120,0
+rr_q1,Round-Robin,200,68.26,72,84,15.855,21,72.44,88,0.23923444976076555,1,532,1
+rr_q3,Round-Robin,200,73.79,85,85,34.82,41,77.97,89,0.23923444976076555,1,377,1
+priority_aging,Priority-aging,200,50.9,52,52,50.9,52,55.08,56,0.23923444976076555,1,52,0
+priority_no_aging,Priority-aging,200,15.8,12,12,15.8,12,19.98,16,0.23923444976076555,1,796,1

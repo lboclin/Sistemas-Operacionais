@@ -47,6 +47,21 @@ int main(void) {
     assert(m.completed == 3 && m.makespan_ticks == 6);
     assert(r[1].first_run_tick == 0);
 
+    /* HRRN: order A, C, B, D. FCFS gives A, B, C, D and SJF gives A, C, D, B. */
+    OsRequest h[4];
+    assert(os_request_init(&h[0], 1, 0, 8, 0));
+    assert(os_request_init(&h[1], 2, 0, 10, 0));
+    assert(os_request_init(&h[2], 3, 4, 4, 0));
+    assert(os_request_init(&h[3], 4, 10, 2, 0));
+    cfg.worker_count = 1;
+    cfg.policy = OS_HRRN;
+    assert(os_virtual_run(h, 4, &cfg, &m) == OS_RUN_OK);
+    assert(h[0].first_run_tick == 0 && h[0].finished_tick == 8);
+    assert(h[2].first_run_tick == 8 && h[2].finished_tick == 12);  /* 2.0 vs 1.8 */
+    assert(h[1].first_run_tick == 12 && h[1].finished_tick == 22); /* 2.2 vs 2.0 */
+    assert(h[3].first_run_tick == 22 && h[3].finished_tick == 24);
+    assert(m.completed == 4 && m.preemptions == 0);
+
     OsRequest late;
     assert(os_request_init(&late, 99, 20, 1, 0));
     cfg.worker_count = 1;
@@ -60,6 +75,8 @@ int main(void) {
     assert(os_virtual_run(duplicates, 2, &cfg, &m) == OS_RUN_INVALID);
 
     fill(r);
+    cfg.policy = (OsSchedulingPolicy)(OS_HRRN + 1);
+    assert(os_virtual_run(r, 3, &cfg, &m) == OS_RUN_INVALID);
     cfg.policy = OS_ROUND_ROBIN;
     cfg.quantum_tokens = 0;
     assert(os_virtual_run(r, 3, &cfg, &m) == OS_RUN_INVALID);

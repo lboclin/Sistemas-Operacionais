@@ -75,19 +75,24 @@ def collect(args, work):
                         "python": platform.python_version()},
         "model": "virtual token-tick scheduler; pthread labs separately"},
         "config": {"workers": args.workers, "frames": args.frames,
-                   "tokens_per_page": args.page_tokens, "timeout_seconds": args.timeout},
+                   "tokens_per_page": args.page_tokens, "aging_interval": args.aging_interval,
+                   "starvation_threshold": args.starvation_threshold,
+                   "page_fault_latency": args.page_fault_latency,
+                   "timeout_seconds": args.timeout},
         "campaigns": {}}
     data["campaigns"]["E1"] = {"name": "logical lost updates", "runs": [
         lab(args.race_lab, "safe", r"mode=safe expected=2 observed=2 lost=0", args.timeout),
         lab(args.race_lab, "unsafe", r"mode=unsafe expected=2 observed=1 lost=1", args.timeout)]}
     scheduling = [
         ("fcfs", ["--policy", "fcfs"]), ("sjf", ["--policy", "sjf"]),
+        ("hrrn", ["--policy", "hrrn"]),
         ("rr_q1", ["--policy", "rr", "--quantum", "1"]),
         ("rr_q3", ["--policy", "rr", "--quantum", "3"]),
-        ("priority_aging", ["--policy", "priority"])]
-    e2 = [run_cli(args, work, expected, name, flags) for name, flags in scheduling]
-    e2 += [{"name": "priority_no_aging", "status": "skipped",
-            "reason": "CLI does not yet expose aging_interval"}]
+        ("priority_aging", ["--policy", "priority", "--aging-interval", str(args.aging_interval)]),
+        ("priority_no_aging", ["--policy", "priority", "--aging-interval", "0"])]
+    # The same threshold applies to every policy, so starvation_count is comparable.
+    threshold = ["--starvation-threshold", str(args.starvation_threshold)]
+    e2 = [run_cli(args, work, expected, name, flags + threshold) for name, flags in scheduling]
     data["campaigns"]["E2"] = {"name": "virtual scheduling", "runs": e2}
     e3 = []
     for count in args.frames:
@@ -96,7 +101,7 @@ def collect(args, work):
             e3.append(run_cli(args, work, expected, name,
                               ["--policy", "fcfs", "--frames", str(count),
                                "--page-tokens", str(args.page_tokens),
-                               "--page-policy", policy, "--page-fault-latency", "1"]))
+                               "--page-policy", policy, "--page-fault-latency", str(args.page_fault_latency)]))
     e3.append({"name": "opt_offline", "status": "skipped",
                "reason": "OPT is an offline replay benchmark, not an online CLI policy"})
     data["campaigns"]["E3"] = {"name": "virtual paging", "runs": e3}
@@ -119,10 +124,19 @@ def main(argv=None):
     parser.add_argument("--workers", type=int, default=2)
     parser.add_argument("--frames", type=int, nargs="+", default=[1, 2, 4])
     parser.add_argument("--page-tokens", type=int, default=2)
+    parser.add_argument("--aging-interval", type=int, default=2,
+                        help="waiting ticks per priority bonus in priority_aging "
+                             "(priority_no_aging always uses 0)")
+    parser.add_argument("--starvation-threshold", type=int, default=0,
+                        help="wait in ticks counted as starvation in E2 (0 disables)")
+    parser.add_argument("--page-fault-latency", type=int, default=1,
+                        help="virtual ticks blocked per page fault in E3")
     parser.add_argument("--timeout", type=int, default=30)
     args = parser.parse_args(argv)
     if (not 1 <= args.workers <= 32 or not 1 <= args.page_tokens <= 4096 or
-        not 1 <= args.timeout <= 120 or not args.frames or
+        not 1 <= args.timeout <= 120 or not 1 <= args.aging_interval <= 2**64 - 1 or
+        not 0 <= args.starvation_threshold <= 2**64 - 1 or
+        not 0 <= args.page_fault_latency <= 2**32 - 1 or not args.frames or
         len(args.frames) != len(set(args.frames)) or any(not 1 <= x <= 4096 for x in args.frames)):
         parser.error("invalid experiment configuration")
     output = args.output_dir.resolve()

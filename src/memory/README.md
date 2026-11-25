@@ -8,6 +8,6 @@ A pressão de memória usa substituição FIFO/LRU quando todos os frames estão
 
 A tabela de páginas de cada requisição é uma **visão derivada** dos frames residentes, não um segundo armazenamento mutável: `os_frames_lookup` resolve o par (`request_id`, `page_id`) para um índice físico e `os_frames_snapshot_request` enumera os mapeamentos de um único pedido. Isso evita inconsistência entre a tabela e o cache após FIFO/LRU, evicção ou liberação. As consultas não atualizam relógio nem contadores e snapshots com capacidade insuficiente não escrevem parcialmente. Os índices físicos são válidos somente até a próxima mutação do cache (especialmente liberação, que compacta os frames).
 
-**Limite atual:** as consultas são da API de memória; o snapshot da sessão ainda informa somente a quantidade de frames residentes. Há page fault com latência opcional, mas não há pinning de frames, fragmentação nem memória física real. Páginas podem ser evictadas enquanto a requisição aguarda; no primeiro retry após wakeup, um miss é recarregado sem nova espera.
+**Limite atual:** as consultas são da API de memória; o snapshot da sessão ainda informa somente a quantidade de frames residentes. Há page fault com latência opcional, mas não há pinning de frames nem memória física real. Páginas podem ser evictadas enquanto a requisição aguarda; no primeiro retry após wakeup, um miss é recarregado sem nova espera.
 
 Testes: `pager`, `frames`, `page_tables` e `memory_runtime`.

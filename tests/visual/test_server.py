@@ -29,7 +29,7 @@ rows=[]
 for line in scenario.read_text().splitlines():
     rid,arr,total,priority=map(int,line.split(','))
     rows.append(dict(id=rid,arrival_tick=arr,total_tokens=total,priority=priority))
-name={'fcfs':'FCFS','rr':'Round-Robin','sjf':'SJF','priority':'Priority-aging'}[policy]
+name={'fcfs':'FCFS','rr':'Round-Robin','sjf':'SJF','priority':'Priority-aging','hrrn':'HRRN'}[policy]
 result={'schema':'os-llm-run','version':2,'finished':True,'input':rows,
  'config':{'policy':name,'worker_count':int(args[args.index('--workers')+1])},
  'requests':[dict(id=r['id'],arrival_tick=r['arrival_tick'],state='TERMINATED',processed_tokens=r['total_tokens'],first_run_tick=r['arrival_tick'],finished_tick=r['arrival_tick']+r['total_tokens'],waiting_ticks=0) for r in rows],

@@ -65,7 +65,7 @@ function renderRows() {
 function validateForm() {
   if (requests.length < 1 || requests.length > 256) throw Error('Adicione de 1 a 256 requisições.');
   const seen = new Set();
-  const limits = [[1n,4294967295n],[0n,18446744073709551614n],[1n,4294967295n],[1n,4294967295n],[-2147483648n,2147483647n]];
+  const limits = [[1n,4294967295n],[0n,18446744073709551614n],[1n,4294967295n],[-2147483648n,2147483647n]];
   for (let index = 0; index < requests.length; index++) {
     for (let pos = 0; pos < fields.length; pos++) {
       const key = fields[pos], value = requests[index][key];

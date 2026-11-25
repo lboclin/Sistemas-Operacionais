@@ -1,0 +1,60 @@
+> **Documento de planejamento (out/2026), mantido como histórico. Estado atual: [IMPLEMENTATION_STATUS.md](../IMPLEMENTATION_STATUS.md).**
+
+# Roadmap histórico de implementação por commits — OS-llm-project
+
+> **Nota de 02/11/2026:** este é o plano histórico dos commits 01–28. Os blocos H e I foram posteriormente integrados à `main`; o Bloco J é acompanhado em [FINAL_DELIVERY.md](../FINAL_DELIVERY.md). As pendências relatadas nas entradas antigas representam o momento da redação, não o estado atual.
+
+> Planejamento revisável de 25/10/2026, baseado na `main` a partir do commit `140ff8a` e na especificação [FUNCTIONAL_SPEC.md](FUNCTIONAL_SPEC.md).
+> **Regra:** cada commit contém uma mudança coesa, testes relevantes e documentação do comportamento real. Não usar timestamps retroativos, commits vazios, force push ou publicar integrações quebradas.
+
+## Primeira metade: 14 commits
+
+As estimativas incluem desenvolvimento, revisão e testes; tarefas mais complexas têm faixas maiores.
+
+| # | Estado | Mensagem sugerida | Entrega verificável | Esforço previsto |
+|---|---|---|---|---|
+| 01 | **Feito**: `e707c3c` | `fix(core): enforce fresh PCB invariants at gateway admission` | Invariantes de PCB novo centralizados no core; gateway não aceita campos preenchidos indevidamente; teste de regressão | 20–40 min |
+| 02 | **Feito** (visões por requisição) | `feat(memory): expose per-request resident page mappings` | Consulta e snapshot de mapeamentos lógico→frame por requisição; eviction/liberação refletidas automaticamente, sem duplicar estado | 40–70 min |
+| 03 | **Feito**: `c14495c` (I/O virtual) | `feat(runtime): model page-fault blocking and latency` | Estado BLOCKED, custo virtual, liberação do worker, evento de wakeup, progresso e snapshots consistentes | 60–110 min |
+| 04 | **Feito**: `a4592ec` (pressão e fragmentação) | `feat(memory): handle capacity and fragmentation` | Pressão de memória, política de espera/evicção explicitada, fragmentação e casos extremos | 35–65 min |
+| 05 | **Feito**: `f9747ae` (trace e replay) | `feat(events): provide deterministic traces` | Ordem estável de eventos, rastreabilidade e replay verificável sem reconstrução falsa de estados | 25–45 min |
+| 06 | **Feito**: `cc60a67` (workload v1) | `feat(workload): generate seeded scenarios` | Gerador com seed, múltiplas distribuições, formato versionado, validação e fixtures | 30–60 min |
+| 07 | **Feito**: `c628607` (métricas) | `feat(metrics): add percentiles and utilization` | p50/p95, utilização, espera máxima, tempo bloqueado, preempções e dados para Gantt | 30–60 min |
+| 08 | **Feito**: `0a7a210` (exportação virtual) | `feat(results): export reproducible runs` | JSON/CSV com versão, entrada, configuração, seed, eventos e medidas | 25–50 min |
+| 09 | **Feito**: `1523d7f` (ciclo de vida pthread isolado) | `feat(runtime): introduce pthread worker pool` | Threads reais, ciclo de vida, shutdown cooperativo, joins e testes independentes | 90–150 min |
+| 10 | **Feito**: `a390a53` (fila POSIX independente) | `feat(sync): protect worker queues and resources` | Fila compartilhada, mutex, semáforos, cancelamento/cleanup e stress | 45–80 min |
+| 11 | **Feito**: `1e122d2` (adaptador POSIX) | `feat(runtime): connect pthreads to scheduling` | Coordenador único para escalonador, cache e métricas; fila e pthreads confirmam tarefas de token com ACK exclusivo; traces idênticos ao virtual | 90–150 min |
+| 12 | **Feito**: `ac6432f` | `feat(concurrency): isolate race demonstration` | Subprocesso fork/exec, watchdog 3s, safe/unsafe com lost update determinístico sem data race indefinida em C | 45–75 min |
+| 13 | **Feito**: `ba86156` | `feat(deadlock): detect resource wait cycles` | Grafo didático de recursos exclusivos e detecção de ciclos com testemunha determinística | 60–100 min |
+| 14 | **Feito (modelo)**: `021fd78` | `feat(deadlock): prevent and recover safely` | Aquisição não bloqueante em ordem global, recuperação por liberação da vítima, 1000 ciclos de liveness e watchdog CTest | 60–100 min |
+
+Os commits 08–10 adicionaram exportação JSON/CSV, pool pthread e fila POSIX. O runtime integrado veio no commit 11: um coordenador mantém a propriedade dos PCBs, scheduler, cache KV e métricas, enquanto os pthreads confirmam tarefas simuladas de token. Não há inferência real nem acesso paralelo ao cache.
+
+Os commits 11–14 adicionaram o adaptador POSIX e os laboratórios de corrida e deadlock. O deadlock do commit 14 é representado por um grafo didático; ele não trava mutexes pthread. A integração com o runtime e a interface visual continuam pendentes.
+
+## Sessões de trabalho planejadas
+
+| Bloco | Commits alvo | Objetivo | Estimativa do bloco |
+|---|---|---|---|
+| A | 01 (feito) | Endurecer contratos básicos e validação de entrada | 20–40 min |
+| B | 02–04 | Memória e integração com BLOCKED/page fault | ~2h15–4h05 |
+| C | 05–07 | Eventos, workloads e métricas | ~1h25–2h45 |
+| D | 08–10 | Exportação e primeira base pthread/sync | ~2h40–4h40 |
+| E | 11–14 | Integração POSIX, corrida, deadlock/detecção/prevenção | ~4h45–7h55 |
+
+## O restante da aplicação (15–28, em andamento)
+
+**Commit 15 (F12 parcial, feito: `46736ae`):** transporte POSIX por pipe com framing e demo gateway/worker em processos reais. Os testes cobrem framing e round-trip. A integração IPC com o runtime principal permanece pendente.
+
+### Bloco G — Previsão e cargas (30/10/2026)
+
+- **G19** `5411946`: SJF-EMA online com histórico por prioridade, atualização após conclusão, testes.
+- **G20** `eaad60d`: preditor ridge offline com avaliação por split, modelo versionado e testes.
+- **G21** `09f815b`: adaptador de comparação FCFS/EMA/IA/oráculo via CSV v1, sem dependência Python no core C.
+- **G22** (este commit): coleta opcional de metadados de saída por endpoint OpenAI-compatible, fixture sintética rotulada, geração de workloads determinísticos com CSV v1 + features G21 + proveniência, testes com mock local (7/7). **Nenhum LLM real foi consultado.** A suíte CTest completa e o CI do bloco G ainda não foram validados; manter essa limitação explícita.
+
+### Mudança de foco: servidor do Jev (04/11/2026)
+
+O bloco G foi **revertido** pela [ADR 0002](../adr/0002-foco-typesafe-jev.md). O simulador passou a modelar um servidor do Jev (TypeSafe AI): 1 tick = 1 token de entrada, e o tamanho do job é conhecido na chegada. Saíram o SJF-EMA (G19), o preditor (G20), o adaptador SJF-IA (G21) e a coluna `predicted_tokens`. A coleta do G22 continua, mas agora gera cenários CSV v2 com os tokens de **entrada**. O SJF passou a ordenar pelo tamanho real da entrada.
+
+**Próximos (histórico):** bloco H de experimentos e relatórios comparativos, depois GUI, testes E2E e entrega final. Linguagem e interface ainda são decisões abertas.

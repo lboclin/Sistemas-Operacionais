@@ -172,6 +172,15 @@ if(BUILD_TESTING)
     add_test(NAME cli_missing_steps COMMAND os_llm_cli --steps)
     set_tests_properties(cli_missing_steps PROPERTIES WILL_FAIL TRUE)
 
+    # Priority must use the interval given on the command line (0 = no aging).
+    foreach(aging IN ITEMS "-1" "x" "18446744073709551616")
+        add_test(NAME cli_invalid_aging_${aging} COMMAND os_llm_cli --policy priority --aging-interval ${aging})
+        set_tests_properties(cli_invalid_aging_${aging} PROPERTIES
+            PASS_REGULAR_EXPRESSION "Invalid --aging-interval value")
+    endforeach()
+    add_test(NAME cli_missing_aging COMMAND os_llm_cli --aging-interval)
+    set_tests_properties(cli_missing_aging PROPERTIES WILL_FAIL TRUE)
+
     add_executable(test_fresh_pcb tests/unit/test_fresh_pcb.c)
     target_link_libraries(test_fresh_pcb PRIVATE os_core)
     if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
@@ -211,6 +220,7 @@ if(BUILD_TESTING)
     endif()
     add_test(NAME workload COMMAND test_workload)
     add_test(NAME workload_help COMMAND os_llm_workload --help)
+    set_tests_properties(workload_help PROPERTIES PASS_REGULAR_EXPRESSION "versioned CSV v2")
     add_test(NAME workload_seed42 COMMAND os_llm_workload --seed 42 --count 4 --arrival-span 10 --min-tokens 2 --max-tokens 8)
     set_tests_properties(workload_seed42 PROPERTIES PASS_REGULAR_EXPRESSION "# os-llm-scenario v2 seed=42 distribution=uniform count=4")
     add_test(NAME cli_seeded_fixture COMMAND os_llm_cli --scenario ${CMAKE_CURRENT_SOURCE_DIR}/scenarios/seed42-v2.csv)
@@ -330,6 +340,8 @@ if(BUILD_TESTING)
     if(OSLLM_NODE_EXECUTABLE)
         add_test(NAME visual_timeline_js COMMAND ${OSLLM_NODE_EXECUTABLE} --test ${CMAKE_CURRENT_SOURCE_DIR}/tests/visual/test_timeline.cjs)
         add_test(NAME visual_reports_js COMMAND ${OSLLM_NODE_EXECUTABLE} --test ${CMAKE_CURRENT_SOURCE_DIR}/tests/visual/test_reports.cjs)
+        add_test(NAME visual_app_js COMMAND ${OSLLM_NODE_EXECUTABLE} --test ${CMAKE_CURRENT_SOURCE_DIR}/tests/visual/test_app.cjs)
+        set_tests_properties(visual_app_js PROPERTIES TIMEOUT 30)
         set_tests_properties(visual_reports_js PROPERTIES TIMEOUT 30)
         set_tests_properties(visual_timeline_js PROPERTIES TIMEOUT 30)
     endif()
@@ -355,6 +367,11 @@ if(BUILD_TESTING)
             ${Python3_EXECUTABLE} -m unittest discover
             -s ${CMAKE_CURRENT_SOURCE_DIR}/tests/system -p test_randomized_cli.py -v)
         set_tests_properties(core_stress_seeded_py PROPERTIES TIMEOUT 120)
+        add_test(NAME starvation_scenario_py COMMAND ${CMAKE_COMMAND} -E env
+            "OSLLM_CLI=$<TARGET_FILE:os_llm_cli>"
+            ${Python3_EXECUTABLE} -m unittest discover
+            -s ${CMAKE_CURRENT_SOURCE_DIR}/tests/system -p test_starvation_scenario.py -v)
+        set_tests_properties(starvation_scenario_py PROPERTIES TIMEOUT 120)
         add_test(NAME visual_api_py COMMAND ${CMAKE_COMMAND} -E env
             "OSLLM_CLI=$<TARGET_FILE:os_llm_cli>"
             ${Python3_EXECUTABLE} -m unittest discover
