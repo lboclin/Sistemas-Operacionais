@@ -1,6 +1,6 @@
-# H24 — Reports from H23 experimental runs
+# Reports from experimental runs
 
-Generate an H23 experiment run using the compiled binaries:
+Run the experiments with the compiled binaries, then render the report:
 
     cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
     cmake --build build --parallel
@@ -15,4 +15,4 @@ Outputs: report.json, report.md, scheduling.csv, memory.csv and optional SVG cha
 
 Important: Source is a user-supplied claim; ticks are simulated (1 tick = 1 Jev input token, not real latency); OPT is offline-only. Lab outputs are descriptive observations, not general benchmark performance.
 
-Tests: python3 -m unittest discover -s tools/analysis -p test_report.py -v. The CTest test analysis_report_py also runs a compiled H23-to-H24 smoke when binaries are present.
+Tests: python3 -m unittest discover -s tools/analysis -p test_report.py -v. The CTest test analysis_report_py also runs a compiled run-and-report smoke when binaries are present.

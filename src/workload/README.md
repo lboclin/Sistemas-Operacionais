@@ -7,4 +7,4 @@
 ./build/os_llm_cli --scenario scenario.csv
 ```
 
-Máximo de 256 requisições. O algoritmo usa aritmética inteira e não depende do `rand()` da plataforma; não simula tokens reais de um LLM.
+Máximo de 256 requisições. O algoritmo usa aritmética inteira e não depende do `rand()` da plataforma; não usa textos nem tokens reais.
