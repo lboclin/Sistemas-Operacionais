@@ -20,8 +20,8 @@ Simulador de sistemas operacionais para um servidor que atende requisições do 
 
 ## Limites
 
-- Os ticks são virtuais: o sistema não chama o Jev nem executa inferência, e o custo proporcional ao tamanho da entrada é uma simplificação. As cargas dos experimentos são sintéticas.
-- Em memória, a latência é cobrada uma vez por falta atendida: se a página for removida durante o I/O, a recarga conta como falta, mas não bloqueia de novo. Não há fixação (pinning) de frames, e OPT existe só no replay offline.
+- Os ticks são virtuais: o sistema não chama o Jev nem executa inferência, e o custo proporcional ao tamanho da entrada é uma simplificação. Não há *batching*. As cargas dos experimentos são sintéticas e não houve teste estatístico entre seeds.
+- Em memória, a latência é cobrada uma vez por falta atendida: se a página for removida durante o I/O, a recarga conta como falta, mas não bloqueia de novo. Por isso FIFO e LRU devem ser comparados pelo tempo bloqueado. Não há fixação (pinning) de frames, e OPT existe só no replay offline.
 - `waiting_ticks` é a espera acumulada na fila; no Round Robin, `starvation_count` não significa que a requisição deixou de executar.
 - Os laboratórios de corrida e deadlock rodam fora do motor e forçam a intercalação: mostram o fenômeno, não a sua frequência. Não há detecção de deadlock no runtime principal (o grafo de recursos é um modelo didático separado).
 - O IPC por pipes é uma demonstração, sem serviço persistente. A execução com pthreads é um adaptador separado, não exposto na CLI.
