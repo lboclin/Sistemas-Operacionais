@@ -14,12 +14,12 @@ POLICIES = ("fcfs", "sjf", "rr", "priority")
 
 @unittest.skipUnless(CLI, "compiled os_llm_cli is required")
 class RandomizedCoreTests(unittest.TestCase):
-    def run_case(self, root, entries, policy, workers, paging=False):
+    def run_case(self, root, entries, policy, workers, paging=False, extra=()):
         scenario = root / "workload.csv"
         scenario.write_text("\n".join(",".join(map(str, r)) for r in entries) + "\n", encoding="utf-8")
         export = root / "result.json"
         command = [CLI, "--scenario", str(scenario), "--policy", policy, "--workers", str(workers),
-                   "--export-json", str(export)]
+                   "--export-json", str(export), *extra]
         if policy == "rr":
             command += ["--quantum", "2"]
         if paging:
@@ -83,6 +83,22 @@ class RandomizedCoreTests(unittest.TestCase):
                             self.assertEqual(first["trace_fingerprint"], second["trace_fingerprint"])
                             self.assertEqual(first["metrics"], second["metrics"])
                             self.assertEqual(first["events"], second["events"])
+
+    def test_aging_interval_is_exported_and_zero_disables_aging(self):
+        # A low-priority request competing with a continuous high-priority flow.
+        entries = [(1, 0, 4, 0)] + [(i + 2, 3 * i, 3, 4) for i in range(20)]
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            waits = {}
+            for interval in (None, 0, 2):
+                flags = [] if interval is None else ["--aging-interval", str(interval)]
+                data = self.run_case(root, entries, "priority", 1, extra=flags)
+                self.assertEqual(data["config"]["aging_interval"],
+                                 2 if interval is None else interval)
+                waits[interval] = next(r["waiting_ticks"] for r in data["requests"] if r["id"] == 1)
+            self.assertEqual(waits[None], waits[2])  # the default is unchanged
+            self.assertEqual(waits[0], 60)           # without aging it runs last
+            self.assertLess(waits[2], waits[0])
 
     def test_large_valid_arrival_and_negative_cases(self):
         with tempfile.TemporaryDirectory() as folder:

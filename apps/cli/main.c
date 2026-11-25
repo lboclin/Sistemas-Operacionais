@@ -20,7 +20,7 @@
 #define MAX_REQUESTS 256
 
 static void usage(const char *app) {
-    printf("Usage: %s [--policy fcfs|sjf|rr|priority] [--workers N] [--quantum N]\n"
+    printf("Usage: %s [--policy fcfs|sjf|rr|priority] [--workers N] [--quantum N] [--aging-interval N]\n"
            "       [--scenario FILE] [--frames N --page-tokens N --page-policy fifo|lru] [--page-fault-latency N] [--starvation-threshold N] [--trace]\n"
            "       [--export-json FILE] [--export-csv FILE]\n", app);
     puts("Input CSV (without header): id,arrival_tick,input_tokens,priority");
@@ -28,6 +28,7 @@ static void usage(const char *app) {
     puts("       [--steps N] [--snapshots]");
     puts("--steps N limits session advances; --snapshots shows the initial state and each step.");
     puts("An idle step may jump to the next arrival tick.");
+    puts("--aging-interval N raises priority by 1 every N waiting ticks (priority policy; default 2, 0 disables aging).");
     puts("Online paging is optional; --page-fault-latency adds virtual blocking ticks (default 0).");
     puts("OPT page replacement is available only in offline trace replay.");
     puts("Exports contain input, configuration, optional seed, trace, metrics and results.");
@@ -304,6 +305,11 @@ int main(int argc, char **argv) {
             cfg.worker_count = workers;
         } else if (!strcmp(argv[i], "--quantum") && i + 1 < argc) {
             if (!parse_uint(argv[++i], &cfg.quantum_tokens) || cfg.quantum_tokens == 0) return 2;
+        } else if (!strcmp(argv[i], "--aging-interval") && i + 1 < argc) {
+            if (!parse_u64(argv[++i], &cfg.aging_interval)) {
+                fputs("Invalid --aging-interval value\n", stderr);
+                return 2;
+            }
         } else if (!strcmp(argv[i], "--scenario") && i + 1 < argc) {
             scenario = argv[++i];
         } else if (!strcmp(argv[i], "--frames") && i + 1 < argc) {
