@@ -1,165 +1,127 @@
-# LLM-Sched: simulador de SO para um servidor do Jev
+# LLM-Sched: um mini sistema operacional para um servidor do Jev
 
-Relatório final da disciplina de Sistemas Operacionais (CHK3, novembro de 2026). Guia de uso: [docs/USAGE.md](docs/USAGE.md). Documentação completa: [docs/README.md](docs/README.md).
+**Disciplina:** Sistemas Operacionais (UFG) · **Equipe Silicon Guys:** Caio Machado, Eduardo Fraga, Lucas Boclin, Lucas Isaac, Murilo Honorato
 
-## 1. Introdução e objetivos
+## Resumo
 
-O LLM-Sched é um simulador em C11 de um servidor que atende requisições do Jev, o modelo de decisão da TypeSafe AI. Cada requisição é tratada como um processo: tem um bloco de controle (PCB), passa por estados, disputa workers e páginas de memória e é escolhida por uma política de escalonamento. O programa não executa nem consulta o Jev.
+O LLM-Sched é um simulador em C11 de um servidor que atende requisições do Jev, modelo de decisão da TypeSafe AI. Cada requisição é um processo com PCB, que disputa *workers* sob uma política de escalonamento e usa um KV cache paginado. Como o Jev devolve uma decisão curta e de tamanho fixo, o custo de um pedido depende só da entrada, conhecida na chegada (**1 tick virtual = 1 token de entrada**). Com isso o SJF fica exato, mas sofre *starvation*. Implementamos o HRRN e o comparamos com FCFS, SJF, Round Robin e prioridade com e sem *aging* em 10 cargas de 200 pedidos e num cenário adversarial. Na carga uniforme, o HRRN reduziu a espera média em 21% frente ao FCFS e eliminou a *starvation* do SJF, com pior espera de 194 ticks contra 961. O projeto inclui ainda *pthreads*, fila com mutex e semáforos, laboratórios de corrida e *deadlock*, IPC por *pipes*, SIGUSR1 e um painel web.
 
-A proposta original previa um servidor de LLM generativo, em que o SJF precisaria prever o tamanho da resposta. O Jev devolve uma resposta curta e de tamanho praticamente fixo (categoria, nota ou probabilidade). O custo de uma requisição passa a ser o tamanho da **entrada**, conhecido na chegada, e o preditor deixou de ser necessário. A decisão está na [ADR 0002](docs/adr/0002-foco-typesafe-jev.md).
+## 1. Introdução
 
-Os objetivos são:
+Um servidor de modelos de linguagem recebe muitos pedidos simultâneos de tamanhos diferentes. Ele precisa decidir quem executa primeiro, onde guardar o estado de cada pedido e como coordenar as *threads*. São os problemas clássicos de um SO: escalonamento, memória e concorrência [1].
 
-1. comparar políticas de escalonamento sobre a mesma carga, medindo espera, resposta e starvation;
-2. simular memória paginada com FIFO e LRU e o bloqueio por falta de página;
-3. demonstrar condição de corrida, deadlock, IPC e sinais com recursos reais do Linux;
-4. oferecer um painel visual e experimentos que possam ser repetidos.
+Sistemas reais de serviço de LLM aplicam essas técnicas. O vLLM guarda o KV cache em blocos de tamanho fixo, inspirado em paginação, para reduzir o desperdício de memória [5]. O Orca escalona por iteração, e não por requisição, para que pedidos curtos não esperem um lote inteiro [6]. SJF e SRTF minimizam a latência média, mas esses sistemas costumam usar FCFS porque o tamanho da resposta de um modelo generativo é desconhecido. Prevê-lo com exatidão é inviável, e Fu et al. preveem só a ordem relativa dos tamanhos [7].
 
-## 2. Modelo e arquitetura
+Nossa proposta inicial simulava um LLM generativo e exigia esse preditor para o SJF, o que seria um projeto de aprendizado de máquina à parte. Mudamos o foco para o **Jev**, lançado pela TypeSafe AI em 15/09/2026, que devolve decisões tipadas com probabilidade em vez de texto [8]. A saída é pequena e praticamente fixa, então o custo do pedido é o tamanho da entrada, conhecido na chegada ([ADR 0002](docs/adr/0002-foco-typesafe-jev.md)).
 
-**1 tick virtual = 1 token de entrada processado.** Cada worker processa um token por tick. Um PCB passa por NEW, READY, RUNNING, BLOCKED e TERMINATED.
+Com o tamanho conhecido, o SJF fica exato e herda seu defeito clássico: um pedido longo pode esperar indefinidamente enquanto chegam pedidos curtos. A solução tradicional é o *aging*, que aumenta a prioridade de quem espera [1]. O HRRN escolhe a maior razão (espera + tamanho)/tamanho, atendendo rápido os curtos sem atrasar demais os longos [2]. Na memória, a substituição ótima (OPT) exige conhecer o futuro [3], e FIFO e LRU a aproximam. Na concorrência, *deadlock* exige as quatro condições de Coffman, e ordenar a aquisição de recursos quebra a espera circular [4].
 
-O núcleo é determinístico e não cria threads: a mesma entrada gera sempre o mesmo trace. A cada tick, a sessão acorda quem terminou o I/O, admite as chegadas, escolhe um PCB para cada worker livre, acessa a página do token atual e conclui um token por worker. Uma falta com latência bloqueia o PCB e libera o worker. O que usa threads ou processos fica em bibliotecas e programas separados. Os módulos estão em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+## 2. Objetivos
 
-O painel web roda localmente: um servidor em Python (biblioteca padrão) chama a CLI por subprocesso e devolve o JSON exportado; o JavaScript apenas exibe os resultados, o Gantt e o replay.
+1. Modelar pedidos como processos (PCB e cinco estados) e comparar FCFS, SJF, Round Robin e prioridade com *aging*.
+2. Simular o KV cache como memória paginada com FIFO e LRU, *page faults* e bloqueio.
+3. Executar o trabalho com *threads* POSIX e fila protegida, e demonstrar condição de corrida.
+4. Demonstrar, detectar e prevenir *deadlock*.
+5. Comunicar processos por *pipe* e tratar SIGUSR1.
+6. Oferecer interface gráfica e experimentos reprodutíveis.
+7. *(Original, depois substituído)* Prever o tamanho das respostas para o SJF.
 
-## 3. Políticas implementadas
+## 3. Metodologia
 
-| Política | Regra | Preemptiva |
+**Modelo e arquitetura.** A simulação é determinística, com relógio virtual. Em cada tick, cada *worker* ocupado processa um token de entrada. O simulador não chama o Jev: mede o efeito das políticas, não latência real. Mesma entrada e configuração produzem o mesmo *trace*, verificado por *replay*. O núcleo em `src/` é dividido em módulos: PCB, admissão, escalonamento, *runtime*, memória, métricas e exportação JSON/CSV. Sobre ele ficam a CLI, o painel web local e os laboratórios POSIX.
+
+**Políticas.** FCFS, SJF (tamanho da entrada), prioridade com *aging* (+1 a cada `--aging-interval` ticks de espera; 0 desativa) e HRRN são não preemptivas. O Round Robin preempta ao fim do *quantum*, em tokens. O HRRN compara razões por multiplicação cruzada inteira de 96 bits, sem ponto flutuante nem *overflow*.
+
+**Memória.** Cada pedido acessa a página `tokens_processados / tokens_por_página`. Uma falta bloqueia o pedido por uma latência configurável e libera o *worker*. As páginas têm tamanho fixo, então só há fragmentação interna. O OPT existe apenas em *replay offline* [3].
+
+**Concorrência, IPC e sinais.** No modo POSIX, *pthreads* reais confirmam cada token por uma fila limitada (mutex e semáforos). Um coordenador único mantém o estado, e o resultado é idêntico ao do modo virtual. Os laboratórios rodam em processos filhos com *watchdog*: corrida forçada por barreira, *deadlock* com dois mutexes, IPC entre *gateway* e motor por *pipes* e SIGUSR1 tratado só com uma *flag*. Um grafo de espera com detecção, prevenção e recuperação de ciclos também está implementado e testado.
+
+**Experimentos** (`tools/experiments/chk3.sh`):
+
+- **E2 (escalonamento):** 10 cargas de 200 pedidos (`uniform` e `burst`, *seeds* 1 a 5, 1 a 32 tokens, prioridade 0 a 5, 2 *workers*). Também o cenário adversarial `scenarios/starvation.csv`: 1 *worker*, um pedido de 40 tokens e um fluxo contínuo de pedidos de 4.
+- **E3 (memória):** FIFO e LRU com 2 a 16 *frames* e latência de falta de 5 ticks.
+- **E1 e E4 (corrida e *deadlock*):** 11 execuções por modo.
+
+As métricas são espera (média, p95, máxima), resposta, *turnaround*, *throughput*, utilização e *starvation* (pedidos com espera acima de 320 ticks). Os valores são médias de 5 *seeds*. O código passa em 70 testes CTest, incluindo um oráculo com frações exatas para o HRRN, e no CI com GCC, Clang e ASan/UBSan.
+
+## 4. Resultados
+
+**HRRN: meio-termo entre eficiência e justiça.** Na carga uniforme (Tabela 1), o SJF tem a menor espera média, mas sua pior espera chega a 961 ticks. O HRRN fica entre FCFS e SJF na média, mantém o pior caso perto do FCFS e não tem nenhum caso de *starvation*. Ele teve média menor que o FCFS e máximo menor que o SJF nas 5 *seeds* das duas distribuições. *Throughput* e utilização (96,7% a 97,0%) quase não mudam: as políticas mudam **quem** espera, não o trabalho total.
+
+*Tabela 1 – E2, carga uniforme (média de 5 seeds; "pior máx." é o maior valor entre elas)*
+
+| Política | Espera média | p95 | Pior máx. | Turnaround | *Starvation* |
+| --- | --- | --- | --- | --- | --- |
+| FCFS | 56,3 | 105,4 | 159 | 72,6 | 0 |
+| SJF | **34,0** | 147,6 | 961 | **50,3** | 23 |
+| HRRN | 44,6 | 110,6 | 194 | 60,9 | **0** |
+| RR q=1 | 80,8 | 206,6 | 302 | 97,1 | 0 |
+| RR q=3 | 78,7 | 197,2 | 278 | 95,0 | 0 |
+| Prioridade com *aging* | 56,6 | 107,8 | 159 | 72,9 | 0 |
+| Prioridade sem *aging* | 59,1 | 329,6 | 831 | 75,4 | 50 |
+
+**Cenário de *starvation*.** Com um fluxo contínuo de pedidos curtos, o pedido longo espera **796 ticks** no SJF e na prioridade sem *aging*, **120** no HRRN e **16** com *aging* ou FCFS (Figura 1). O SJF continua com a menor espera média (15,8, contra 46,2 do HRRN e 50,9 do FCFS) justamente por adiar o pedido longo.
+
+![Figura 1 – Pior espera por política no cenário de starvation](results/chk3/aggregate/starvation_wait_max.svg)
+
+**Outros resultados.**
+
+- **Round Robin:** troca espera por resposta. O tempo até a primeira execução cai de 56,3 (FCFS) para 4,4 (q=1), mas a espera média sobe cerca de 40%.
+- ***Aging*:** elimina os 50 casos de *starvation* da prioridade pura e reduz o pior caso de 831 para 159 ticks. Com prioridades de 0 a 5, porém, intervalo 2 anula a prioridade em 10 ticks, e o resultado fica quase igual ao FCFS.
+- **Carga *burst*:** com duas ondas de chegada, todas as políticas pioram e a utilização cai para cerca de 74%. A ordem se mantém: SJF tem a menor média (195,4), e o HRRN (211,3) tem o menor p95 na média das *seeds* (614,4; menor em 3 de 5).
+- **Memória (E3):** com 2 *frames*, o LRU bloqueia 38% menos tempo que o FIFO (4437 contra 7206 ticks) e reduz o *turnaround* em 33% (294,5 contra 438,1). A partir de 8 *frames*, as duas políticas empatam.
+- **Laboratórios (E1 e E4):** 11 de 11 execuções corretas em cada modo. O modo protegido não perdeu incrementos, o inseguro perdeu um em dois, a ordem global evitou o *deadlock* e a ordem cruzada o produziu (encerrado pelo *watchdog*).
+
+## 5. Discussão
+
+### 5.1 Alcance dos objetivos
+
+| Objetivo | Situação | Evidência |
 | --- | --- | --- |
-| FCFS | Ordem de chegada | Não |
-| SJF | Menor entrada | Não |
-| RR | Fila circular com quantum em tokens | Sim |
-| Prioridade com aging | Maior prioridade; +1 a cada `--aging-interval` ticks de espera (0 desativa) | Não |
-| HRRN | Maior razão (espera + tamanho) / tamanho | Não |
+| 1. Escalonamento | **Atingido e ampliado** | Quatro políticas propostas, mais HRRN e `--aging-interval` |
+| 2. Memória paginada | **Atingido** | FIFO/LRU online, faltas com bloqueio, fragmentação; OPT só *offline* |
+| 3. *Threads* e corrida | **Atingido** | Pool *pthread*, fila com semáforos, resultado idêntico ao virtual, laboratório |
+| 4. *Deadlock* | **Parcial** | Grafo com detecção e recuperação testado e laboratório real; fora do motor principal |
+| 5. IPC e sinais | **Parcial** | *Pipes* entre dois processos e SIGUSR1 seguro, em demonstrações separadas |
+| 6. Interface e experimentos | **Atingido** | Painel web com Gantt e memória; campanha E1 a E4 reprodutível |
+| 7. Preditor | **Substituído** | Desnecessário com o Jev ([ADR 0002](docs/adr/0002-foco-typesafe-jev.md)) |
 
-O HRRN é a adição do CHK3. A razão é comparada por multiplicação cruzada inteira em 96 bits, sem ponto flutuante e sem overflow. Os empates seguem a ordem da fila e, depois, o ID. Na prática, um pedido curto começa na frente, mas a razão do longo cresce com a espera até ele ser escolhido.
+### 5.2 Comparação com a literatura
 
-## 4. Metodologia
-
-São 11 cargas. Dez têm 200 requisições, com entradas de 1 a 32 tokens e prioridades de 0 a 5, geradas com as seeds 1 a 5 em duas distribuições de chegada: `uniform` e `burst` (duas ondas). Elas rodam com 2 workers. A 11ª é o cenário de starvation, com 1 worker: um pedido longo (40 tokens) em t=0, quatro curtos (4 tokens) no mesmo instante e mais um a cada 4 ticks, 200 no total.
-
-Todas as políticas recebem a mesma carga e o mesmo limite de starvation (320 ticks, dez vezes o maior pedido gerado). O aging usa intervalo 2. No experimento de memória, o escalonador é FCFS, cada página tem 4 tokens e cada falta custa 5 ticks de bloqueio.
-
-| Experimento | O que mede |
-| --- | --- |
-| E1 | Corrida entre duas threads, com e sem proteção |
-| E2 | FCFS, SJF, HRRN, RR (q=1 e q=3) e prioridade com e sem aging |
-| E3 | FIFO e LRU com 2, 4, 8 e 16 frames |
-| E4 | Deadlock com mutexes em ordem cruzada e prevenção por ordem global |
-
-Para refazer tudo: `tools/experiments/chk3.sh build /tmp/chk3` (cerca de 30 segundos). As tabelas abaixo vêm de [results/chk3](results/chk3/SUMMARY.md). Médias, p95 e máximo são médias das cinco seeds; "pior máx." é o maior valor entre elas e "starvation" é a soma das requisições que esperaram 320 ticks ou mais.
-
-## 5. Resultados e discussão
-
-### 5.1 Escalonamento (E2)
-
-**Carga uniform**
-
-| Política | Espera média | p95 | Pior máx. | Turnaround | Throughput | Utilização | Starvation |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| FCFS | 56,3 | 105,4 | 159 | 72,6 | 0,1187 | 96,8% | 0 |
-| SJF | 34,0 | 147,6 | 961 | 50,3 | 0,1186 | 96,7% | 23 |
-| HRRN | 44,6 | 110,6 | 194 | 60,9 | 0,1187 | 96,8% | 0 |
-| RR q=1 | 80,8 | 206,6 | 302 | 97,1 | 0,1190 | 97,0% | 0 |
-| RR q=3 | 78,7 | 197,2 | 278 | 95,0 | 0,1190 | 97,0% | 0 |
-| Prioridade com aging | 56,6 | 107,8 | 159 | 72,9 | 0,1188 | 96,8% | 0 |
-| Prioridade sem aging | 59,1 | 329,6 | 831 | 75,4 | 0,1189 | 96,9% | 50 |
-
-**Carga burst**
-
-| Política | Espera média | p95 | Pior máx. | Turnaround | Throughput | Utilização |
-| --- | --- | --- | --- | --- | --- | --- |
-| FCFS | 308,9 | 625,0 | 761 | 325,4 | 0,0898 | 73,9% |
-| SJF | 195,4 | 659,6 | 911 | 211,9 | 0,0895 | 73,8% |
-| HRRN | 211,3 | 614,4 | 810 | 227,8 | 0,0896 | 73,8% |
-| RR q=1 | 427,8 | 740,2 | 881 | 444,3 | 0,0899 | 74,0% |
-| RR q=3 | 421,4 | 732,8 | 882 | 437,9 | 0,0898 | 74,0% |
-| Prioridade com aging | 309,1 | 624,8 | 772 | 325,6 | 0,0896 | 73,8% |
-| Prioridade sem aging | 307,6 | 720,6 | 837 | 324,1 | 0,0897 | 73,9% |
-
-![Pior espera máxima por política na carga uniform, em ticks: FCFS 159, SJF 961, HRRN 194, RR q=1 302, RR q=3 278, prioridade com aging 159 e prioridade sem aging 831](results/chk3/aggregate/uniform_wait_max.svg)
-
-**SJF tem a menor média e a pior espera.** Ele teve a menor espera média nas dez cargas geradas. No cenário de starvation, empata com a prioridade sem aging (15,8). O custo aparece nos longos: na uniform, a pior espera do SJF (961 ticks) é cerca de cinco vezes a do HRRN (194), e 23 requisições passam de 320 ticks.
-
-**HRRN fica entre os dois extremos.** Na uniform, reduz a espera média em 21% em relação ao FCFS (56,3 para 44,6) sem nenhum caso de starvation. Na burst, a redução é de 32% (308,9 para 211,3). O HRRN teve média menor que o FCFS e máximo menor que o SJF nas cinco seeds de cada distribuição. Na burst, também tem o menor p95 médio (614,4), embora a diferença para a prioridade com aging (624,8) e o FCFS (625,0) seja pequena e ele seja o menor em três das cinco seeds.
-
-**Starvation e aging.** No cenário de starvation:
-
-| Política | Espera do pedido longo | Espera média | Espera máxima |
-| --- | --- | --- | --- |
-| FCFS | 16 | 50,9 | 52 |
-| SJF | 796 | 15,8 | 796 |
-| HRRN | 120 | 46,2 | 120 |
-| RR q=1 | 532 | 68,3 | 532 |
-| RR q=3 | 377 | 73,8 | 377 |
-| Prioridade com aging | 16 | 50,9 | 52 |
-| Prioridade sem aging | 796 | 15,8 | 796 |
-
-No SJF e na prioridade sem aging, o longo só executa depois dos 199 curtos. O HRRN o atende no tick 120; em troca, a espera média sobe de 15,8 para 46,2. Na uniform, o aging reduz a pior espera de 831 para 159 ticks e elimina os 50 casos de starvation. Com intervalo 2, porém, ele quase anula a prioridade: a diferença entre as prioridades é de no máximo 5, coberta por 10 ticks de espera, e a média (56,6) fica próxima da do FCFS (56,3).
-
-**RR troca espera por resposta.** Na uniform, a resposta média cai de 56,3 ticks (FCFS) para 4,4 com q=1 e 12,8 com q=3, mas a espera média sobe cerca de 40% (43% e 40%). O throughput e a utilização quase não mudam: as políticas mudam quem espera, não o trabalho total.
-
-### 5.2 Memória, corrida e deadlock (E3, E1 e E4)
-
-**E3: média das cinco cargas uniform**
-
-| Frames | Faltas FIFO | Faltas LRU | Turnaround FIFO | Turnaround LRU |
-| --- | --- | --- | --- | --- |
-| 2 | 2875,6 | 1770,0 | 438,1 | 294,5 |
-| 4 | 1728,4 | 1667,2 | 314,7 | 294,5 |
-| 8 | 939,8 | 984,2 | 295,1 | 294,5 |
-| 16 | 895,6 | 905,8 | 294,5 | 294,5 |
-
-Com 2 frames, o LRU tem 38% menos faltas e 33% menos turnaround que o FIFO. Com 8 frames, o FIFO tem um pouco menos faltas (939,8 contra 984,2), mas o turnaround praticamente empata. Com LRU, aumentar os frames não reduziu o turnaround. Na burst o padrão é o mesmo, com ganho de turnaround menor (15% com 2 frames). No cenário de starvation, FIFO e LRU empatam em todas as capacidades.
-
-**E1 e E4**, com 11 execuções de cada modo e o mesmo resultado em todas:
-
-| Laboratório | Modo | Resultado |
-| --- | --- | --- |
-| Corrida | protegido | 2 de 2 incrementos, nenhum perdido |
-| Corrida | sem proteção | 1 de 2 incrementos, um perdido |
-| Deadlock | ordem global | concluído, sem deadlock |
-| Deadlock | ordem cruzada | deadlock observado e encerrado pelo watchdog |
+- **SJF e *starvation* [1, 7].** O SJF teve a menor espera média em todas as cargas (empatado com a prioridade pura no cenário adversarial), como prevê a teoria, e foi, com a prioridade pura, a única política com *starvation* na carga uniforme.
+- ***Aging* [1].** Resolveu a *starvation* da prioridade, como esperado. Mostramos também o custo de um intervalo mal calibrado, que reduz a política ao FCFS.
+- **HRRN [2].** O resultado bate com a descrição de Ruschitzka: média 21% menor que a do FCFS e pior caso cinco vezes menor que o do SJF, sem parâmetro.
+- **Previsão de tamanho [7, 8].** Fu et al. aproximam o SJF prevendo a ordem dos tamanhos. No servidor do Jev, isso é desnecessário: o tipo de modelo servido muda quais algoritmos de SO se aplicam.
+- **Granularidade [6].** O RR com *quantum* de 1 token lembra o escalonamento por iteração do Orca e reduziu a resposta de 56,3 para 4,4 ticks. Sem *batching*, porém, aumentou a espera.
+- **Memória e *deadlock* [3–5].** As páginas fixas seguem a ideia do vLLM, o OPT só é viável *offline*, como em Belady, e a ordem global preveniu o *deadlock*, como prevê Coffman.
 
 ### 5.3 Limitações
 
-- **Tempo virtual.** Os ticks não medem a latência real do Jev. O custo proporcional à entrada é uma simplificação e as cargas são sintéticas, com cinco seeds por distribuição e sem teste estatístico.
-- **Memória.** A latência é cobrada uma vez por falta atendida. Se a página é removida durante o I/O, a recarga conta como falta, mas não bloqueia de novo; por isso o bloqueio total com LRU é constante (4437 ticks na uniform). Não há fixação de frames, e OPT existe só no replay offline, fora do E3.
-- **Starvation.** A métrica usa a espera acumulada na fila. No RR, ela não significa que o pedido deixou de executar. Na burst, 467 das 1000 requisições passam do limite até no FCFS, então a comparação ali deve usar a média e o p95.
-- **Laboratórios.** Corrida e deadlock usam duas threads e uma intercalação forçada: mostram o fenômeno, não a sua frequência. Eles rodam fora do motor, e não há detecção de deadlock no runtime principal.
-- **IPC, pthreads e painel.** O IPC por pipe é uma demonstração sem serviço persistente, e o adaptador pthread não está na CLI. O painel executa a simulação até o fim, e o replay não pausa o motor.
+- Os ticks são virtuais e as cargas são sintéticas; não há *batching* [6].
+- No modelo de memória, a recarga de uma página removida durante o I/O conta como falta, mas não paga latência de novo. Por isso comparamos FIFO e LRU pelo tempo bloqueado, e não pela contagem bruta de faltas.
+- Na carga *burst*, o limiar de 320 ticks marca até o FCFS, então ali valem a média e o p95.
+- Os laboratórios forçam a intercalação: mostram o fenômeno, não sua frequência. Não houve teste estatístico entre *seeds*.
 
-## 6. Alcance dos objetivos
+## 6. Conclusão
 
-| Objetivo da proposta | Situação | Observação |
-| --- | --- | --- |
-| PCB, estados, gateway e workers | Atingido | Motor determinístico e adaptador pthread com traces iguais |
-| FCFS, SJF, RR e prioridade com aging | Atingido | HRRN adicionado além da proposta |
-| SJF com preditor de tamanho | Removido | Desnecessário com o Jev ([ADR 0002](docs/adr/0002-foco-typesafe-jev.md)) |
-| Mutex, semáforos e condição de corrida | Atingido | Fila com mutex e semáforos; corrida em laboratório |
-| Deadlock: detecção e prevenção | Parcial | Grafo didático e laboratório; não integrado ao motor |
-| KV cache paginado, FIFO e LRU | Atingido | Com bloqueio por falta e fragmentação interna |
-| Substituição ótima (OPT) | Parcial | Só no replay offline; não comparada no E3 |
-| IPC e sinal SIGUSR1 | Atingido | Pipes entre processos e dump por sinal, em programas próprios |
-| Cargas | Parcial | Gerador com seed; nenhuma carga real foi coletada |
-| Métricas e quatro experimentos | Atingido | Reproduzíveis por script |
-| Interface gráfica | Atingido | Painel web local |
+Os mecanismos clássicos de SO se aplicam diretamente a um servidor de modelos, e o tipo de modelo muda o problema. Com o Jev, o tamanho do trabalho é conhecido e o SJF fica exato, mas causa *starvation*. O HRRN foi o melhor compromisso: reduziu a espera média frente ao FCFS, eliminou a *starvation* do SJF e não exige calibração. Os demais objetivos foram cumpridos, com integração parcial de *deadlock*, IPC e sinais ao motor principal. Como trabalho futuro, ficam essa integração, *batching* por iteração e cargas medidas com o Jev real.
 
-A suíte tem 70 testes no CTest, executados no CI com gcc, clang e gcc com ASan/UBSan. Ver [docs/TEST_PLAN.md](docs/TEST_PLAN.md).
+**Reprodução:** `cmake -S . -B build && cmake --build build && ctest --test-dir build` e depois `tools/experiments/chk3.sh`. Guia de uso: [docs/USAGE.md](docs/USAGE.md). Roteiro da demonstração: [docs/DEMO.md](docs/DEMO.md). Resultados completos: [results/chk3/SUMMARY.md](results/chk3/SUMMARY.md). Índice da documentação: [docs/README.md](docs/README.md).
 
-## 7. Como executar
+## Referências
 
-```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
-cmake --build build --parallel
-ctest --test-dir build --output-on-failure
-./build/os_llm_cli --policy hrrn --scenario scenarios/starvation.csv
-python3 apps/visual/server.py --cli ./build/os_llm_cli --port 8765
-```
+[1] A. Silberschatz, P. B. Galvin e G. Gagne. *Operating System Concepts*, 10ª ed. Wiley, 2018.
 
-Requer Linux, CMake 3.16+, compilador C11 e Python 3. O painel abre em `http://127.0.0.1:8765`. Detalhes em [docs/USAGE.md](docs/USAGE.md) e roteiro da demonstração em [docs/DEMO.md](docs/DEMO.md).
+[2] M. Ruschitzka. *Performance Evaluation of Nonpreemptive Response-Ratio Schedulers*. Relatório técnico, Rutgers University, 1977. doi:10.7282/t3-fs8v-6d31.
 
-## 8. Conclusão
+[3] L. A. Belady. A study of replacement algorithms for a virtual-storage computer. *IBM Systems Journal*, 5(2):78–101, 1966. doi:10.1147/sj.52.0078.
 
-Os objetivos principais foram atingidos: o simulador compara cinco políticas sobre a mesma carga, modela memória paginada com bloqueio e demonstra concorrência com recursos reais do Linux. Nas cargas medidas, o SJF é a melhor escolha quando só a média importa; o HRRN reduz a média sem starvation e é o melhor equilíbrio entre as políticas não preemptivas testadas; o RR serve quando a primeira resposta importa mais que a espera total. Na memória, o LRU vale a pena quando há poucos frames. Ficaram fora a integração da detecção de deadlock ao motor, o OPT online e cargas reais.
+[4] E. G. Coffman Jr., M. J. Elphick e A. Shoshani. System Deadlocks. *ACM Computing Surveys*, 3(2):67–78, 1971. doi:10.1145/356586.356588.
+
+[5] W. Kwon et al. Efficient Memory Management for Large Language Model Serving with PagedAttention. *SOSP '23*, 2023. doi:10.1145/3600006.3613165.
+
+[6] G.-I. Yu, J. S. Jeong, G.-W. Kim, S. Kim e B.-G. Chun. Orca: A Distributed Serving System for Transformer-Based Generative Models. *USENIX OSDI '22*, 2022.
+
+[7] Y. Fu, S. Zhu, R. Su, A. Qiao, I. Stoica e H. Zhang. Efficient LLM Scheduling by Learning to Rank. *NeurIPS 2024*. doi:10.52202/079017-1882.
+
+[8] InfoQ. *TypeSafe AI Releases Jev: A Decision-Only Model That Returns Typed Probabilities Instead of Text*, out. 2026. https://infoq.com/news/2026/10/typesafe-ai-jev-released
