@@ -1,15 +1,15 @@
-# Decisões técnicas pendentes
+# Registro de decisões
 
-As decisões finais do grupo seguem pendentes. Para viabilizar o primeiro núcleo testável, C11 + CMake foram adotados **provisoriamente**; a escolha definitiva de C ou C++ ainda depende do grupo/professor. Registre escolhas importantes como ADRs em `docs/adr/`.
+Decisões do grupo sobre o projeto. As que afetam vários módulos têm uma ADR em [adr/](adr/README.md).
 
-| ID | Decisão | Alternativas / observações |
-|---|---|---|
-| D-01 | Linguagem do motor | Primeiro núcleo em C11 (provisório); C11 ou C++20 definitivo pendente |
-| D-02 | Interface gráfica | web local ou desktop; stack ainda pendente |
-| D-03 | Interface↔motor | API local, IPC ou ligação direta/FFI |
-| D-04 | Execução | determinística e POSIX pthreads; organização e prioridade |
-| D-05 | IPC de SO | pipe ou memória compartilhada POSIX |
-| D-06 | Modelo de custo | custo fixo/token ou calibração com carga real |
-| D-07 | Licença | grupo decide antes de tornar o repositório público |
+| ID | Decisão | Estado | Escolha |
+|---|---|---|---|
+| D-01 | Linguagem do motor | Decidido | C11 ([ADR 0001](adr/0001-provisional-c11-core.md)) |
+| D-02 | Interface gráfica | Decidido | Painel web local: servidor Python (biblioteca padrão) e JavaScript sem dependências |
+| D-03 | Interface e motor | Decidido | O painel chama a CLI por subprocesso e lê o JSON exportado |
+| D-04 | Execução | Decidido | Motor determinístico, com adaptador pthread separado |
+| D-05 | IPC | Decidido | Pipe POSIX |
+| D-06 | Modelo de custo | Decidido | 1 tick = 1 token de entrada ([ADR 0002](adr/0002-foco-typesafe-jev.md)) |
+| D-07 | Licença | Pendente | Decisão do grupo |
 
-O nome do repositório definido é `OS-llm-project`. O código inicial está descrito em [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
+O que está implementado: [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
