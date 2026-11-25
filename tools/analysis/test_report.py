@@ -1,8 +1,10 @@
 """H24 schema validation, immutability, and optional compiled end-to-end smoke."""
 import copy
+import csv
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -106,6 +108,38 @@ class ReportTests(unittest.TestCase):
         self.manifest["campaigns"]["E2"]["runs"][0]["artifact"] = "../../other.json"
         self.save()
         self.assertNotEqual(self.invoke().returncode, 0)
+
+    def test_aggregate_averages_seeds_and_rejects_mixed_configurations(self):
+        campaigns = self.base / "campaigns"
+        for seed, wait in ((1, 3.0), (2, 5.0)):
+            self.raw = campaigns / f"uniform_s{seed}"
+            (self.raw / "runs").mkdir(parents=True)
+            for campaign in self.manifest["campaigns"].values():
+                campaign["runs"] = []
+            self.add_run("E2", "hrrn", "HRRN")
+            path = self.raw / "runs" / "hrrn.json"
+            raw = json.loads(path.read_text())
+            raw["metrics"].update(average_wait_ticks=wait, max_wait_ticks=int(wait) * 2, starvation_count=1)
+            path.write_text(json.dumps(raw))
+            self.manifest["campaigns"]["E2"]["runs"][0]["metrics"] = raw["metrics"]
+            self.save()
+
+        def run():
+            return subprocess.run([sys.executable, str(SCRIPT), "--aggregate", str(campaigns),
+                                   "--output-dir", str(self.out)], capture_output=True, text=True, check=False)
+        result = run()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        with (self.out / "scheduling.csv").open(newline="") as file:
+            row, = csv.DictReader(file)
+        self.assertEqual((row["group"], row["seeds"], float(row["average_wait_ticks"])), ("uniform", "2", 4.0))
+        self.assertEqual((row["worst_max_wait_ticks"], row["starvation_count"]), ("10", "2"))
+        self.assertEqual(float(row["sd_average_wait_ticks"]), 1.0)
+        self.assertTrue((self.out / "uniform_wait_avg.svg").is_file())
+        shutil.rmtree(self.out)
+        self.manifest["config"] = {"workers": 3}
+        self.save()
+        self.assertNotEqual(run().returncode, 0)
+        self.assertFalse(self.out.exists())
 
     @unittest.skipUnless(os.environ.get("OSLLM_CLI") and os.environ.get("OSLLM_RACE") and
                          os.environ.get("OSLLM_DEADLOCK"), "compiled binaries required")

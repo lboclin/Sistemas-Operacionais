@@ -9,6 +9,7 @@ import math
 import os
 from pathlib import Path
 import re
+import statistics
 import tempfile
 
 SCHEMA = "os-llm-experiments/v1"
@@ -21,6 +22,8 @@ MEMORY = ("completed", "page_hits", "page_faults", "page_evictions",
           "peak_resident_frames", "total_blocked_ticks",
           "average_turnaround_ticks", "throughput_per_tick")
 NAME = re.compile(r"[a-z][a-z0-9_]*\Z")
+SEEDED = re.compile(r"(.+)_s[0-9]+\Z")  # uniform_s1, uniform_s2 -> group "uniform"
+TOTALS = ("starvation_count",)  # summed over the seeds of a group; the rest is averaged
 
 
 def safe_json(path):
@@ -211,15 +214,115 @@ def export(output, original, rows, labs, digest):
     (output / "report.md").write_text("\n".join(notes) + "\n", encoding="utf-8")
 
 
+def combine(samples, metrics):
+    """One row per configuration: means over the seeds, plus the spread and the worst case."""
+    result = []
+    for index, first in enumerate(samples[0]):
+        rows = [sample[index] for sample in samples]
+        item = {"name": first["name"], "policy": first["policy"], "seeds": len(rows)}
+        for key in metrics:
+            values = [row[key] for row in rows]
+            item[key] = sum(values) if key in TOTALS else statistics.fmean(values)
+        if "max_wait_ticks" in metrics:
+            item["sd_average_wait_ticks"] = statistics.pstdev(row["average_wait_ticks"] for row in rows)
+            item["worst_max_wait_ticks"] = max(row["max_wait_ticks"] for row in rows)
+        result.append(item)
+    return result
+
+
+def aggregate(root):
+    """Validate every campaign in root and combine the ones that differ only by seed."""
+    groups, digests, labs = {}, {}, {}
+    for directory in sorted(path for path in root.iterdir() if (path / "experiments.json").is_file()):
+        original, rows, observed = validate(directory)
+        if not NAME.fullmatch(directory.name):
+            raise ValueError("unsafe campaign directory name")
+        digests[directory.name] = hashlib.sha256((directory / "experiments.json").read_bytes()).hexdigest()
+        match = SEEDED.fullmatch(directory.name)
+        group = match.group(1) if match else directory.name
+        entry = groups.setdefault(group, {"config": original["config"], "E2": [], "E3": []})
+        if entry["config"] != original["config"]:
+            raise ValueError("seeds of a group use different configurations")
+        for key in ("E2", "E3"):
+            if entry[key] and [r["name"] for r in entry[key][0]] != [r["name"] for r in rows[key]]:
+                raise ValueError("seeds of a group measured different runs")
+            entry[key].append(rows[key])
+        for key in ("E1", "E4"):
+            for item in observed[key]:
+                if item["status"] == "completed":
+                    seen = labs.setdefault((key, item["name"], item["details"]), 0)
+                    labs[(key, item["name"], item["details"])] = seen + 1
+    if not groups:
+        raise ValueError("no campaigns to aggregate")
+    return {group: {"config": entry["config"], "E2": combine(entry["E2"], SCHED),
+                    "E3": combine(entry["E3"], MEMORY)} for group, entry in groups.items()}, digests, labs
+
+
+def export_aggregate(output, groups, digests, labs):
+    extra = ("seeds", "sd_average_wait_ticks", "worst_max_wait_ticks")
+    for key, name, columns in (("E2", "scheduling", SCHED + extra[1:]), ("E3", "memory", MEMORY)):
+        with (output / (name + ".csv")).open("w", newline="", encoding="utf-8") as file:
+            writer = csv.DictWriter(file, fieldnames=("group", "name", "policy", "seeds") + columns)
+            writer.writeheader()
+            for group, entry in groups.items():
+                writer.writerows({"group": group, **row} for row in entry[key])
+    charts = []
+    for group, entry in groups.items():
+        for key, suffix, metric, title in (
+            ("E2", "wait_avg", "average_wait_ticks", "Espera média (ticks)"),
+            ("E2", "wait_p95", "p95_wait_ticks", "Espera p95 (ticks)"),
+            ("E2", "wait_max", "worst_max_wait_ticks", "Pior espera máxima (ticks)"),
+            ("E3", "page_faults", "page_faults", "Faltas de página"),
+            ("E3", "turnaround", "average_turnaround_ticks", "Turnaround médio com memória (ticks)")
+        ):
+            svg = draw_bars(entry[key], metric, f"{title} — {group}")
+            if svg is not None:
+                charts.append(f"{group}_{suffix}.svg")
+                (output / charts[-1]).write_text(svg, encoding="utf-8")
+    notes = ["# Agregado dos experimentos OS-LLM", "",
+             "Médias sobre as seeds de cada grupo, em ticks virtuais. p95 e máximo são médias dos",
+             "valores de cada seed; worst_max_wait_ticks é o pior caso e starvation_count é a soma.", ""]
+    for group, entry in groups.items():
+        seeds = entry["E2"][0]["seeds"] if entry["E2"] else 0
+        notes += [f"## {group} ({seeds} carga(s))", "",
+                  "Configuração: `" + json.dumps(entry["config"], sort_keys=True) + "`", "",
+                  "### E2 — Escalonamento",
+                  markdown_table(entry["E2"], ("name", "average_wait_ticks", "sd_average_wait_ticks",
+                      "p95_wait_ticks", "max_wait_ticks", "worst_max_wait_ticks",
+                      "average_turnaround_ticks", "throughput_per_tick", "worker_utilization",
+                      "starvation_count")),
+                  "### E3 — Memória",
+                  markdown_table(entry["E3"], ("name", "page_faults", "page_hits", "page_evictions",
+                      "total_blocked_ticks", "average_turnaround_ticks", "throughput_per_tick"))]
+    notes += ["## E1 e E4 — Laboratórios", ""]
+    notes += [f"- {key} {name}: {count} execução(ões): {details}"
+              for (key, name, details), count in sorted(labs.items())]
+    notes += ["", "## Procedência", ""]
+    notes += [f"- {name}: experiments.json SHA-256 {digest}" for name, digest in digests.items()]
+    notes += ["", "## Gráficos", ""] + [f"- {chart}" for chart in charts]
+    (output / "aggregate.md").write_text("\n".join(notes) + "\n", encoding="utf-8")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--experiments", required=True, type=Path)
+    source = p.add_mutually_exclusive_group(required=True)
+    source.add_argument("--experiments", type=Path)
+    source.add_argument("--aggregate", type=Path,
+                        help="directory whose subdirectories are experiments (NAME_sN = seed N)")
     p.add_argument("--output-dir", required=True, type=Path)
     args = p.parse_args(argv)
-    root, out = args.experiments.resolve(), args.output_dir.resolve()
+    root, out = (args.experiments or args.aggregate).resolve(), args.output_dir.resolve()
     if out.exists():
         p.error("output directory already exists (will not overwrite)")
     try:
+        if args.aggregate:
+            combined = aggregate(root)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.TemporaryDirectory(prefix=".osllm-h24-", dir=out.parent) as path:
+                export_aggregate(Path(path), *combined)
+                os.rename(path, out)
+            print("Report created:", out)
+            return
         original, rows, labs = validate(root)
         digest = hashlib.sha256((root / "experiments.json").read_bytes()).hexdigest()
         out.parent.mkdir(parents=True, exist_ok=True)
