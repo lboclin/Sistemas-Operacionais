@@ -21,7 +21,7 @@ cmake --build build --parallel
 tools/experiments/chk3.sh build /tmp/chk3
 ```
 
-O primeiro argumento é o diretório de build e o segundo, o de saída. O script não sobrescreve resultados existentes; para refazer `results/chk3`, remova `raw/`, `reports/` e `aggregate/` antes. Com os mesmos binários, a saída é idêntica à versionada. Leva cerca de 30 segundos.
+O primeiro argumento é o diretório de build e o segundo, o de saída. O script não sobrescreve resultados existentes; para refazer `results/chk3`, remova `raw/`, `reports/` e `aggregate/` antes. As métricas, os CSVs e os gráficos saem idênticos aos versionados; em outro ambiente mudam só os campos `environment` dos manifests e os SHA-256 derivados deles. Leva cerca de 30 segundos.
 
 Os dumps completos (`raw/*/runs/`, cerca de 85 MB) não são versionados. Os manifests guardam as métricas e o `trace_fingerprint` de cada execução.
 
