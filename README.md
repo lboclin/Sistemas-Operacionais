@@ -34,7 +34,7 @@ Com o tamanho conhecido, o SJF fica exato e herda seu defeito clássico: um pedi
 
 **Memória.** Cada pedido acessa a página `tokens_processados / tokens_por_página`. Uma falta bloqueia o pedido por uma latência configurável e libera o *worker*. As páginas têm tamanho fixo, então só há fragmentação interna. O OPT existe apenas em *replay offline* [3].
 
-**Concorrência, IPC e sinais.** No modo POSIX, *pthreads* reais confirmam cada token por uma fila limitada (mutex e semáforos). Um coordenador único mantém o estado, e o resultado é idêntico ao do modo virtual. Os laboratórios rodam em processos filhos com *watchdog*: corrida forçada por barreira, *deadlock* com dois mutexes, IPC entre *gateway* e motor por *pipes* e SIGUSR1 tratado só com uma *flag*. Um grafo de espera com detecção, prevenção e recuperação de ciclos também está implementado e testado.
+**Concorrência, IPC e sinais.** No modo POSIX, *pthreads* reais confirmam cada token por uma fila limitada (mutex e semáforos). Um coordenador único mantém o estado, e o resultado é idêntico ao do modo virtual. Os laboratórios de corrida (forçada por barreira) e de *deadlock* (dois mutexes) rodam em processos filhos com *watchdog*. O IPC liga *gateway* e motor, em processos separados, por *pipes*, e o SIGUSR1 é tratado só com uma *flag*. Um grafo de espera com detecção, prevenção e recuperação de ciclos também está implementado e testado.
 
 **Experimentos** (`tools/experiments/chk3.sh`):
 
@@ -60,7 +60,7 @@ As métricas são espera (média, p95, máxima), resposta, *turnaround*, *throug
 | Prioridade com *aging* | 56,6 | 107,8 | 159 | 72,9 | 0 |
 | Prioridade sem *aging* | 59,1 | 329,6 | 831 | 75,4 | 50 |
 
-**Cenário de *starvation*.** Com um fluxo contínuo de pedidos curtos, o pedido longo espera **796 ticks** no SJF e na prioridade sem *aging*, **120** no HRRN e **16** com *aging* ou FCFS (Figura 1). O SJF continua com a menor espera média (15,8, contra 46,2 do HRRN e 50,9 do FCFS) justamente por adiar o pedido longo.
+**Cenário de *starvation*.** Com um fluxo contínuo de pedidos curtos, o pedido longo espera **796 ticks** no SJF e na prioridade sem *aging*, **120** no HRRN e **16** com *aging* ou FCFS. A Figura 1 mostra a pior espera de qualquer pedido em cada política; com *aging* e FCFS ela é de 52 ticks, de um pedido curto. O SJF continua com a menor espera média (15,8, contra 46,2 do HRRN e 50,9 do FCFS) justamente por adiar o pedido longo.
 
 ![Figura 1 – Pior espera por política no cenário de starvation](results/chk3/aggregate/starvation_wait_max.svg)
 
@@ -68,8 +68,8 @@ As métricas são espera (média, p95, máxima), resposta, *turnaround*, *throug
 
 - **Round Robin:** troca espera por resposta. O tempo até a primeira execução cai de 56,3 (FCFS) para 4,4 (q=1), mas a espera média sobe cerca de 40%.
 - ***Aging*:** elimina os 50 casos de *starvation* da prioridade pura e reduz o pior caso de 831 para 159 ticks. Com prioridades de 0 a 5, porém, intervalo 2 anula a prioridade em 10 ticks, e o resultado fica quase igual ao FCFS.
-- **Carga *burst*:** com duas ondas de chegada, todas as políticas pioram e a utilização cai para cerca de 74%. A ordem se mantém: SJF tem a menor média (195,4), e o HRRN (211,3) tem o menor p95 na média das *seeds* (614,4; menor em 3 de 5).
-- **Memória (E3):** com 2 *frames*, o LRU bloqueia 38% menos tempo que o FIFO (4437 contra 7206 ticks) e reduz o *turnaround* em 33% (294,5 contra 438,1). A partir de 8 *frames*, as duas políticas empatam.
+- **Carga *burst*:** com duas ondas de chegada, todas as políticas pioram e a utilização cai para cerca de 74%. SJF e HRRN continuam à frente: SJF tem a menor média (195,4), e o HRRN (211,3) tem o menor p95 na média das *seeds* (614,4; menor em 3 de 5).
+- **Memória (E3):** com 2 *frames*, o LRU bloqueia 38% menos tempo que o FIFO (4437 contra 7206 ticks) e reduz o *turnaround* em 33% (294,5 contra 438,1). Com 8 *frames* o *turnaround* fica praticamente igual (295,1 contra 294,5), e com 16 *frames* empata.
 - **Laboratórios (E1 e E4):** 11 de 11 execuções corretas em cada modo. O modo protegido não perdeu incrementos, o inseguro perdeu um em dois, a ordem global evitou o *deadlock* e a ordem cruzada o produziu (encerrado pelo *watchdog*).
 
 ## 5. Discussão
