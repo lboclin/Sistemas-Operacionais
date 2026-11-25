@@ -27,7 +27,8 @@ static bool parse_u32(const char *text, uint32_t *value) {
 static void usage(void) {
     puts("Usage: os_llm_workload [--seed N] [--count N] [--distribution uniform|burst|staggered]");
     puts("                       [--arrival-span N] [--min-tokens N] [--max-tokens N] [--output FILE]");
-    puts("Emits versioned CSV v1 compatible with os_llm_cli --scenario.");
+    printf("Emits versioned CSV v%u compatible with os_llm_cli --scenario.\n",
+           (unsigned)OS_WORKLOAD_FORMAT_VERSION);
 }
 
 int main(int argc, char **argv) {
