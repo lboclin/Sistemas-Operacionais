@@ -18,7 +18,8 @@ SCHED = ("completed", "average_wait_ticks", "p50_wait_ticks", "p95_wait_ticks",
          "average_turnaround_ticks", "p95_turnaround_ticks",
          "throughput_per_tick", "worker_utilization", "max_wait_ticks", "starvation_count")
 MEMORY = ("completed", "page_hits", "page_faults", "page_evictions",
-          "peak_resident_frames", "total_blocked_ticks")
+          "peak_resident_frames", "total_blocked_ticks",
+          "average_turnaround_ticks", "throughput_per_tick")
 NAME = re.compile(r"[a-z][a-z0-9_]*\Z")
 
 
@@ -186,14 +187,16 @@ def export(output, original, rows, labs, digest):
              "Manifest de entrada SHA-256: " + digest,
              "As execuções comparáveis usam a mesma carga, verificada nos JSONs brutos.",
              "Métricas de espera, resposta, retorno e throughput usam ticks virtuais.",
-             "Não representam a latência de um LLM real. SJF-oráculo conhece o alvo antecipadamente.",
+             "Não representam a latência de um LLM real. SJF e HRRN usam o tamanho da entrada, conhecido na chegada.",
              "", "## E2 — Escalonamento",
              markdown_table(rows["E2"], ("name", "average_wait_ticks",
                  "p95_wait_ticks", "average_response_ticks",
-                 "average_turnaround_ticks", "throughput_per_tick")),
+                 "max_wait_ticks", "average_turnaround_ticks", "throughput_per_tick",
+                 "worker_utilization", "starvation_count")),
              "## E3 — Memória",
              markdown_table(rows["E3"], ("name", "page_hits",
-                 "page_faults", "page_evictions", "peak_resident_frames")),
+                 "page_faults", "page_evictions", "peak_resident_frames",
+                 "total_blocked_ticks", "average_turnaround_ticks")),
              "## E1 e E4 — Laboratórios"]
     for group in ("E1", "E4"):
         for item in labs[group]:
@@ -202,7 +205,6 @@ def export(output, original, rows, labs, digest):
                   "- Um cenário não demonstra superioridade universal de uma política.",
                   "- OPT é somente offline, não foi comparado como política online.",
                   "- Testes de corrida e deadlock são laboratórios, não inferência LLM.",
-                  "- Previsão SJF-IA requer modelo treinado separadamente.",
                   "- Configurações ausentes não recebem resultados fictícios.",
                   "", "## Arquivos", "- scheduling.csv, memory.csv, report.json"])
     notes.extend("- " + chart for chart in charts)

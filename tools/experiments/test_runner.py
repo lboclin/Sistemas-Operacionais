@@ -28,8 +28,8 @@ for l in Path(arg("--scenario")).read_text().splitlines():
  if not l or l.startswith("#"): continue
  x=list(map(int,l.split(",")))
  items.append(dict(zip(("id","arrival_tick","total_tokens","priority"),x)))
-policy={"fcfs":"FCFS","sjf":"SJF","rr":"Round-Robin","priority":"Priority-aging"}[arg("--policy")]
-Path(arg("--export-json")).write_text(json.dumps({"schema":"os-llm-run","finished":True,"input":items,"config":{"policy":policy,"aging_interval":int(arg("--aging-interval")) if "--aging-interval" in a else 2},"metrics":{"completed":len(items),"average_wait_ticks":0.0,"page_faults":0},"trace_fingerprint":"abc"}))
+policy={"fcfs":"FCFS","sjf":"SJF","rr":"Round-Robin","priority":"Priority-aging","hrrn":"HRRN"}[arg("--policy")]
+Path(arg("--export-json")).write_text(json.dumps({"schema":"os-llm-run","finished":True,"input":items,"config":{"policy":policy,"aging_interval":int(arg("--aging-interval")) if "--aging-interval" in a else 2,"starvation_threshold_ticks":int(arg("--starvation-threshold")) if "--starvation-threshold" in a else 0,"page_fault_latency_ticks":int(arg("--page-fault-latency")) if "--page-fault-latency" in a else 0},"metrics":{"completed":len(items),"average_wait_ticks":0.0,"page_faults":0},"trace_fingerprint":"abc"}))
 ''', encoding="utf-8")
         self.cli.chmod(0o755)
 
@@ -60,6 +60,18 @@ Path(arg("--export-json")).write_text(json.dumps({"schema":"os-llm-run","finishe
         self.assertEqual(e2["priority_aging"]["config"]["aging_interval"], 7)
         self.assertEqual(e2["priority_no_aging"]["config"]["aging_interval"], 0)
         self.assertEqual(result["config"]["aging_interval"], 7)
+
+    def test_hrrn_threshold_and_fault_latency_reach_every_run(self):
+        run = self.run_script(["--starvation-threshold", "320", "--page-fault-latency", "5"])
+        self.assertEqual(run.returncode, 0, run.stderr)
+        campaigns = json.loads((self.home / "out" / "experiments.json").read_text())["campaigns"]
+        e2 = {item["name"]: item["config"] for item in campaigns["E2"]["runs"]}
+        self.assertEqual(set(e2), {"fcfs", "sjf", "hrrn", "rr_q1", "rr_q3",
+                                   "priority_aging", "priority_no_aging"})
+        self.assertEqual(e2["hrrn"]["policy"], "HRRN")
+        self.assertEqual({c["starvation_threshold_ticks"] for c in e2.values()}, {320})
+        e3 = [item for item in campaigns["E3"]["runs"] if item["status"] == "completed"]
+        self.assertEqual({item["config"]["page_fault_latency_ticks"] for item in e3}, {5})
 
     def test_aging_interval_zero_is_rejected(self):
         # Zero would make both priority runs identical.

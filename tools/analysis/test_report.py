@@ -121,8 +121,13 @@ class ReportTests(unittest.TestCase):
         self.raw = self.base / "measured"
         self.assertEqual(self.invoke().returncode, 0)
         report = json.loads((self.out / "report.json").read_text())
-        # FCFS, SJF, RR q1/q3, priority with and without aging
-        self.assertEqual(len(report["scheduling"]), 6)
+        # FCFS, SJF, HRRN, RR q1/q3, priority with and without aging
+        self.assertEqual([row["policy"] for row in report["scheduling"]],
+                         ["FCFS", "SJF", "HRRN", "Round-Robin", "Round-Robin",
+                          "Priority-aging", "Priority-aging"])
+        text = (self.out / "report.md").read_text(encoding="utf-8")
+        for column in ("max_wait_ticks", "worker_utilization", "starvation_count"):
+            self.assertIn(column, text)
         self.assertEqual(len(report["memory"]), 4)
 
 
