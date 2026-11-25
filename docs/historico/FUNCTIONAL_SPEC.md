@@ -1,10 +1,12 @@
+> **Documento de planejamento (out/2026), mantido como histórico. Estado atual: [IMPLEMENTATION_STATUS.md](../IMPLEMENTATION_STATUS.md).**
+
 # LLM OS Lab — Plano 02: especificação funcional e alternativas técnicas
 
 > **Estado:** especificação para desenvolvimento futuro; **não existe implementação validada**.  
 > **Data:** 23/10/2026  
-> **Documento complementar:** [`ARCHITECTURE.md`](ARCHITECTURE.md).  
+> **Documento complementar:** [`PLANO_ARQUITETURA.md`](PLANO_ARQUITETURA.md).  
 > **Objetivo:** converter o enunciado acadêmico em funcionalidades isoladas, verificáveis e possíveis de dividir entre cinco pessoas.  
-> **Atualização 04/11/2026:** o foco passou a ser um servidor do Jev (TypeSafe AI) e o tick virtual mede tokens de **entrada**; o preditor (F14) saiu do escopo. Ver [ADR 0002](adr/0002-foco-typesafe-jev.md). Trechos abaixo sobre geração de texto descrevem o plano original.  
+> **Atualização 04/11/2026:** o foco passou a ser um servidor do Jev (TypeSafe AI) e o tick virtual mede tokens de **entrada**; o preditor (F14) saiu do escopo. Ver [ADR 0002](../adr/0002-foco-typesafe-jev.md). Trechos abaixo sobre geração de texto descrevem o plano original.  
 > **Escolhas em aberto:** C ou C++; GUI web ou desktop e stack; prioridade/combinação dos dois mecanismos de execução; pipe ou memória compartilhada para IPC.
 
 ## 1. Princípios funcionais
