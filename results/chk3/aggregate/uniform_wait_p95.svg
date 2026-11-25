@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 376" width="900" height="376">
+<rect width="100%" height="100%" fill="white"/>
+<text x="18" y="30" font-size="19" font-family="sans-serif">Espera p95 (ticks) — uniform</text>
+<text x="18" y="50" font-size="12" font-family="sans-serif">Simulação virtual; não são tempos reais de inferência</text>
+<text x="18" y="95" font-size="13" font-family="monospace">fcfs</text>
+<rect x="248" y="80" rx="3" width="134" height="21" fill="#4472a5"/>
+<text x="394" y="95" font-size="13" font-family="monospace">105.4</text>
+<text x="18" y="133" font-size="13" font-family="monospace">sjf</text>
+<rect x="248" y="118" rx="3" width="188" height="21" fill="#4472a5"/>
+<text x="448" y="133" font-size="13" font-family="monospace">147.6</text>
+<text x="18" y="171" font-size="13" font-family="monospace">hrrn</text>
+<rect x="248" y="156" rx="3" width="140" height="21" fill="#4472a5"/>
+<text x="400" y="171" font-size="13" font-family="monospace">110.6</text>
+<text x="18" y="209" font-size="13" font-family="monospace">rr_q1</text>
+<rect x="248" y="194" rx="3" width="263" height="21" fill="#4472a5"/>
+<text x="523" y="209" font-size="13" font-family="monospace">206.6</text>
+<text x="18" y="247" font-size="13" font-family="monospace">rr_q3</text>
+<rect x="248" y="232" rx="3" width="251" height="21" fill="#4472a5"/>
+<text x="511" y="247" font-size="13" font-family="monospace">197.2</text>
+<text x="18" y="285" font-size="13" font-family="monospace">priority_aging</text>
+<rect x="248" y="270" rx="3" width="137" height="21" fill="#4472a5"/>
+<text x="397" y="285" font-size="13" font-family="monospace">107.8</text>
+<text x="18" y="323" font-size="13" font-family="monospace">priority_no_aging</text>
+<rect x="248" y="308" rx="3" width="419" height="21" fill="#4472a5"/>
+<text x="679" y="323" font-size="13" font-family="monospace">329.6</text>
+</svg>

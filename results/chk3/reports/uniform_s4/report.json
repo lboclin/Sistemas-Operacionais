@@ -1,0 +1,272 @@
+{
+  "charts": [
+    "scheduling_wait.svg",
+    "memory_faults.svg"
+  ],
+  "configuration": {
+    "aging_interval": 2,
+    "frames": [
+      2,
+      4,
+      8,
+      16
+    ],
+    "page_fault_latency": 5,
+    "starvation_threshold": 320,
+    "timeout_seconds": 30,
+    "tokens_per_page": 4,
+    "workers": 2
+  },
+  "experiments_sha256": "ed50424016c0622400aa86ba8fec6d26a29ccb24a6ec99728948891c839c7d56",
+  "laboratories": {
+    "E1": [
+      {
+        "details": "mode=safe expected=2 observed=2 lost=0",
+        "name": "safe",
+        "status": "completed"
+      },
+      {
+        "details": "mode=unsafe expected=2 observed=1 lost=1",
+        "name": "unsafe",
+        "status": "completed"
+      }
+    ],
+    "E4": [
+      {
+        "details": "mode=ordered completed=2 watchdog=none deadlock=no",
+        "name": "ordered",
+        "status": "completed"
+      },
+      {
+        "details": "mode=deadlock acquired=2 watchdog=SIGKILL deadlock=observed",
+        "name": "deadlock",
+        "status": "completed"
+      }
+    ]
+  },
+  "memory": [
+    {
+      "average_turnaround_ticks": 425.485,
+      "completed": 200,
+      "name": "memory_fifo_f2",
+      "page_evictions": 2879,
+      "page_faults": 3040,
+      "page_hits": 1806,
+      "peak_resident_frames": 2,
+      "policy": "FCFS",
+      "throughput_per_tick": 0.08100445524503848,
+      "total_blocked_ticks": 7620
+    },
+    {
+      "average_turnaround_ticks": 271.965,
+      "completed": 200,
+      "name": "memory_lru_f2",
+      "page_evictions": 1605,
+      "page_faults": 1806,
+      "page_hits": 2422,
+      "peak_resident_frames": 2,
+      "policy": "FCFS",
+      "throughput_per_tick": 0.09220839096357769,
+      "total_blocked_ticks": 4530
+    },
+    {
+      "average_turnaround_ticks": 291.76,
+      "completed": 200,
+      "name": "memory_fifo_f4",
+      "page_evictions": 1554,
+      "page_faults": 1757,
+      "page_hits": 2541,
+      "peak_resident_frames": 4,
+      "policy": "FCFS",
+      "throughput_per_tick": 0.09099181073703366,
+      "total_blocked_ticks": 4880
+    },
+    {
+      "average_turnaround_ticks": 271.965,
+      "completed": 200,
+      "name": "memory_lru_f4",
+      "page_evictions": 1498,
+      "page_faults": 1702,
+      "page_hits": 2526,
+      "peak_resident_frames": 4,
+      "policy": "FCFS",
+      "throughput_per_tick": 0.09220839096357769,
+      "total_blocked_ticks": 4530
+    },
+    {
+      "average_turnaround_ticks": 272.505,
+      "completed": 200,
+      "name": "memory_fifo_f8",
+      "page_evictions": 599,
+      "page_faults": 950,
+      "page_hits": 3280,
+      "peak_resident_frames": 8,
+      "policy": "FCFS",
+      "throughput_per_tick": 0.09216589861751152,
+      "total_blocked_ticks": 4540
+    },
+    {
+      "average_turnaround_ticks": 271.965,
+      "completed": 200,
+      "name": "memory_lru_f8",
+      "page_evictions": 607,
+      "page_faults": 982,
+      "page_hits": 3246,
+      "peak_resident_frames": 8,
+      "policy": "FCFS",
+      "throughput_per_tick": 0.09220839096357769,
+      "total_blocked_ticks": 4530
+    },
+    {
+      "average_turnaround_ticks": 271.965,
+      "completed": 200,
+      "name": "memory_fifo_f16",
+      "page_evictions": 176,
+      "page_faults": 910,
+      "page_hits": 3318,
+      "peak_resident_frames": 16,
+      "policy": "FCFS",
+      "throughput_per_tick": 0.09220839096357769,
+      "total_blocked_ticks": 4530
+    },
+    {
+      "average_turnaround_ticks": 271.965,
+      "completed": 200,
+      "name": "memory_lru_f16",
+      "page_evictions": 175,
+      "page_faults": 917,
+      "page_hits": 3311,
+      "peak_resident_frames": 16,
+      "policy": "FCFS",
+      "throughput_per_tick": 0.09220839096357769,
+      "total_blocked_ticks": 4530
+    }
+  ],
+  "provenance": {
+    "environment": {
+      "machine": "x86_64",
+      "os": "Linux",
+      "python": "3.14.4"
+    },
+    "model": "virtual token-tick scheduler; pthread labs separately",
+    "scenario_sha256": "28adf8b466d5186b8613970bc37786067eecb81643d104b3ae443a6d4db83b67",
+    "source_claim": "synthetic_fixture",
+    "source_verified": false
+  },
+  "scheduling": [
+    {
+      "average_response_ticks": 57.455,
+      "average_turnaround_ticks": 74.065,
+      "average_wait_ticks": 57.455,
+      "completed": 200,
+      "max_wait_ticks": 159,
+      "name": "fcfs",
+      "p50_wait_ticks": 50,
+      "p95_response_ticks": 131,
+      "p95_turnaround_ticks": 153,
+      "p95_wait_ticks": 131,
+      "policy": "FCFS",
+      "starvation_count": 0,
+      "throughput_per_tick": 0.11409013120365089,
+      "worker_utilization": 0.9475185396463206
+    },
+    {
+      "average_response_ticks": 34.965,
+      "average_turnaround_ticks": 51.575,
+      "average_wait_ticks": 34.965,
+      "completed": 200,
+      "max_wait_ticks": 961,
+      "name": "sjf",
+      "p50_wait_ticks": 9,
+      "p95_response_ticks": 151,
+      "p95_turnaround_ticks": 182,
+      "p95_wait_ticks": 151,
+      "policy": "SJF",
+      "starvation_count": 4,
+      "throughput_per_tick": 0.1141552511415525,
+      "worker_utilization": 0.9480593607305936
+    },
+    {
+      "average_response_ticks": 45.815,
+      "average_turnaround_ticks": 62.425,
+      "average_wait_ticks": 45.815,
+      "completed": 200,
+      "max_wait_ticks": 190,
+      "name": "hrrn",
+      "p50_wait_ticks": 37,
+      "p95_response_ticks": 125,
+      "p95_turnaround_ticks": 149,
+      "p95_wait_ticks": 125,
+      "policy": "HRRN",
+      "starvation_count": 0,
+      "throughput_per_tick": 0.11350737797956867,
+      "worker_utilization": 0.9426787741203179
+    },
+    {
+      "average_response_ticks": 4.49,
+      "average_turnaround_ticks": 101.16,
+      "average_wait_ticks": 84.55,
+      "completed": 200,
+      "max_wait_ticks": 292,
+      "name": "rr_q1",
+      "p50_wait_ticks": 69,
+      "p95_response_ticks": 10,
+      "p95_turnaround_ticks": 269,
+      "p95_wait_ticks": 245,
+      "policy": "Round-Robin",
+      "starvation_count": 0,
+      "throughput_per_tick": 0.11441647597254005,
+      "worker_utilization": 0.950228832951945
+    },
+    {
+      "average_response_ticks": 13.275,
+      "average_turnaround_ticks": 99.42,
+      "average_wait_ticks": 82.81,
+      "completed": 200,
+      "max_wait_ticks": 278,
+      "name": "rr_q3",
+      "p50_wait_ticks": 69,
+      "p95_response_ticks": 30,
+      "p95_turnaround_ticks": 256,
+      "p95_wait_ticks": 233,
+      "policy": "Round-Robin",
+      "starvation_count": 0,
+      "throughput_per_tick": 0.11448196908986835,
+      "worker_utilization": 0.9507727532913566
+    },
+    {
+      "average_response_ticks": 57.485,
+      "average_turnaround_ticks": 74.095,
+      "average_wait_ticks": 57.485,
+      "completed": 200,
+      "max_wait_ticks": 159,
+      "name": "priority_aging",
+      "p50_wait_ticks": 50,
+      "p95_response_ticks": 133,
+      "p95_turnaround_ticks": 152,
+      "p95_wait_ticks": 133,
+      "policy": "Priority-aging",
+      "starvation_count": 0,
+      "throughput_per_tick": 0.1141552511415525,
+      "worker_utilization": 0.9480593607305936
+    },
+    {
+      "average_response_ticks": 70.6,
+      "average_turnaround_ticks": 87.21,
+      "average_wait_ticks": 70.6,
+      "completed": 200,
+      "max_wait_ticks": 718,
+      "name": "priority_no_aging",
+      "p50_wait_ticks": 12,
+      "p95_response_ticks": 480,
+      "p95_turnaround_ticks": 483,
+      "p95_wait_ticks": 480,
+      "policy": "Priority-aging",
+      "starvation_count": 16,
+      "throughput_per_tick": 0.11396011396011396,
+      "worker_utilization": 0.9464387464387465
+    }
+  ],
+  "schema": "os-llm-report/v1",
+  "time_basis": "virtual ticks, not wall-clock LLM inference"
+}
