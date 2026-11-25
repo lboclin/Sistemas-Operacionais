@@ -4,7 +4,7 @@ O projeto contém um simulador de sistemas operacionais para um servidor que ate
 
 ## Implementado
 
-- Políticas FCFS, SJF (pelo tamanho da entrada), Round Robin e prioridade com aging.
+- Políticas FCFS, SJF (pelo tamanho da entrada), Round Robin, prioridade com aging e HRRN.
 - Sessões incrementais, snapshots, eventos, métricas e replay determinístico.
 - Memória paginada FIFO/LRU, page faults com latência configurável e exportação de resultados.
 - Geração de workloads reproduzíveis (CSV v2) e ferramentas de experimentos e análise.

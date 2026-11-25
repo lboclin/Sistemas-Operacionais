@@ -4,7 +4,7 @@ Simulador acadêmico em C11 de um servidor que atende requisições do Jev, o mo
 
 ## O que faz
 
-- Compara FCFS, SJF (pelo tamanho da entrada, sem previsão), Round Robin e prioridade com aging.
+- Compara FCFS, SJF (pelo tamanho da entrada, sem previsão), Round Robin, prioridade com aging e HRRN.
 - Simula workers, memória paginada FIFO/LRU, métricas, traces e reprodução de execuções.
 - Gera workloads reproduzíveis e exporta resultados em JSON e CSV.
 - Oferece um painel web local e laboratórios de concorrência, deadlock, sinais (SIGUSR1) e IPC por pipes (gateway → motor em processos separados).

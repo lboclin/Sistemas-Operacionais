@@ -62,7 +62,7 @@ class RealEngineAcceptance(unittest.TestCase):
                 self.assertLess(e["worker_index"], int(payload["workers"]))
 
     def test_all_scheduling_policies_with_one_and_two_workers(self):
-        for policy in ("fcfs", "sjf", "rr", "priority"):
+        for policy in ("fcfs", "sjf", "rr", "priority", "hrrn"):
             for workers in ("1", "2"):
                 with self.subTest(policy=policy, workers=workers):
                     payload = scenario(5)
@@ -90,7 +90,7 @@ class RealEngineAcceptance(unittest.TestCase):
 
     def test_deterministic_seeded_workloads_across_policies(self):
         rng = random.Random(29026)
-        choices = ("fcfs", "sjf", "rr", "priority")
+        choices = ("fcfs", "sjf", "rr", "priority", "hrrn")
         for iteration in range(18):
             payload = scenario(rng.randint(1, 8))
             payload["policy"] = choices[iteration % len(choices)]

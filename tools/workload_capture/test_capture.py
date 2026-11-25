@@ -117,7 +117,7 @@ class CaptureTests(unittest.TestCase):
         self.assertEqual(json.loads((out / "scenario.meta.json").read_text())["source"], "observed_llm")
         cli = os.environ.get("OSLLM_CLI")
         if cli:
-            for policy in ("fcfs", "sjf", "rr", "priority"):
+            for policy in ("fcfs", "sjf", "rr", "priority", "hrrn"):
                 command = [cli, "--scenario", str(scenario), "--policy", policy]
                 result = subprocess.run(command, capture_output=True, text=True, timeout=15)
                 self.assertEqual(result.returncode, 0, (policy, result.stderr))

@@ -15,7 +15,7 @@ Abrir **http://127.0.0.1:8765** no navegador da própria máquina. `--cli` receb
 ## Dashboard base (I25)
 
 - Criar, editar e remover PCBs; importar cenários CSV v2 de 4 colunas `id,arrival_tick,input_tokens,priority` (incluindo cabeçalho `os-llm-scenario v2`), restaurar preset.
-- FCFS, SJF (pelo tamanho da entrada), RR e prioridade com aging. Configurar quantidade de workers (1–16) e quantum RR.
+- FCFS, SJF (pelo tamanho da entrada), RR, prioridade com aging e HRRN. Configurar quantidade de workers (1–16) e quantum RR.
 - Executar a CLI de verdade, recebendo sua exportação JSON. Exibir métricas calculadas (concluídas, espera média, throughput, tempo total e **utilização dos workers**, a fração do tempo em que os workers processaram tokens) e estado final dos PCBs. Tudo em **ticks virtuais** e sem números fabricados.
 - Proteções: bind de loopback, verificação de Host/Origin, assets em allowlist (sem acesso ao sistema de arquivos), CSP, limite de 64 KiB por solicitação, até 256 PCBs, numeração validada com limite de 64 bits para chegada, subprocess sem shell e timeout de 25 segundos, export máximo de 16 MiB. Erros são enviados sem revelar caminhos privados.
 
