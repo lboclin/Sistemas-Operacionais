@@ -1,8 +1,8 @@
-# Contribuindo para o LLM OS Lab
+# Contribuindo para o LLM-Sched
 
 ## Antes de começar
 
-Leia [arquitetura](docs/ARCHITECTURE.md), [especificação](docs/FUNCTIONAL_SPEC.md) e [contratos](docs/CONTRACTS.md). Combine interfaces compartilhadas antes de implementar módulos em paralelo. Não escolha frameworks ou bibliotecas globais sem registrar a decisão.
+Leia a [arquitetura](docs/ARCHITECTURE.md), o [estado da implementação](docs/IMPLEMENTATION_STATUS.md) e o [registro de decisões](docs/DECISIONS.md). Combine interfaces compartilhadas antes de implementar módulos em paralelo. Não escolha frameworks ou bibliotecas globais sem registrar a decisão.
 
 ## Fluxo de trabalho
 
@@ -19,12 +19,11 @@ Leia [arquitetura](docs/ARCHITECTURE.md), [especificação](docs/FUNCTIONAL_SPEC
 - Não criar classes, abstrações, serviços, bancos ou diretórios sem uma responsabilidade real.
 - Não adicionar segredos, modelos grandes ou datasets brutos ao Git.
 - Não declarar testes executados se ainda não foram executados.
-- A documentação é escrita preferencialmente em português; o núcleo provisório usa C11, identificadores `os_*` e headers próprios por módulo.\n- Antes de abrir PR, rode `cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build --parallel && ctest --test-dir build --output-on-failure`.
+- A documentação é escrita preferencialmente em português; o núcleo usa C11, identificadores `os_*` e headers próprios por módulo.
+- Antes de abrir PR, rode `cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build --parallel && ctest --test-dir build --output-on-failure` e `python3 tools/check_links.py`.
 
 ## GitHub
 
-Proposta de labels: `area:core`, `area:scheduling`, `area:memory`, `area:runtime`, `area:ui`, `area:ai`, `area:experiments`, `type:feature`, `type:bug`, `type:test`, `type:docs`, `priority:p0`, `priority:p1`, `blocked`, `decision-needed`.
+Proposta de labels: `area:core`, `area:scheduling`, `area:memory`, `area:runtime`, `area:ui`, `area:experiments`, `type:feature`, `type:bug`, `type:test`, `type:docs`, `priority:p0`, `priority:p1`, `blocked`, `decision-needed`.
 
-Milestones sugeridos: M0 (contratos), M1 (núcleo), M2 (escalonamento/memória), M3 (concorrência), M4 (GUI), M5 (IA/experimentos), M6 (consolidação).
-
-**CI:** workflow somente em pull requests e execução manual (sem gatilho em todo push), compilando e testando o núcleo. **Licença, CODEOWNERS e proteção de branch** permanecem pendentes de decisão do grupo.
+**CI:** workflow somente em pull requests e execução manual (sem gatilho em todo push), compilando e testando o núcleo. **Licença, CODEOWNERS e proteção de branch** dependem de decisão do grupo ([D-07](docs/DECISIONS.md)).
