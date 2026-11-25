@@ -29,7 +29,7 @@ for l in Path(arg("--scenario")).read_text().splitlines():
  x=list(map(int,l.split(",")))
  items.append(dict(zip(("id","arrival_tick","total_tokens","priority"),x)))
 policy={"fcfs":"FCFS","sjf":"SJF","rr":"Round-Robin","priority":"Priority-aging"}[arg("--policy")]
-Path(arg("--export-json")).write_text(json.dumps({"schema":"os-llm-run","finished":True,"input":items,"config":{"policy":policy},"metrics":{"completed":len(items),"average_wait_ticks":0.0,"page_faults":0},"trace_fingerprint":"abc"}))
+Path(arg("--export-json")).write_text(json.dumps({"schema":"os-llm-run","finished":True,"input":items,"config":{"policy":policy,"aging_interval":int(arg("--aging-interval")) if "--aging-interval" in a else 2},"metrics":{"completed":len(items),"average_wait_ticks":0.0,"page_faults":0},"trace_fingerprint":"abc"}))
 ''', encoding="utf-8")
         self.cli.chmod(0o755)
 
@@ -46,8 +46,25 @@ Path(arg("--export-json")).write_text(json.dumps({"schema":"os-llm-run","finishe
         self.assertEqual(result["schema"], "os-llm-experiments/v1")
         self.assertEqual(set(result["campaigns"]), {"E1", "E2", "E3", "E4"})
         self.assertEqual(len(result["campaigns"]["E3"]["runs"]), 5)
-        self.assertEqual(result["campaigns"]["E2"]["runs"][-1]["status"], "skipped")
+        e2 = {run["name"]: run for run in result["campaigns"]["E2"]["runs"]}
+        self.assertEqual({run["status"] for run in e2.values()}, {"completed"})
+        self.assertEqual(e2["priority_aging"]["config"]["aging_interval"], 2)
+        self.assertEqual(e2["priority_no_aging"]["config"]["aging_interval"], 0)
         self.assertFalse(self.run_script().returncode == 0)
+
+    def test_aging_interval_option(self):
+        run = self.run_script(["--aging-interval", "7"])
+        self.assertEqual(run.returncode, 0, run.stderr)
+        result = json.loads((self.home / "out" / "experiments.json").read_text())
+        e2 = {run["name"]: run for run in result["campaigns"]["E2"]["runs"]}
+        self.assertEqual(e2["priority_aging"]["config"]["aging_interval"], 7)
+        self.assertEqual(e2["priority_no_aging"]["config"]["aging_interval"], 0)
+        self.assertEqual(result["config"]["aging_interval"], 7)
+
+    def test_aging_interval_zero_is_rejected(self):
+        # Zero would make both priority runs identical.
+        self.assertNotEqual(self.run_script(["--aging-interval", "0"]).returncode, 0)
+        self.assertFalse((self.home / "out").exists())
 
     def test_duplicate_ids_fail_without_output(self):
         self.scenario.write_text("1,0,5,0\n1,1,3,1\n")

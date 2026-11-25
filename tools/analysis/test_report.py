@@ -121,7 +121,8 @@ class ReportTests(unittest.TestCase):
         self.raw = self.base / "measured"
         self.assertEqual(self.invoke().returncode, 0)
         report = json.loads((self.out / "report.json").read_text())
-        self.assertEqual(len(report["scheduling"]), 5)  # FCFS, SJF, RR q1/q3, priority
+        # FCFS, SJF, RR q1/q3, priority with and without aging
+        self.assertEqual(len(report["scheduling"]), 6)
         self.assertEqual(len(report["memory"]), 4)
 
 
