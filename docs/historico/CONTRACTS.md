@@ -1,3 +1,5 @@
+> **Documento de planejamento (out/2026), mantido como histórico. Estado atual: [ARCHITECTURE.md](../ARCHITECTURE.md) e os headers em `src/*/*.h`.**
+
 # Contratos entre módulos — rascunho (M0)
 
 > Documento de planejamento. Tipos, serialização e linguagem ainda não definidos.

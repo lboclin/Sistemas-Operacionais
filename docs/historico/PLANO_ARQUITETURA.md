@@ -1,9 +1,11 @@
+> **Documento de planejamento (out/2026), mantido como histórico. Estado atual: [ARCHITECTURE.md](../ARCHITECTURE.md).**
+
 # LLM OS Lab — Plano 01: arquitetura e organização do repositório
 
 > **Estado:** documento de planejamento inicial; a implementação evoluiu e está registrada em `IMPLEMENTATION_STATUS.md`.
 > **Data:** 23/10/2026  
 > **Origem do escopo:** *LLM-Sched: um mini sistema operacional para servir requisições de LLM*, proposta da disciplina de Sistemas Operacionais.  
-> **Atualização 04/11/2026:** o foco é um servidor do Jev (TypeSafe AI); `prediction` e `tools/predictor` foram removidos. Ver [ADR 0002](adr/0002-foco-typesafe-jev.md).  
+> **Atualização 04/11/2026:** o foco é um servidor do Jev (TypeSafe AI); `prediction` e `tools/predictor` foram removidos. Ver [ADR 0002](../adr/0002-foco-typesafe-jev.md).  
 > **Repositório:** `Sistemas-Operacionais` (público, mantido por `lboclin`).
 > **Decisões deliberadamente pendentes:** C11 ou C++20; interface web ou desktop e seu framework; bibliotecas de teste; protocolo definitivo de comunicação entre interface e motor; pipe ou memória compartilhada POSIX para IPC; política exata para simulação versus concorrência real.
 

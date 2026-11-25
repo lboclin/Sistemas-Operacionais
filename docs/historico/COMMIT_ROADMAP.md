@@ -1,6 +1,8 @@
+> **Documento de planejamento (out/2026), mantido como histórico. Estado atual: [IMPLEMENTATION_STATUS.md](../IMPLEMENTATION_STATUS.md).**
+
 # Roadmap histórico de implementação por commits — OS-llm-project
 
-> **Nota de 02/11/2026:** este é o plano histórico dos commits 01–28. Os blocos H e I foram posteriormente integrados à `main`; o Bloco J é acompanhado em [FINAL_DELIVERY.md](FINAL_DELIVERY.md). As pendências relatadas nas entradas antigas representam o momento da redação, não o estado atual.
+> **Nota de 02/11/2026:** este é o plano histórico dos commits 01–28. Os blocos H e I foram posteriormente integrados à `main`; o Bloco J é acompanhado em [FINAL_DELIVERY.md](../FINAL_DELIVERY.md). As pendências relatadas nas entradas antigas representam o momento da redação, não o estado atual.
 
 > Planejamento revisável de 25/10/2026, baseado na `main` a partir do commit `140ff8a` e na especificação [FUNCTIONAL_SPEC.md](FUNCTIONAL_SPEC.md).
 > **Regra:** cada commit contém uma mudança coesa, testes relevantes e documentação do comportamento real. Não usar timestamps retroativos, commits vazios, force push ou publicar integrações quebradas.
@@ -53,6 +55,6 @@ Os commits 11–14 adicionaram o adaptador POSIX e os laboratórios de corrida e
 
 ### Mudança de foco: servidor do Jev (04/11/2026)
 
-O bloco G foi **revertido** pela [ADR 0002](adr/0002-foco-typesafe-jev.md). O simulador passou a modelar um servidor do Jev (TypeSafe AI): 1 tick = 1 token de entrada, e o tamanho do job é conhecido na chegada. Saíram o SJF-EMA (G19), o preditor (G20), o adaptador SJF-IA (G21) e a coluna `predicted_tokens`. A coleta do G22 continua, mas agora gera cenários CSV v2 com os tokens de **entrada**. O SJF passou a ordenar pelo tamanho real da entrada.
+O bloco G foi **revertido** pela [ADR 0002](../adr/0002-foco-typesafe-jev.md). O simulador passou a modelar um servidor do Jev (TypeSafe AI): 1 tick = 1 token de entrada, e o tamanho do job é conhecido na chegada. Saíram o SJF-EMA (G19), o preditor (G20), o adaptador SJF-IA (G21) e a coluna `predicted_tokens`. A coleta do G22 continua, mas agora gera cenários CSV v2 com os tokens de **entrada**. O SJF passou a ordenar pelo tamanho real da entrada.
 
 **Próximos (histórico):** bloco H de experimentos e relatórios comparativos, depois GUI, testes E2E e entrega final. Linguagem e interface ainda são decisões abertas.
