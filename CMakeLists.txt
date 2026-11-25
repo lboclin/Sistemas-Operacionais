@@ -172,6 +172,15 @@ if(BUILD_TESTING)
     add_test(NAME cli_missing_steps COMMAND os_llm_cli --steps)
     set_tests_properties(cli_missing_steps PROPERTIES WILL_FAIL TRUE)
 
+    # Priority must use the interval given on the command line (0 = no aging).
+    foreach(aging IN ITEMS "-1" "x" "18446744073709551616")
+        add_test(NAME cli_invalid_aging_${aging} COMMAND os_llm_cli --policy priority --aging-interval ${aging})
+        set_tests_properties(cli_invalid_aging_${aging} PROPERTIES
+            PASS_REGULAR_EXPRESSION "Invalid --aging-interval value")
+    endforeach()
+    add_test(NAME cli_missing_aging COMMAND os_llm_cli --aging-interval)
+    set_tests_properties(cli_missing_aging PROPERTIES WILL_FAIL TRUE)
+
     add_executable(test_fresh_pcb tests/unit/test_fresh_pcb.c)
     target_link_libraries(test_fresh_pcb PRIVATE os_core)
     if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
