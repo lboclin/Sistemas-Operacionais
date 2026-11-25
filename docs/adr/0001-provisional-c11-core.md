@@ -1,15 +1,15 @@
-# ADR 0001 — C11 provisório para o primeiro núcleo
+# ADR 0001 — C11 para o núcleo
 
-**Estado:** provisório, revisável pelo grupo.
+**Estado:** aceita. C11 foi mantido até a entrega. A decisão começou como provisória em outubro de 2026 e foi confirmada depois.
 
 ## Contexto
-A proposta acadêmica original descreve o simulador em C. O grupo ainda não aprovou a escolha definitiva entre C e C++ e não definiu a GUI. Implementar o núcleo mínimo em C11 permite validar estruturas, regras e políticas sem impor framework gráfico.
+A proposta acadêmica descreve o simulador em C. Em outubro, o grupo ainda não havia escolhido entre C e C++ nem definido a interface. Implementar o núcleo mínimo em C11 permitia validar estruturas, regras e políticas sem impor um framework gráfico.
 
-## Decisão nesta etapa
-Usar C11 e CMake/CTest somente para o primeiro conjunto de funcionalidades, com módulos públicos por headers e sem dependência de interface gráfica.
+## Decisão
+Usar C11 e CMake/CTest, com módulos públicos por headers e sem dependência de interface gráfica no núcleo.
 
 ## Consequências
 - Trabalha diretamente com os conceitos da disciplina.
-- A UI continua independente e não exige Python, Qt ou React.
-- A adoção definitiva de C, C++, POSIX e adaptadores de GUI continua em aberto.
-- Alterar linguagem mais tarde pode exigir refatoração; não se promete migração automática.
+- O núcleo não depende da interface. O painel escolhido depois (Python e JavaScript) chama a CLI por subprocesso.
+- O código POSIX (pthreads, pipes, sinais) fica em bibliotecas separadas do núcleo.
+- Trocar de linguagem exigiria refatoração.
