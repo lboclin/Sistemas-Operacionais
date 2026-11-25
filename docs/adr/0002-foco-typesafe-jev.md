@@ -29,4 +29,4 @@ O simulador modela um servidor que atende requisições do Jev.
 - Os dados sobre o Jev vêm de material de lançamento e cobertura de imprensa; os números de desempenho divulgados são da própria TypeSafe. O simulador não chama o Jev nem depende de suas métricas.
 
 ## Validação
-macOS: 48 de 64 testes do CTest passam, incluindo os testes Python e JavaScript do painel, dos experimentos e da coleta. Os 16 restantes falham do mesmo modo na `main` anterior a esta mudança: são testes POSIX (`pthread_barrier_t`, `sem_init`) que não compilam no macOS, mais dois testes Python que dependem desses binários. Eles rodam no CI Linux.
+Contagens da época da decisão (04/11/2026); o estado atual está em [IMPLEMENTATION_STATUS.md](../IMPLEMENTATION_STATUS.md). macOS: 48 de 64 testes do CTest passam, incluindo os testes Python e JavaScript do painel, dos experimentos e da coleta. Os 16 restantes falham do mesmo modo na `main` anterior a esta mudança: são testes POSIX (`pthread_barrier_t`, `sem_init`) que não compilam no macOS, mais dois testes Python que dependem desses binários. Eles rodam no CI Linux.
