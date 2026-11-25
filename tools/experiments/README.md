@@ -10,6 +10,8 @@ E4: laboratório real de mutexes pthread em subprocesso protegido por watchdog; 
 Resultados: experiments.json (os-llm-experiments/v1) e runs/*.json, mantendo os dumps integrais da CLI e verificando a mesma carga em cada execução. Diretório de saída só pode ser criado uma vez.
 Fonte informada no parâmetro --source é declaração do operador (source_verified=false): não comprova coleta real. Ticks virtuais não são milissegundos reais; não reportar desempenho de modelos sem medir.
 
+Campanha do CHK3 (E1–E4 sobre 11 cargas, relatórios e agregado): `tools/experiments/chk3.sh`. Os resultados versionados ficam em `results/chk3/`; os dumps de `raw/*/runs/` não são versionados por tamanho, mas o script os recria e o `trace_fingerprint` de cada manifest permite conferir.
+
 Testes locais sem binários: python3 -m unittest discover -s tools/experiments -p test_runner.py -v
 CTest com binários: experiments_runner_py, incluindo smoke real se estiverem compilados.
 Análise em tabelas e gráficos fica para o commit H24; esta entrega apenas mede e preserva resultados.

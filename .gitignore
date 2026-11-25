@@ -27,7 +27,10 @@ coverage/
 
 # Local data and experiment outputs
 data/
-results/
+results/*
+!results/chk3/
+# Dumps brutos: dezenas de MB, recriados por tools/experiments/chk3.sh
+results/chk3/raw/*/runs/
 outputs/
 *.log
 
