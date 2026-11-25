@@ -1,3 +1,3 @@
 # Testes de integração
 
-Implementado: `test_virtual.c`, cobrindo políticas, workers virtuais, métricas e validações. Ver [TEST_PLAN](../../docs/TEST_PLAN.md).
+Executados pelo CTest. `test_virtual.c` cobre políticas (incluindo HRRN), workers virtuais, métricas e validações; os demais cobrem sessão, eventos, memória, latência de falta, replay, métricas e exportação. Ver [TEST_PLAN](../../docs/TEST_PLAN.md).

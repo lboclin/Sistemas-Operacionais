@@ -1,14 +1,16 @@
-# CLI de testes
+# CLI
 
-Interface auxiliar: não é a GUI principal do projeto.
+Executável usado diretamente, pelos experimentos e pelo [painel web](../visual/README.md).
 
 ```bash
 ./build/os_llm_cli --policy rr --quantum 2 --workers 2
 ./build/os_llm_cli --scenario scenarios/sample.csv
+./build/os_llm_cli --policy hrrn --scenario scenarios/starvation.csv
+./build/os_llm_cli --policy priority --aging-interval 0
 ./build/os_llm_cli --frames 3 --page-tokens 2 --page-policy fifo --trace
 ```
 
-`--frames` habilita paginação FIFO/LRU; `--trace` mostra eventos. `--help` contém o restante das opções. OPT online e interface gráfica ainda não existem.
+`--frames` habilita paginação FIFO/LRU; `--trace` mostra eventos. `--help` contém o restante das opções. OPT existe apenas no replay offline.
 
 ## Snapshots da sessão
 

@@ -1,12 +1,5 @@
-# camada de aplicação
+# Camada de aplicação
 
-**Estado:** módulo planejado, ainda sem implementação.
+Sem código. O plano de outubro previa este módulo, mas a composição ficou em `apps/cli` (que cria a sessão) e em `apps/visual` (que chama a CLI).
 
-## Responsabilidade
-Coordenar comandos, consultas e sessões do simulador; não codificar políticas nem manipular memória diretamente.
-
-## Integração
-Interfaces apenas pelos contratos públicos com os módulos relacionados: core, gateway, workload, runtime, metrics, experiments. Não acessar estado interno de outro módulo.
-
-## Antes de codificar
-Aprovar contratos em [CONTRACTS.md](../../docs/CONTRACTS.md), especificar testes observáveis e registrar escolhas técnicas com ADR quando necessário.
+Ver [arquitetura](../../docs/ARCHITECTURE.md).
