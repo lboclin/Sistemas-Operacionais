@@ -38,7 +38,7 @@
       <section class="panel" aria-labelledby="scenario-heading">
         <div class="panel-heading"><h2 id="scenario-heading">Cenário de entrada</h2><button class="button text-button" type="button" id="preset-btn">Restaurar exemplo</button></div>
         <div class="form-row">
-          <label>Política<select id="policy"><option value="fcfs">FCFS · Chegada</option><option value="sjf">SJF · Menor entrada</option><option value="rr">Round Robin</option><option value="priority">Prioridade com aging</option></select></label>
+          <label>Política<select id="policy"><option value="fcfs">FCFS · Chegada</option><option value="sjf">SJF · Menor entrada</option><option value="rr">Round Robin</option><option value="priority">Prioridade com aging</option><option value="hrrn">HRRN · Maior razão de resposta</option></select></label>
           <label>Workers<input id="workers" type="number" min="1" max="16" value="1" required></label>
           <label>Quantum <span class="hint">(RR)</span><input id="quantum" type="number" min="1" value="2" disabled></label>
         </div>
