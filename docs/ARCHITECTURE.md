@@ -17,8 +17,6 @@ Simulador em C11 de um servidor do Jev. O núcleo (`os_core`) é determinístico
 | [`src/concurrency`](../src/concurrency/README.md) | Pool pthread, fila com mutex e semáforos, adaptador pthread da sessão e grafo de deadlock |
 | [`src/ipc`](../src/ipc/README.md) | Mensagens enquadradas por pipe entre processos |
 
-`src/app` e `src/experiments` não têm código: a composição está em `apps/` e os experimentos em `tools/experiments`.
-
 ## Programas
 
 - **CLI** (`os_llm_cli`): lê o cenário, roda a sessão e imprime ou exporta o resultado. `os_llm_workload` gera cenários.
