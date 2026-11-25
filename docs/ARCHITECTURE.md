@@ -23,7 +23,7 @@ Simulador em C11 de um servidor do Jev. O núcleo (`os_core`) é determinístico
 
 - **CLI** (`os_llm_cli`): lê o cenário, roda a sessão e imprime ou exporta o resultado. `os_llm_workload` gera cenários.
 - **Painel** (`apps/visual`): servidor Python (biblioteca padrão) em `127.0.0.1`. Para cada execução, chama a CLI por subprocesso e devolve o JSON exportado; o JavaScript só exibe. Não altera o estado do motor.
-- **Laboratórios**: `os_llm_race_lab` (atualização perdida) e `os_llm_deadlock_lab` (mutexes em ordem global ou cruzada) rodam em subprocesso com watchdog. `os_llm_ipc_demo` e `os_llm_ipc_runtime` usam `fork` e pipes; `os_llm_signal_demo` trata SIGUSR1. Nenhum deles é ligado ao núcleo.
+- **Laboratórios**: `os_llm_race_lab` (atualização perdida) e `os_llm_deadlock_lab` (mutexes em ordem global ou cruzada) rodam em subprocesso com watchdog. `os_llm_ipc_demo` e `os_llm_ipc_runtime` usam `fork` e pipes; `os_llm_signal_demo` trata SIGUSR1. Os de race e deadlock não usam o núcleo.
 - **Experimentos**: `tools/experiments/run.py` executa E1–E4 e `tools/analysis/report.py` valida e gera tabelas e gráficos. Ver [EXPERIMENTS.md](EXPERIMENTS.md).
 
 ## Fluxo de um tick
