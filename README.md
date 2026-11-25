@@ -42,7 +42,7 @@ Com o tamanho conhecido, o SJF fica exato e herda seu defeito clássico: um pedi
 - **E3 (memória):** FIFO e LRU com 2 a 16 *frames* e latência de falta de 5 ticks.
 - **E1 e E4 (corrida e *deadlock*):** 11 execuções por modo.
 
-As métricas são espera (média, p95, máxima), resposta, *turnaround*, *throughput*, utilização e *starvation* (pedidos com espera acima de 320 ticks). Os valores são médias de 5 *seeds*. O código passa em 70 testes CTest, incluindo um oráculo com frações exatas para o HRRN, e no CI com GCC, Clang e ASan/UBSan.
+As métricas são espera (média, p95, máxima), resposta, *turnaround*, *throughput*, utilização e *starvation* (pedidos com espera de 320 ticks ou mais). Os valores são médias de 5 *seeds*. O código passa em 70 testes CTest, incluindo um oráculo com frações exatas para o HRRN, e no CI com GCC, Clang e ASan/UBSan.
 
 ## 4. Resultados
 
@@ -106,7 +106,7 @@ As métricas são espera (média, p95, máxima), resposta, *turnaround*, *throug
 
 Os mecanismos clássicos de SO se aplicam diretamente a um servidor de modelos, e o tipo de modelo muda o problema. Com o Jev, o tamanho do trabalho é conhecido e o SJF fica exato, mas causa *starvation*. O HRRN foi o melhor compromisso: reduziu a espera média frente ao FCFS, eliminou a *starvation* do SJF e não exige calibração. Os demais objetivos foram cumpridos, com integração parcial de *deadlock*, IPC e sinais ao motor principal. Como trabalho futuro, ficam essa integração, *batching* por iteração e cargas medidas com o Jev real.
 
-**Reprodução:** `cmake -S . -B build && cmake --build build && ctest --test-dir build` e depois `tools/experiments/chk3.sh`. Guia de uso: [docs/USAGE.md](docs/USAGE.md). Roteiro da demonstração: [docs/DEMO.md](docs/DEMO.md). Resultados completos: [results/chk3/SUMMARY.md](results/chk3/SUMMARY.md). Índice da documentação: [docs/README.md](docs/README.md).
+**Reprodução:** `cmake -S . -B build && cmake --build build && ctest --test-dir build` e depois `tools/experiments/chk3.sh build /tmp/chk3`. Guia de uso: [docs/USAGE.md](docs/USAGE.md). Roteiro da demonstração: [docs/DEMO.md](docs/DEMO.md). Resultados completos: [results/chk3/SUMMARY.md](results/chk3/SUMMARY.md). Índice da documentação: [docs/README.md](docs/README.md).
 
 ## Referências
 
