@@ -20,7 +20,7 @@
 #define MAX_REQUESTS 256
 
 static void usage(const char *app) {
-    printf("Usage: %s [--policy fcfs|sjf|rr|priority] [--workers N] [--quantum N] [--aging-interval N]\n"
+    printf("Usage: %s [--policy fcfs|sjf|rr|priority|hrrn] [--workers N] [--quantum N] [--aging-interval N]\n"
            "       [--scenario FILE] [--frames N --page-tokens N --page-policy fifo|lru] [--page-fault-latency N] [--starvation-threshold N] [--trace]\n"
            "       [--export-json FILE] [--export-csv FILE]\n", app);
     puts("Input CSV (without header): id,arrival_tick,input_tokens,priority");
@@ -298,6 +298,7 @@ int main(int argc, char **argv) {
             else if (!strcmp(value, "sjf")) cfg.policy = OS_SJF;
             else if (!strcmp(value, "rr")) cfg.policy = OS_ROUND_ROBIN;
             else if (!strcmp(value, "priority")) cfg.policy = OS_PRIORITY_AGING;
+            else if (!strcmp(value, "hrrn")) cfg.policy = OS_HRRN;
             else { fprintf(stderr, "Unknown policy: %s\n", value); return 2; }
         } else if (!strcmp(argv[i], "--workers") && i + 1 < argc) {
             uint32_t workers;

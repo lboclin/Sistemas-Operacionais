@@ -147,7 +147,7 @@ OsRunStatus os_session_create(const OsRequest *requests, size_t count,
     *out = NULL;
     if (config == NULL || !os_gateway_validate(requests, count) ||
         config->worker_count == 0 || config->worker_count > 4096 ||
-        config->policy < OS_FCFS || config->policy > OS_PRIORITY_AGING ||
+        config->policy < OS_FCFS || config->policy > OS_HRRN ||
         (config->policy == OS_ROUND_ROBIN && config->quantum_tokens == 0) ||
         (config->page_fault_latency_ticks != 0 && !config->memory_enabled) ||
         (config->memory_enabled && (config->frame_capacity == 0 ||
