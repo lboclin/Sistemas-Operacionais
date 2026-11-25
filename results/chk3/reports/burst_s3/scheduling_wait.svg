@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 376" width="900" height="376">
+<rect width="100%" height="100%" fill="white"/>
+<text x="18" y="30" font-size="19" font-family="sans-serif">Espera média por política (ticks)</text>
+<text x="18" y="50" font-size="12" font-family="sans-serif">Simulação virtual; não são tempos reais de inferência</text>
+<text x="18" y="95" font-size="13" font-family="monospace">fcfs</text>
+<rect x="248" y="80" rx="3" width="298" height="21" fill="#4472a5"/>
+<text x="558" y="95" font-size="13" font-family="monospace">317.585</text>
+<text x="18" y="133" font-size="13" font-family="monospace">sjf</text>
+<rect x="248" y="118" rx="3" width="193" height="21" fill="#4472a5"/>
+<text x="453" y="133" font-size="13" font-family="monospace">205.565</text>
+<text x="18" y="171" font-size="13" font-family="monospace">hrrn</text>
+<rect x="248" y="156" rx="3" width="206" height="21" fill="#4472a5"/>
+<text x="466" y="171" font-size="13" font-family="monospace">220.11</text>
+<text x="18" y="209" font-size="13" font-family="monospace">rr_q1</text>
+<rect x="248" y="194" rx="3" width="420" height="21" fill="#4472a5"/>
+<text x="680" y="209" font-size="13" font-family="monospace">446.715</text>
+<text x="18" y="247" font-size="13" font-family="monospace">rr_q3</text>
+<rect x="248" y="232" rx="3" width="412" height="21" fill="#4472a5"/>
+<text x="672" y="247" font-size="13" font-family="monospace">438.615</text>
+<text x="18" y="285" font-size="13" font-family="monospace">priority_aging</text>
+<rect x="248" y="270" rx="3" width="298" height="21" fill="#4472a5"/>
+<text x="558" y="285" font-size="13" font-family="monospace">317.645</text>
+<text x="18" y="323" font-size="13" font-family="monospace">priority_no_aging</text>
+<rect x="248" y="308" rx="3" width="300" height="21" fill="#4472a5"/>
+<text x="560" y="323" font-size="13" font-family="monospace">319.73</text>
+</svg>

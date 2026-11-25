@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 414" width="900" height="414">
+<rect width="100%" height="100%" fill="white"/>
+<text x="18" y="30" font-size="19" font-family="sans-serif">Turnaround médio com memória (ticks) — starvation</text>
+<text x="18" y="50" font-size="12" font-family="sans-serif">Simulação virtual; não são tempos reais de inferência</text>
+<text x="18" y="95" font-size="13" font-family="monospace">memory_fifo_f2</text>
+<rect x="248" y="80" rx="3" width="420" height="21" fill="#4472a5"/>
+<text x="680" y="95" font-size="13" font-family="monospace">165.81</text>
+<text x="18" y="133" font-size="13" font-family="monospace">memory_lru_f2</text>
+<rect x="248" y="118" rx="3" width="420" height="21" fill="#4472a5"/>
+<text x="680" y="133" font-size="13" font-family="monospace">165.81</text>
+<text x="18" y="171" font-size="13" font-family="monospace">memory_fifo_f4</text>
+<rect x="248" y="156" rx="3" width="420" height="21" fill="#4472a5"/>
+<text x="680" y="171" font-size="13" font-family="monospace">165.81</text>
+<text x="18" y="209" font-size="13" font-family="monospace">memory_lru_f4</text>
+<rect x="248" y="194" rx="3" width="420" height="21" fill="#4472a5"/>
+<text x="680" y="209" font-size="13" font-family="monospace">165.81</text>
+<text x="18" y="247" font-size="13" font-family="monospace">memory_fifo_f8</text>
+<rect x="248" y="232" rx="3" width="420" height="21" fill="#4472a5"/>
+<text x="680" y="247" font-size="13" font-family="monospace">165.81</text>
+<text x="18" y="285" font-size="13" font-family="monospace">memory_lru_f8</text>
+<rect x="248" y="270" rx="3" width="420" height="21" fill="#4472a5"/>
+<text x="680" y="285" font-size="13" font-family="monospace">165.81</text>
+<text x="18" y="323" font-size="13" font-family="monospace">memory_fifo_f16</text>
+<rect x="248" y="308" rx="3" width="420" height="21" fill="#4472a5"/>
+<text x="680" y="323" font-size="13" font-family="monospace">165.81</text>
+<text x="18" y="361" font-size="13" font-family="monospace">memory_lru_f16</text>
+<rect x="248" y="346" rx="3" width="420" height="21" fill="#4472a5"/>
+<text x="680" y="361" font-size="13" font-family="monospace">165.81</text>
+</svg>
